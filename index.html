@@ -1,1 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Troll TG Wallet</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <!-- Splash Screen -->
+    <div id="splashScreen" class="splash-screen">
+        <div class="splash-content">
+            <div class="troll-face">🧌</div>
+            <h1>TROLL</h1>
+            <p>Problem? 😏</p>
+        </div>
+    </div>
 
+    <!-- Main Content -->
+    <div id="mainContent" class="app-container" style="display: none;">
+        <!-- Header -->
+        <div class="header">
+            <div class="user-info">
+                <div class="avatar" id="userAvatar">🧌</div>
+                <div class="user-details">
+                    <h3 id="userName">Troll</h3>
+                    <p id="userIdDisplay">ID: -----</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="icon-btn" id="notificationBtn" onclick="showNotifications()">
+                    <i class="far fa-bell"></i>
+                    <span class="badge" id="notificationBadge">0</span>
+                </button>
+                <button class="icon-btn" id="infoBtn" onclick="showInfoModal()">
+                    <i class="far fa-question-circle"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="bottom-nav">
+            <button class="nav-item active" data-tab="wallet" onclick="showWallet()">
+                <i class="fas fa-wallet"></i>
+                <span data-i18n="nav.wallet">Wallet</span>
+            </button>
+            <button class="nav-item" data-tab="airdrop" onclick="showAirdrop()">
+                <i class="fas fa-parachute-box"></i>
+                <span data-i18n="nav.airdrop">Airdrop</span>
+            </button>
+            <button class="nav-item" data-tab="settings" onclick="showSettings()">
+                <i class="fas fa-cog"></i>
+                <span data-i18n="nav.settings">Settings</span>
+            </button>
+        </div>
+
+        <!-- Sections -->
+        <div id="walletSection" class="section">
+            <div class="balance-card">
+                <span class="balance-label" data-i18n="wallet.totalBalance">Total Balance</span>
+                <div class="total-balance" id="totalBalance">$0.00</div>
+                <div class="token-balance">🪙 <span id="trollBalance">0</span> TROLL</div>
+            </div>
+            
+            <div class="action-buttons">
+                <button class="action-btn" onclick="showReceiveModal()">
+                    <i class="fas fa-qrcode"></i>
+                    <span>Receive</span>
+                </button>
+                <button class="action-btn" onclick="copyInviteLink()">
+                    <i class="fas fa-share-alt"></i>
+                    <span>Share</span>
+                </button>
+            </div>
+
+            <div class="assets-section">
+                <h4>My Assets</h4>
+                <div id="assetsList" class="assets-list"></div>
+            </div>
+            
+            <!-- Sticker Area -->
+            <div id="welcomeSticker" class="welcome-sticker"></div>
+        </div>
+
+        <div id="airdropSection" class="section hidden">
+            <div class="airdrop-header">
+                <div class="troll-face-large">🧌</div>
+                <h2>TROLL Airdrop</h2>
+                <p>Invite friends and climb the troll ranks!</p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span data-i18n="airdrop.totalInvites">Total Invites</span>
+                    <span id="totalInvites">0</span>
+                </div>
+                <div class="stat-card">
+                    <span data-i18n="airdrop.earned">TROLL Earned</span>
+                    <span id="trollEarned">0</span>
+                </div>
+            </div>
+
+            <div class="referral-link-card">
+                <label data-i18n="airdrop.yourLink">Your Invite Link</label>
+                <div class="link-container">
+                    <input type="text" id="inviteLink" readonly>
+                    <button class="copy-btn" onclick="copyInviteLink()">
+                        <i class="far fa-copy"></i>
+                    </button>
+                </div>
+                <button class="share-btn" onclick="shareInviteLink()">
+                    <i class="fab fa-telegram"></i> Share on Telegram
+                </button>
+            </div>
+
+            <div class="milestones-section">
+                <h4>Troll Ranks</h4>
+                <div id="milestonesList" class="milestones-list"></div>
+            </div>
+        </div>
+
+        <div id="settingsSection" class="section hidden">
+            <div class="settings-list">
+                <div class="settings-item" onclick="toggleLanguage()">
+                    <i class="fas fa-language"></i>
+                    <span data-i18n="settings.language">Language</span>
+                    <span id="currentLanguageFlag">🇬🇧</span>
+                </div>
+                <div class="settings-item" onclick="toggleTheme()">
+                    <i class="fas fa-moon"></i>
+                    <span data-i18n="settings.theme">Theme</span>
+                </div>
+                <div class="settings-item" onclick="connectTONWallet()">
+                    <i class="fas fa-link"></i>
+                    <span>Connect TON Wallet</span>
+                </div>
+                <div class="settings-item" onclick="showNotifications()">
+                    <i class="fas fa-bell"></i>
+                    <span data-i18n="notifications.title">Notifications</span>
+                </div>
+            </div>
+            <div class="app-info">
+                <p>Troll TG Wallet v1.0</p>
+                <p>Built on Solana 🧌</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Modal -->
+    <div id="infoModal" class="modal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeModal('infoModal')">&times;</button>
+            <div class="troll-face-large">🧌</div>
+            <h2>What is TROLL?</h2>
+            <p>The TROLL token on Solana is a meme coin inspired by internet trolling culture, designed for entertainment and community engagement with no intrinsic value.</p>
+            <p>Built on Solana's blockchain, it leverages fast transactions and low fees.</p>
+            <a href="https://t.me/TrollOfficial" target="_blank" class="channel-btn">
+                <i class="fab fa-telegram"></i> Join Troll Army
+            </a>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast hidden">
+        <i class="far fa-info-circle"></i>
+        <span id="toastMessage"></span>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
