@@ -11,12 +11,9 @@ const PORT = process.env.PORT || 3000;
 // ============================================================
 // 🔐 قراءة Secret Files من Render
 // ============================================================
-let serviceAccount = null;
-let firebaseWebConfig = {};
-let ADMIN_ID = null, ADMIN_PASSWORD = null;
-let TON_API_KEY = null;
-let COINPAYMENTS_PUBLIC = null, COINPAYMENTS_PRIVATE = null;
 
+// 1. Firebase Admin SDK
+let serviceAccount = null;
 try {
     const firebasePath = '/etc/secrets/firebase-admin-key.json';
     if (fs.existsSync(firebasePath)) {
@@ -27,6 +24,8 @@ try {
     console.error('❌ Firebase Admin key error:', error.message);
 }
 
+// 2. Firebase Web Config
+let firebaseWebConfig = {};
 try {
     const configPath = '/etc/secrets/firebase-web-config.json';
     firebaseWebConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -35,6 +34,8 @@ try {
     console.error('❌ Firebase Web config error:', error.message);
 }
 
+// 3. Admin Config
+let ADMIN_ID = null, ADMIN_PASSWORD = null;
 try {
     const adminPath = '/etc/secrets/admin-config.json';
     const adminConfig = JSON.parse(fs.readFileSync(adminPath, 'utf8'));
@@ -45,6 +46,8 @@ try {
     console.error('❌ Admin config error:', error.message);
 }
 
+// 4. TON API Key
+let TON_API_KEY = null;
 try {
     const tonPath = '/etc/secrets/ton-api-key.txt';
     TON_API_KEY = fs.readFileSync(tonPath, 'utf8').trim();
@@ -53,6 +56,8 @@ try {
     console.error('❌ TON API key error:', error.message);
 }
 
+// 5. CoinPayments Keys
+let COINPAYMENTS_PUBLIC = null, COINPAYMENTS_PRIVATE = null;
 try {
     const cpPath = '/etc/secrets/coinpayments-keys.json';
     const cpKeys = JSON.parse(fs.readFileSync(cpPath, 'utf8'));
@@ -69,8 +74,8 @@ try {
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const APP_URL = process.env.APP_URL;
 const OWNER_WALLET = process.env.OWNER_WALLET;
-const REFERRAL_BONUS = 500;
 const WELCOME_BONUS = 1000;
+const REFERRAL_BONUS = 500;
 
 // ============================================================
 // 🔥 Firebase Admin SDK Setup
@@ -91,10 +96,20 @@ if (serviceAccount) {
 }
 
 // ============================================================
-// 🤖 Telegram Bot Setup (Long Polling)
+// 🤖 Telegram Bot Setup (Long Polling) - ENGLISH ONLY
 // ============================================================
 const bot = new Telegraf(BOT_TOKEN);
 const welcomeCache = new Map();
+
+// Helper function for default missions
+function getDefaultMissions() {
+    return {
+        mission1: { completed: false, revealed: true, walletAddress: null },
+        mission2: { completed: false, revealed: false, currentAmount: 0, requiredAmount: 12500 },
+        mission3: { completed: false, revealed: false, referralsAtStart: 0, currentNewReferrals: 0, requiredReferrals: 12 },
+        mission4: { completed: false, revealed: false, revealDate: null, requiredBNB: 0.025, requiredSOL: 0.25 }
+    };
+}
 
 // أمر /start
 bot.start(async (ctx) => {
@@ -115,7 +130,7 @@ bot.start(async (ctx) => {
         const userDoc = await userRef.get();
         
         if (!userDoc.exists) {
-            // إنشاء مستخدم جديد مع نظام المهام الغامضة
+            // Create new user with full structure
             await userRef.set({
                 userId,
                 userName,
@@ -133,27 +148,24 @@ bot.start(async (ctx) => {
                 withdrawalUnlocked: false,
                 claimedMilestones: [],
                 tonWallet: null,
-                settings: { solanaWallet: null, language: 'ar', theme: 'dark' },
-                withdrawalMissions: {
-                    mission1: { completed: false, revealed: true, walletAddress: null, savedAt: null },
-                    mission2: { completed: false, revealed: false, requiredAmount: 12500, currentAmount: 0, startDate: null },
-                    mission3: { completed: false, revealed: false, requiredReferrals: 12, referralsAtStart: 0, currentNewReferrals: 0, startDate: null },
-                    mission4: { completed: false, revealed: false, revealDate: null, requiredBNB: 0.025, requiredSOL: 0.25 }
-                },
+                settings: { solanaWallet: null },
+                withdrawalMissions: getDefaultMissions(),
                 notifications: [{
                     id: Date.now().toString(),
-                    message: '🎉 أهلاً بك في Troll Army! +1,000 TROLL',
+                    message: `🎉 Welcome! +${WELCOME_BONUS} TROLL bonus!`,
                     read: false,
                     timestamp: new Date().toISOString()
-                }]
+                }],
+                transactions: []
             });
             
-            console.log(`✅ New user created: ${userId}`);
+            console.log(`✅ New user created via bot: ${userId}`);
             
-            // معالجة الإحالة
+            // Process referral
             if (refCode && refCode !== userId) {
                 const referrerRef = db.collection('users').doc(refCode);
                 const referrerDoc = await referrerRef.get();
+                
                 if (referrerDoc.exists) {
                     const referrerData = referrerDoc.data();
                     if (!referrerData.referrals?.includes(userId)) {
@@ -165,10 +177,9 @@ bot.start(async (ctx) => {
                             totalEarned: admin.firestore.FieldValue.increment(REFERRAL_BONUS)
                         });
                         
-                        // إشعار للمُحيل
                         bot.telegram.sendMessage(
                             refCode,
-                            `🧌 *مجند جديد في جيشك!*\n\n+500 TROLL\nإجمالي المجندين: ${(referrerData.inviteCount || 0) + 1}`,
+                            `🧌 *New Troll Recruited!*\n\n+${REFERRAL_BONUS} TROLL\nTotal Trolls: ${(referrerData.inviteCount || 0) + 1}`,
                             { parse_mode: 'Markdown' }
                         ).catch(() => {});
                     }
@@ -178,18 +189,18 @@ bot.start(async (ctx) => {
     }
     
     await ctx.reply(
-        `🧌 *مرحباً ${userName} في جيش التصيد!*\n\n` +
-        `🎁 مكافأة ترحيبية: *1,000 TROLL*\n` +
-        `👥 دعوة صديق: *500 TROLL*\n\n` +
-        `🔮 *نظام المهام الغامضة*\n` +
-        `أكمل 4 مهام غامضة لفتح السحب!\n\n` +
-        `_المهمة الأولى: أضف محفظة Solana_ 😏`,
+        `🧌 *Welcome to Troll Army, ${userName}!*\n\n` +
+        `🎁 Welcome Bonus: *${WELCOME_BONUS} TROLL*\n` +
+        `👥 Referral Bonus: *${REFERRAL_BONUS} TROLL*\n\n` +
+        `🔮 *Mystery Missions System*\n` +
+        `Complete 4 mystery missions to unlock withdrawal!\n\n` +
+        `_Mission 1: Add your Solana wallet_ 😏`,
         {
             parse_mode: 'Markdown',
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: '🧌 افتح المحفظة', web_app: { url: APP_URL } }],
-                    [{ text: '📢 قناة Troll', url: 'https://t.me/TrollOfficial' }]
+                    [{ text: '🧌 Open Troll Wallet', web_app: { url: APP_URL } }],
+                    [{ text: '📢 Join Troll Channel', url: 'https://t.me/TrollOfficial' }]
                 ]
             }
         }
@@ -199,23 +210,54 @@ bot.start(async (ctx) => {
 // أمر /stats
 bot.command('stats', async (ctx) => {
     const userId = ctx.from.id.toString();
-    if (!db) return ctx.reply('⚠️ جاري الصيانة...');
+    if (!db) return ctx.reply('⚠️ Maintenance mode...');
     
     const userDoc = await db.collection('users').doc(userId).get();
     if (userDoc.exists) {
         const data = userDoc.data();
-        const missions = data.withdrawalMissions;
-        const completed = [missions.mission1, missions.mission2, missions.mission3, missions.mission4].filter(m => m.completed).length;
+        const missions = data.withdrawalMissions || getDefaultMissions();
+        const completed = [missions.mission1, missions.mission2, missions.mission3, missions.mission4].filter(m => m?.completed).length;
         
         await ctx.reply(
-            `🧌 *إحصائياتك*\n\n` +
-            `💰 الرصيد: ${data.balances?.TROLL?.toLocaleString() || 0} TROLL\n` +
-            `👥 الإحالات: ${data.inviteCount || 0}\n` +
-            `🔮 المهام: ${completed}/4 مكتملة\n` +
-            `💎 السحب: ${data.withdrawalUnlocked ? '✅ متاح' : '❌ مقفل'}\n` +
-            `😏 بريميوم: ${data.premium ? '✅ مفعل' : '❌ لا'}`,
+            `🧌 *Your Troll Stats*\n\n` +
+            `💰 Balance: ${data.balances?.TROLL?.toLocaleString() || 0} TROLL\n` +
+            `👥 Invites: ${data.inviteCount || 0}\n` +
+            `🔮 Missions: ${completed}/4 completed\n` +
+            `💎 Withdrawal: ${data.withdrawalUnlocked ? '✅ Unlocked' : '❌ Locked'}\n` +
+            `😏 Premium: ${data.premium ? '✅ Yes' : '❌ No'}\n\n` +
+            `🔗 Your link: t.me/${ctx.botInfo.username}?start=${userId}`,
             { parse_mode: 'Markdown' }
         );
+    } else {
+        ctx.reply('❌ User not found. Please start the bot first with /start');
+    }
+});
+
+// أمر /broadcast (Admin only)
+bot.command('broadcast', async (ctx) => {
+    const userId = ctx.from.id.toString();
+    if (userId !== ADMIN_ID) {
+        return ctx.reply('⛔ Not authorized!');
+    }
+    
+    const message = ctx.message.text.replace('/broadcast', '').trim();
+    if (!message) {
+        return ctx.reply('Usage: /broadcast Your message here');
+    }
+    
+    if (db) {
+        const usersSnapshot = await db.collection('users').get();
+        let successCount = 0;
+        
+        for (const doc of usersSnapshot.docs) {
+            try {
+                await bot.telegram.sendMessage(doc.id, `📢 *Announcement*\n\n${message}`, { parse_mode: 'Markdown' });
+                successCount++;
+                await new Promise(r => setTimeout(r, 50));
+            } catch (e) {}
+        }
+        
+        ctx.reply(`✅ Broadcast sent to ${successCount} users`);
     }
 });
 
@@ -249,13 +291,19 @@ app.get('/api/health', (req, res) => {
     });
 });
 
-// إرسال الإعدادات للفرونت إند
+// Ping
+app.get('/api/ping', (req, res) => {
+    res.json({ alive: true, timestamp: Date.now() });
+});
+
+// Config
 app.get('/api/config', (req, res) => {
     res.json({
         firebaseConfig: firebaseWebConfig,
         appUrl: APP_URL,
         adminId: ADMIN_ID,
-        ownerWallet: OWNER_WALLET
+        ownerWallet: OWNER_WALLET,
+        botLink: 'https://t.me/TROLLMiniappbot/instant'
     });
 });
 
@@ -266,34 +314,57 @@ app.get('/api/users/:userId', async (req, res) => {
     if (!db) return res.json({ success: false, error: 'Database not connected' });
     try {
         const doc = await db.collection('users').doc(req.params.userId).get();
-        if (doc.exists) {
-            res.json({ success: true, data: doc.data() });
-        } else {
-            res.json({ success: true, data: null });
-        }
+        res.json({ success: true, data: doc.exists ? doc.data() : null });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
-// Create user
+// Create user - ✅ NEW!
 app.post('/api/users', async (req, res) => {
-    if (!db) return res.json({ success: false, error: 'Database not connected' });
+    if (!db) {
+        console.log('⚠️ Firebase not connected, returning mock success');
+        return res.json({ success: true, mock: true });
+    }
+    
     try {
         const { userId, userData } = req.body;
-        await db.collection('users').doc(userId).set(userData);
+        
+        if (!userId || !userData) {
+            return res.status(400).json({ success: false, error: 'Missing userId or userData' });
+        }
+        
+        const userRef = db.collection('users').doc(userId);
+        const userDoc = await userRef.get();
+        
+        if (userDoc.exists) {
+            return res.json({ success: true, message: 'User already exists' });
+        }
+        
+        await userRef.set({
+            ...userData,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        
+        console.log(`✅ New user created via API: ${userId}`);
         res.json({ success: true });
+        
     } catch (error) {
+        console.error('Create user error:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
 // Update user
 app.patch('/api/users/:userId', async (req, res) => {
-    if (!db) return res.json({ success: false, error: 'Database not connected' });
+    if (!db) return res.json({ success: true, mock: true });
     try {
         const { updates } = req.body;
-        await db.collection('users').doc(req.params.userId).update(updates);
+        await db.collection('users').doc(req.params.userId).update({
+            ...updates,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -303,7 +374,7 @@ app.patch('/api/users/:userId', async (req, res) => {
 // ====== REFERRAL API ======
 
 app.post('/api/referral', async (req, res) => {
-    if (!db) return res.json({ success: false, error: 'Database not connected' });
+    if (!db) return res.json({ success: true, mock: true });
     try {
         const { referrerId, newUserId } = req.body;
         
@@ -325,41 +396,9 @@ app.post('/api/referral', async (req, res) => {
                     totalEarned: admin.firestore.FieldValue.increment(REFERRAL_BONUS)
                 });
                 
-                // تحديث المهمة 2 و 3 تلقائياً
-                const updatedDoc = await referrerRef.get();
-                const updatedData = updatedDoc.data();
-                const missions = updatedData.withdrawalMissions;
-                
-                // تحديث المهمة 2
-                if (missions.mission2.revealed && !missions.mission2.completed) {
-                    missions.mission2.currentAmount = (updatedData.inviteCount || 0) * REFERRAL_BONUS;
-                    if (missions.mission2.currentAmount >= missions.mission2.requiredAmount) {
-                        missions.mission2.completed = true;
-                        if (!missions.mission3.revealed) {
-                            missions.mission3.revealed = true;
-                            missions.mission3.startDate = new Date().toISOString();
-                            missions.mission3.referralsAtStart = updatedData.inviteCount || 0;
-                        }
-                    }
-                }
-                
-                // تحديث المهمة 3
-                if (missions.mission3.revealed && !missions.mission3.completed) {
-                    missions.mission3.currentNewReferrals = (updatedData.inviteCount || 0) - (missions.mission3.referralsAtStart || 0);
-                    if (missions.mission3.currentNewReferrals >= missions.mission3.requiredReferrals) {
-                        missions.mission3.completed = true;
-                        const revealDate = new Date();
-                        revealDate.setDate(revealDate.getDate() + 20);
-                        missions.mission4.revealDate = revealDate.toISOString();
-                    }
-                }
-                
-                await referrerRef.update({ withdrawalMissions: missions });
-                
-                // إرسال إشعار
                 bot.telegram.sendMessage(
                     referrerId,
-                    `🧌 *مجند جديد!* +500 TROLL\n\n📊 تقدم المهمة 3: ${missions.mission3.currentNewReferrals || 0}/12`,
+                    `🧌 *New Troll Recruited!*\n\n+${REFERRAL_BONUS} TROLL\nTotal Trolls: ${(referrerData.inviteCount || 0) + 1}`,
                     { parse_mode: 'Markdown' }
                 ).catch(() => {});
             }
@@ -374,7 +413,7 @@ app.post('/api/referral', async (req, res) => {
 // ====== MILESTONE API ======
 
 app.post('/api/claim-milestone', async (req, res) => {
-    if (!db) return res.json({ success: false, error: 'Database not connected' });
+    if (!db) return res.json({ success: true, mock: true });
     try {
         const { userId, milestoneReferrals, reward } = req.body;
         const userRef = db.collection('users').doc(userId);
@@ -393,11 +432,39 @@ app.post('/api/claim-milestone', async (req, res) => {
                 
                 bot.telegram.sendMessage(
                     userId,
-                    `🎉 *مرحلة جديدة!*\n\n+${reward.toLocaleString()} TROLL`,
+                    `🎉 *Milestone Claimed!*\n\n+${reward.toLocaleString()} TROLL`,
                     { parse_mode: 'Markdown' }
                 ).catch(() => {});
             }
         }
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ====== PREMIUM API ======
+
+app.post('/api/buy-premium', async (req, res) => {
+    if (!db) return res.json({ success: true, mock: true });
+    try {
+        const { userId, txHash } = req.body;
+        
+        const userRef = db.collection('users').doc(userId);
+        await userRef.update({
+            premium: true,
+            avatar: '😏',
+            withdrawalUnlocked: true,
+            premiumTxHash: txHash,
+            premiumPurchasedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        
+        bot.telegram.sendMessage(
+            userId,
+            `😏 *Premium Unlocked!*\n\nYou now have the legendary Troll Face avatar and INSTANT withdrawal access!`,
+            { parse_mode: 'Markdown' }
+        ).catch(() => {});
+        
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -409,7 +476,7 @@ app.post('/api/claim-milestone', async (req, res) => {
 app.post('/api/deposit-address', async (req, res) => {
     try {
         const { userId, currency } = req.body;
-        const mockAddress = `0x${userId.slice(-40).padStart(40, '0')}`;
+        const mockAddress = currency === 'SOL' ? 'GzR' + userId.slice(-40).padStart(40, '0') : `0x${userId.slice(-40).padStart(40, '0')}`;
         
         res.json({ 
             success: true, 
@@ -436,11 +503,11 @@ app.get('/api/withdrawal-status/:userId', async (req, res) => {
             return res.json({ canWithdraw: true, unlockedBy: 'premium' });
         }
         
-        const missions = user.withdrawalMissions;
-        const allCompleted = missions.mission1.completed && 
-                            missions.mission2.completed && 
-                            missions.mission3.completed && 
-                            missions.mission4.completed;
+        const missions = user.withdrawalMissions || getDefaultMissions();
+        const allCompleted = missions.mission1?.completed && 
+                            missions.mission2?.completed && 
+                            missions.mission3?.completed && 
+                            missions.mission4?.completed;
         
         res.json({
             canWithdraw: allCompleted,
@@ -472,6 +539,28 @@ app.get('/api/admin/users', async (req, res) => {
     }
 });
 
+app.post('/api/admin/add-balance', async (req, res) => {
+    if (!isAdmin(req)) return res.status(403).json({ error: 'Unauthorized' });
+    if (!db) return res.json({ success: true });
+    
+    try {
+        const { userId, currency, amount } = req.body;
+        await db.collection('users').doc(userId).update({
+            [`balances.${currency}`]: admin.firestore.FieldValue.increment(amount)
+        });
+        
+        bot.telegram.sendMessage(
+            userId,
+            `💰 *Admin added ${amount} ${currency} to your wallet!*`,
+            { parse_mode: 'Markdown' }
+        ).catch(() => {});
+        
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.post('/api/admin/broadcast', async (req, res) => {
     if (!isAdmin(req)) return res.status(403).json({ error: 'Unauthorized' });
     if (!db) return res.json({ success: true });
@@ -483,7 +572,7 @@ app.post('/api/admin/broadcast', async (req, res) => {
         
         for (const doc of usersSnapshot.docs) {
             try {
-                await bot.telegram.sendMessage(doc.id, `📢 *إعلان*\n\n${message}`, { parse_mode: 'Markdown' });
+                await bot.telegram.sendMessage(doc.id, `📢 *Announcement*\n\n${message}`, { parse_mode: 'Markdown' });
                 successCount++;
                 await new Promise(r => setTimeout(r, 50));
             } catch (e) {}
@@ -506,9 +595,11 @@ app.get('/', (req, res) => {
 // 🚀 Start Server
 // ============================================================
 app.listen(PORT, () => {
-    console.log(`🧌 Troll Army v15.0 running on port ${PORT}`);
-    console.log(`🔥 Firebase: ${db ? 'Connected' : 'Disconnected'}`);
-    console.log(`👑 Admin ID: ${ADMIN_ID || 'Not configured'}`);
-    console.log(`🤖 Bot: ${BOT_TOKEN ? 'Configured' : 'Missing'}`);
+    console.log(`\n🧌 Troll Army v18.0 Server`);
+    console.log(`📍 Port: ${PORT}`);
+    console.log(`🔥 Firebase: ${db ? '✅ Connected' : '❌ Disconnected'}`);
+    console.log(`👑 Admin ID: ${ADMIN_ID || '❌ Not configured'}`);
+    console.log(`🤖 Bot: ${BOT_TOKEN ? '✅ Configured' : '❌ Missing'}`);
     console.log(`🌐 App URL: ${APP_URL}`);
+    console.log(`\n✅ Server ready!\n`);
 });
