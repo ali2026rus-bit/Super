@@ -3,28 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Troll TG Wallet</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Troll TG Wallet • Problem? 😏</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="https://s2.coinmarketcap.com/static/img/coins/64x64/36313.png">
+    
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <!-- Splash Screen -->
     <div id="splashScreen" class="splash-screen">
         <div class="splash-content">
             <div class="troll-face">😏</div>
-            <h1>TROLL</h1>
-            <p>Problem? 😏</p>
+            <h1>TROLL ARMY</h1>
+            <div class="splash-subtitle">Problem?</div>
+            <div class="loading-bar">
+                <div class="loading-progress"></div>
+            </div>
         </div>
     </div>
 
     <!-- Main Content -->
     <div id="mainContent" class="app-container" style="display: none;">
-        <!-- Header -->
+        
+        <!-- ====== HEADER ====== -->
         <div class="header">
             <div class="user-info">
                 <div class="avatar" id="userAvatar">🧌</div>
                 <div class="user-details">
-                    <h3 id="userName">Troll</h3>
+                    <h3 id="userName">Loading...</h3>
                     <p id="userIdDisplay">Telegram ID: -----</p>
                 </div>
             </div>
@@ -39,14 +53,15 @@
             </div>
         </div>
 
-        <!-- Wallet Section -->
+        <!-- ====== WALLET SECTION ====== -->
         <div id="walletSection" class="section">
+            
             <!-- Balance Card -->
             <div class="balance-card">
                 <span class="balance-label">Total Balance</span>
                 <div class="total-balance" id="totalBalance">$0.00</div>
                 <div class="token-balances">
-                    <span>🧌 <span id="trollBalance">0</span> TROLL</span>
+                    <span><span id="trollBalance">0</span> TROLL</span>
                     <span>≈ $<span id="trollUsdValue">0.00</span></span>
                 </div>
                 <div class="action-buttons">
@@ -71,14 +86,16 @@
 
             <!-- My Assets -->
             <div class="assets-section">
-                <h4>My Assets</h4>
+                <div class="section-header">
+                    <h4><i class="fa-regular fa-wallet"></i> My Assets</h4>
+                </div>
                 <div id="assetsList" class="assets-list"></div>
             </div>
 
             <!-- Top Cryptocurrencies -->
             <div class="top-crypto-section">
                 <div class="section-header">
-                    <h4>Top Cryptocurrencies</h4>
+                    <h4><i class="fa-regular fa-chart-line"></i> Top Cryptocurrencies</h4>
                     <button class="refresh-btn" onclick="refreshPrices()">
                         <i class="fa-regular fa-rotate-right"></i>
                     </button>
@@ -87,33 +104,38 @@
             </div>
         </div>
 
-        <!-- Airdrop Section -->
+        <!-- ====== AIRDROP SECTION ====== -->
         <div id="airdropSection" class="section hidden">
+            
             <div class="airdrop-header">
                 <div class="troll-face-large">😏</div>
                 <h2>TROLL AIRDROP</h2>
-                <p>Invite friends, earn TROLL, unlock withdrawal!</p>
+                <p>Invite friends • Earn TROLL • Unlock Withdrawal</p>
             </div>
 
+            <!-- Stats Grid -->
             <div class="stats-grid">
                 <div class="stat-card">
-                    <span>Total Invites</span>
+                    <span><i class="fa-regular fa-users"></i> Total Invites</span>
                     <span id="totalInvites">0</span>
                 </div>
                 <div class="stat-card">
-                    <span>TROLL Earned</span>
+                    <span><i class="fa-regular fa-coins"></i> TROLL Earned</span>
                     <span id="trollEarned">0</span>
                 </div>
             </div>
 
             <!-- Withdrawal Lock Status -->
             <div class="withdrawal-lock-card" id="withdrawalLockCard">
-                <!-- سيتم ملؤه ديناميكياً -->
+                <div class="lock-header">
+                    <i class="fa-solid fa-lock"></i>
+                    <span>Loading missions...</span>
+                </div>
             </div>
 
             <!-- Referral Link -->
             <div class="referral-link-card">
-                <label>Your Invite Link</label>
+                <label><i class="fa-regular fa-link"></i> Your Invite Link</label>
                 <div class="link-container">
                     <input type="text" id="inviteLink" readonly>
                     <button class="copy-btn" onclick="copyInviteLink()">
@@ -127,28 +149,32 @@
 
             <!-- Milestones -->
             <div class="milestones-section">
-                <h4>Troll Ranks</h4>
+                <h4><i class="fa-regular fa-trophy"></i> Troll Ranks</h4>
                 <div id="milestonesList" class="milestones-list"></div>
             </div>
         </div>
 
-        <!-- Settings Section -->
+        <!-- ====== SETTINGS SECTION ====== -->
         <div id="settingsSection" class="section hidden">
+            
+            <!-- Profile Card -->
             <div class="profile-card">
                 <div class="profile-avatar" id="settingsAvatar">🧌</div>
-                <h3 id="settingsUserName">Troll</h3>
+                <h3 id="settingsUserName">Loading...</h3>
                 <p id="settingsUserId">ID: -----</p>
-                <p id="settingsJoinDate">Joined: --</p>
+                <p id="settingsJoinDate">Member since: --</p>
             </div>
 
+            <!-- Settings List -->
             <div class="settings-list">
+                
                 <!-- Premium Unlock -->
                 <div class="settings-item premium-item" onclick="showPremiumModal()">
                     <div class="settings-item-left">
                         <i class="fa-regular fa-crown" style="color: gold;"></i>
                         <div>
                             <h4>Premium Unlock</h4>
-                            <p>Instant withdrawal + 😏 Avatar</p>
+                            <p>😏 Avatar + Instant Withdrawal</p>
                         </div>
                     </div>
                     <span class="premium-price">5 TON</span>
@@ -161,12 +187,12 @@
                     <span id="tonWalletStatus">Not connected</span>
                 </div>
 
-                <!-- Theme Toggle -->
+                <!-- Dark Mode -->
                 <div class="settings-item" onclick="toggleTheme()">
                     <i class="fa-regular fa-moon"></i>
                     <span>Dark Mode</span>
                     <label class="toggle-switch">
-                        <input type="checkbox" id="themeToggle">
+                        <input type="checkbox" id="themeToggle" checked>
                         <span class="toggle-slider"></span>
                     </label>
                 </div>
@@ -175,6 +201,7 @@
                 <div class="settings-item" onclick="showNotifications()">
                     <i class="fa-regular fa-bell"></i>
                     <span>Notifications</span>
+                    <i class="fa-regular fa-chevron-right"></i>
                 </div>
 
                 <!-- Language -->
@@ -191,13 +218,14 @@
                 </div>
             </div>
 
+            <!-- App Info -->
             <div class="app-info">
-                <p>Troll TG Wallet v2.0</p>
-                <p>Distribution: May 1, 2026</p>
+                <p><i class="fa-regular fa-code"></i> Troll TG Wallet v6.0</p>
+                <p><i class="fa-regular fa-calendar"></i> TGE: May 2026</p>
             </div>
         </div>
 
-        <!-- Bottom Navigation -->
+        <!-- ====== BOTTOM NAVIGATION ====== -->
         <div class="bottom-nav">
             <button class="nav-item active" data-tab="wallet" onclick="showWallet()">
                 <i class="fa-regular fa-wallet"></i>
@@ -214,13 +242,18 @@
         </div>
     </div>
 
+    <!-- ====== MODALS ====== -->
+    
     <!-- Deposit Modal -->
     <div id="depositModal" class="modal">
         <div class="modal-content">
             <button class="close-btn" onclick="closeModal('depositModal')">&times;</button>
-            <h2>📥 Deposit TROLL</h2>
+            <div class="modal-icon">📥</div>
+            <h2>Deposit TROLL</h2>
+            <p class="modal-desc">Send TROLL to your unique address</p>
+            
             <div class="deposit-address-container">
-                <label>Your deposit address (BSC BEP-20):</label>
+                <label>Your BSC (BEP-20) Address:</label>
                 <div class="address-box">
                     <code id="depositAddress">Loading...</code>
                     <button onclick="copyDepositAddress()">
@@ -228,15 +261,30 @@
                     </button>
                 </div>
             </div>
+            
             <div class="deposit-info">
-                <p><i class="fa-regular fa-circle-info"></i> Minimum deposit: 10,000 TROLL</p>
-                <p><i class="fa-regular fa-clock"></i> Confirmation: 1-5 minutes</p>
+                <div class="info-row">
+                    <i class="fa-regular fa-circle-check"></i>
+                    <span>Minimum deposit: 10,000 TROLL</span>
+                </div>
+                <div class="info-row">
+                    <i class="fa-regular fa-clock"></i>
+                    <span>Confirmation: 1-5 minutes</span>
+                </div>
+                <div class="info-row">
+                    <i class="fa-regular fa-shield"></i>
+                    <span>Network: BSC (BEP-20)</span>
+                </div>
             </div>
+            
             <div class="input-group">
                 <label>Transaction ID (optional):</label>
                 <input type="text" id="txIdInput" placeholder="0x...">
             </div>
-            <button class="modal-action-btn" onclick="submitDeposit()">Submit Deposit</button>
+            
+            <button class="modal-action-btn" onclick="submitDeposit()">
+                <i class="fa-regular fa-paper-plane"></i> Submit Deposit
+            </button>
         </div>
     </div>
 
@@ -244,9 +292,10 @@
     <div id="withdrawModal" class="modal">
         <div class="modal-content">
             <button class="close-btn" onclick="closeModal('withdrawModal')">&times;</button>
-            <h2>💸 Withdraw TROLL</h2>
+            <div class="modal-icon">💸</div>
+            <h2>Withdraw TROLL</h2>
             <div id="withdrawLockContent">
-                <!-- سيتم ملؤه ديناميكياً -->
+                <!-- Dynamic content -->
             </div>
         </div>
     </div>
@@ -257,7 +306,8 @@
             <button class="close-btn" onclick="closeModal('premiumModal')">&times;</button>
             <div class="premium-icon">😏</div>
             <h2>Premium Unlock</h2>
-            <p>Get the legendary Troll Face avatar and <strong>INSTANT withdrawal access</strong>!</p>
+            <p>Get the legendary <strong>Troll Face</strong> avatar and <strong>INSTANT withdrawal</strong> access!</p>
+            
             <div class="premium-features">
                 <div class="feature">
                     <i class="fa-regular fa-check-circle"></i>
@@ -265,25 +315,58 @@
                 </div>
                 <div class="feature">
                     <i class="fa-regular fa-check-circle"></i>
-                    <span>Instant Withdrawal</span>
+                    <span>Instant Withdrawal Access</span>
                 </div>
                 <div class="feature">
                     <i class="fa-regular fa-check-circle"></i>
-                    <span>Skip all missions</span>
+                    <span>Skip All Mystery Missions</span>
+                </div>
+                <div class="feature">
+                    <i class="fa-regular fa-check-circle"></i>
+                    <span>Premium Badge & Glow Effect</span>
                 </div>
             </div>
-            <div class="premium-price-large">5 TON</div>
+            
+            <div class="premium-price-large">
+                <i class="fa-brands fa-telegram"></i> 5 TON
+            </div>
+            
             <button class="premium-buy-btn" onclick="buyPremium()">
                 <i class="fa-brands fa-telegram"></i> Pay with TON
             </button>
-            <p class="premium-note">Payment processed via Telegram Wallet</p>
+            
+            <p class="premium-note">Payment processed securely via Telegram Wallet</p>
+        </div>
+    </div>
+
+    <!-- History Modal -->
+    <div id="historyModal" class="modal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeModal('historyModal')">&times;</button>
+            <div class="modal-icon">📋</div>
+            <h2>Transaction History</h2>
+            <div id="historyList" class="history-list">
+                <p class="empty-state">Loading history...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notifications Modal -->
+    <div id="notificationsModal" class="modal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeModal('notificationsModal')">&times;</button>
+            <div class="modal-icon">🔔</div>
+            <h2>Notifications</h2>
+            <div id="notificationsList" class="notifications-list">
+                <p class="empty-state">No new notifications</p>
+            </div>
         </div>
     </div>
 
     <!-- Admin Panel -->
     <div id="adminPanel" class="admin-panel hidden">
         <div class="admin-header">
-            <h2>👑 Admin Panel</h2>
+            <h2><i class="fa-solid fa-crown" style="color: gold;"></i> Admin Panel</h2>
             <button onclick="closeAdminPanel()">&times;</button>
         </div>
         <div class="admin-tabs">
@@ -292,40 +375,28 @@
             <button class="admin-tab" onclick="showAdminTab('broadcast')">Broadcast</button>
         </div>
         <div id="adminContent" class="admin-content">
-            <!-- سيتم ملؤه ديناميكياً -->
+            <p>Loading admin panel...</p>
         </div>
     </div>
 
-    <!-- History Modal -->
-    <div id="historyModal" class="modal">
-        <div class="modal-content">
-            <button class="close-btn" onclick="closeModal('historyModal')">&times;</button>
-            <h2>📋 Transaction History</h2>
-            <div id="historyList" class="history-list"></div>
-        </div>
-    </div>
-
-    <!-- Notifications Modal -->
-    <div id="notificationsModal" class="modal">
-        <div class="modal-content">
-            <button class="close-btn" onclick="closeModal('notificationsModal')">&times;</button>
-            <h2>🔔 Notifications</h2>
-            <div id="notificationsList" class="notifications-list"></div>
-        </div>
-    </div>
-
-    <!-- Toast -->
+    <!-- Toast Notification -->
     <div id="toast" class="toast hidden">
-        <i class="fa-regular fa-circle-info"></i>
+        <i class="fa-regular fa-circle-check"></i>
         <span id="toastMessage"></span>
     </div>
 
-    <!-- Sticker -->
+    <!-- Floating Sticker -->
     <div id="welcomeSticker" class="welcome-sticker"></div>
 
-    <!-- Scripts -->
+    <!-- ====== SCRIPTS ====== -->
+    <!-- TON Connect SDK -->
+    <script src="https://unpkg.com/@tonconnect/sdk@latest/dist/tonconnect-sdk.min.js"></script>
+    
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    
+    <!-- Main App -->
     <script src="app.js"></script>
 </body>
 </html>
