@@ -12,8 +12,14 @@ const PORT = process.env.PORT || 3000;
 // 🔐 قراءة Secret Files من Render
 // ============================================================
 
-// 1. Firebase Admin SDK
 let serviceAccount = null;
+let firebaseWebConfig = {};
+let ADMIN_ID = null;
+let ADMIN_PASSWORD = null;
+let TON_API_KEY = null;
+let COINPAYMENTS_PUBLIC = null;
+let COINPAYMENTS_PRIVATE = null;
+
 try {
     const firebasePath = '/etc/secrets/firebase-admin-key.json';
     if (fs.existsSync(firebasePath)) {
@@ -24,8 +30,6 @@ try {
     console.error('❌ Firebase Admin key error:', error.message);
 }
 
-// 2. Firebase Web Config
-let firebaseWebConfig = {};
 try {
     const configPath = '/etc/secrets/firebase-web-config.json';
     firebaseWebConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -34,8 +38,6 @@ try {
     console.error('❌ Firebase Web config error:', error.message);
 }
 
-// 3. Admin Config
-let ADMIN_ID = null, ADMIN_PASSWORD = null;
 try {
     const adminPath = '/etc/secrets/admin-config.json';
     const adminConfig = JSON.parse(fs.readFileSync(adminPath, 'utf8'));
@@ -46,8 +48,6 @@ try {
     console.error('❌ Admin config error:', error.message);
 }
 
-// 4. TON API Key
-let TON_API_KEY = null;
 try {
     const tonPath = '/etc/secrets/ton-api-key.txt';
     TON_API_KEY = fs.readFileSync(tonPath, 'utf8').trim();
@@ -56,8 +56,6 @@ try {
     console.error('❌ TON API key error:', error.message);
 }
 
-// 5. CoinPayments Keys
-let COINPAYMENTS_PUBLIC = null, COINPAYMENTS_PRIVATE = null;
 try {
     const cpPath = '/etc/secrets/coinpayments-keys.json';
     const cpKeys = JSON.parse(fs.readFileSync(cpPath, 'utf8'));
@@ -96,12 +94,8 @@ if (serviceAccount) {
 }
 
 // ============================================================
-// 🤖 Telegram Bot Setup (Long Polling) - ENGLISH ONLY
+// 🛠️ Helper Functions
 // ============================================================
-const bot = new Telegraf(BOT_TOKEN);
-const welcomeCache = new Map();
-
-// Helper function for default missions
 function getDefaultMissions() {
     return {
         mission1: { completed: false, revealed: true, walletAddress: null },
@@ -111,7 +105,42 @@ function getDefaultMissions() {
     };
 }
 
-// أمر /start
+function createNewUserData(userId, userName, userUsername, refCode) {
+    return {
+        userId,
+        userName,
+        userUsername: userUsername || '',
+        balances: { TROLL: WELCOME_BONUS, BNB: 0, SOL: 0, ETH: 0, TRON: 0 },
+        referralCode: userId,
+        referredBy: refCode || null,
+        referrals: [],
+        inviteCount: 0,
+        referralEarnings: 0,
+        totalEarned: WELCOME_BONUS,
+        premium: false,
+        avatar: '🧌',
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        withdrawalUnlocked: false,
+        claimedMilestones: [],
+        tonWallet: null,
+        settings: { solanaWallet: null },
+        withdrawalMissions: getDefaultMissions(),
+        notifications: [{
+            id: Date.now().toString(),
+            message: `🎉 Welcome! +${WELCOME_BONUS} TROLL bonus!`,
+            read: false,
+            timestamp: new Date().toISOString()
+        }],
+        transactions: []
+    };
+}
+
+// ============================================================
+// 🤖 Telegram Bot Setup
+// ============================================================
+const bot = new Telegraf(BOT_TOKEN);
+const welcomeCache = new Map();
+
 bot.start(async (ctx) => {
     const refCode = ctx.startPayload;
     const userId = ctx.from.id.toString();
@@ -130,38 +159,10 @@ bot.start(async (ctx) => {
         const userDoc = await userRef.get();
         
         if (!userDoc.exists) {
-            // Create new user with full structure
-            await userRef.set({
-                userId,
-                userName,
-                userUsername,
-                balances: { TROLL: WELCOME_BONUS, BNB: 0, SOL: 0, ETH: 0, TRON: 0 },
-                referralCode: userId,
-                referredBy: refCode || null,
-                referrals: [],
-                inviteCount: 0,
-                referralEarnings: 0,
-                totalEarned: WELCOME_BONUS,
-                premium: false,
-                avatar: '🧌',
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                withdrawalUnlocked: false,
-                claimedMilestones: [],
-                tonWallet: null,
-                settings: { solanaWallet: null },
-                withdrawalMissions: getDefaultMissions(),
-                notifications: [{
-                    id: Date.now().toString(),
-                    message: `🎉 Welcome! +${WELCOME_BONUS} TROLL bonus!`,
-                    read: false,
-                    timestamp: new Date().toISOString()
-                }],
-                transactions: []
-            });
-            
+            const userData = createNewUserData(userId, userName, userUsername, refCode);
+            await userRef.set(userData);
             console.log(`✅ New user created via bot: ${userId}`);
             
-            // Process referral
             if (refCode && refCode !== userId) {
                 const referrerRef = db.collection('users').doc(refCode);
                 const referrerDoc = await referrerRef.get();
@@ -207,7 +208,6 @@ bot.start(async (ctx) => {
     );
 });
 
-// أمر /stats
 bot.command('stats', async (ctx) => {
     const userId = ctx.from.id.toString();
     if (!db) return ctx.reply('⚠️ Maintenance mode...');
@@ -233,7 +233,6 @@ bot.command('stats', async (ctx) => {
     }
 });
 
-// أمر /broadcast (Admin only)
 bot.command('broadcast', async (ctx) => {
     const userId = ctx.from.id.toString();
     if (userId !== ADMIN_ID) {
@@ -261,10 +260,9 @@ bot.command('broadcast', async (ctx) => {
     }
 });
 
-// ============================================================
-// 🚀 Long Polling Setup
-// ============================================================
-bot.launch({ dropPendingUpdates: true })
+// Kill old webhook then launch
+bot.telegram.deleteWebhook({ drop_pending_updates: true })
+    .then(() => bot.launch({ dropPendingUpdates: true }))
     .then(() => console.log('🤖 Bot started with Long Polling'))
     .catch(err => console.error('❌ Bot launch error:', err));
 
@@ -282,21 +280,14 @@ app.use(express.static(__dirname));
 // 📡 API Endpoints
 // ============================================================
 
-// Health check
 app.get('/api/health', (req, res) => {
-    res.json({ 
-        status: 'trolling 🧌', 
-        firebase: db ? 'connected' : 'disconnected',
-        timestamp: Date.now() 
-    });
+    res.json({ status: 'trolling 🧌', firebase: db ? 'connected' : 'disconnected', timestamp: Date.now() });
 });
 
-// Ping
 app.get('/api/ping', (req, res) => {
     res.json({ alive: true, timestamp: Date.now() });
 });
 
-// Config
 app.get('/api/config', (req, res) => {
     res.json({
         firebaseConfig: firebaseWebConfig,
@@ -307,9 +298,56 @@ app.get('/api/config', (req, res) => {
     });
 });
 
-// ====== USER APIs ======
+// ====== INIT USER (AUTO AUTHENTICATION) - NEW! ======
+app.post('/api/init-user', async (req, res) => {
+    try {
+        const { initData } = req.body;
+        
+        if (!initData) {
+            return res.json({ success: false, error: 'No initData' });
+        }
+        
+        const params = new URLSearchParams(initData);
+        const userJson = params.get('user');
+        
+        if (!userJson) {
+            return res.json({ success: false, error: 'No user data' });
+        }
+        
+        const user = JSON.parse(decodeURIComponent(userJson));
+        const userId = user.id.toString();
+        const userName = user.first_name || 'Troll';
+        const userUsername = user.username || '';
+        
+        console.log('📱 Init user:', userId, userName);
+        
+        if (!db) {
+            return res.json({ success: false, error: 'Database not connected' });
+        }
+        
+        const userRef = db.collection('users').doc(userId);
+        const userDoc = await userRef.get();
+        
+        let userData;
+        
+        if (userDoc.exists) {
+            userData = userDoc.data();
+            console.log('✅ Existing user:', userId);
+        } else {
+            userData = createNewUserData(userId, userName, userUsername, null);
+            await userRef.set(userData);
+            console.log('✅ New user created via init:', userId);
+        }
+        
+        res.json({ success: true, userId: userId, userData: userData });
+        
+    } catch (error) {
+        console.error('❌ Init user error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
 
-// Get user
+// ====== USER APIs ======
 app.get('/api/users/:userId', async (req, res) => {
     if (!db) return res.json({ success: false, error: 'Database not connected' });
     try {
@@ -320,12 +358,8 @@ app.get('/api/users/:userId', async (req, res) => {
     }
 });
 
-// Create user - ✅ NEW!
 app.post('/api/users', async (req, res) => {
-    if (!db) {
-        console.log('⚠️ Firebase not connected, returning mock success');
-        return res.json({ success: true, mock: true });
-    }
+    if (!db) return res.json({ success: true, mock: true });
     
     try {
         const { userId, userData } = req.body;
@@ -356,7 +390,6 @@ app.post('/api/users', async (req, res) => {
     }
 });
 
-// Update user
 app.patch('/api/users/:userId', async (req, res) => {
     if (!db) return res.json({ success: true, mock: true });
     try {
@@ -372,7 +405,6 @@ app.patch('/api/users/:userId', async (req, res) => {
 });
 
 // ====== REFERRAL API ======
-
 app.post('/api/referral', async (req, res) => {
     if (!db) return res.json({ success: true, mock: true });
     try {
@@ -411,7 +443,6 @@ app.post('/api/referral', async (req, res) => {
 });
 
 // ====== MILESTONE API ======
-
 app.post('/api/claim-milestone', async (req, res) => {
     if (!db) return res.json({ success: true, mock: true });
     try {
@@ -444,7 +475,6 @@ app.post('/api/claim-milestone', async (req, res) => {
 });
 
 // ====== PREMIUM API ======
-
 app.post('/api/buy-premium', async (req, res) => {
     if (!db) return res.json({ success: true, mock: true });
     try {
@@ -472,7 +502,6 @@ app.post('/api/buy-premium', async (req, res) => {
 });
 
 // ====== DEPOSIT API ======
-
 app.post('/api/deposit-address', async (req, res) => {
     try {
         const { userId, currency } = req.body;
@@ -490,7 +519,6 @@ app.post('/api/deposit-address', async (req, res) => {
 });
 
 // ====== WITHDRAWAL STATUS API ======
-
 app.get('/api/withdrawal-status/:userId', async (req, res) => {
     if (!db) return res.json({ canWithdraw: false });
     try {
@@ -520,7 +548,6 @@ app.get('/api/withdrawal-status/:userId', async (req, res) => {
 });
 
 // ====== ADMIN APIs ======
-
 function isAdmin(req) {
     const authHeader = req.headers.authorization;
     return authHeader === `Bearer ${ADMIN_PASSWORD}`;
@@ -595,7 +622,7 @@ app.get('/', (req, res) => {
 // 🚀 Start Server
 // ============================================================
 app.listen(PORT, () => {
-    console.log(`\n🧌 Troll Army v18.0 Server`);
+    console.log(`\n🧌 Troll Army Server`);
     console.log(`📍 Port: ${PORT}`);
     console.log(`🔥 Firebase: ${db ? '✅ Connected' : '❌ Disconnected'}`);
     console.log(`👑 Admin ID: ${ADMIN_ID || '❌ Not configured'}`);
