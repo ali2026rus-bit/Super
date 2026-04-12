@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Troll TG Wallet • Problem? 😏</title>
+    <title>Troll Army • جيش التصيد 😏</title>
     
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="https://s2.coinmarketcap.com/static/img/coins/64x64/36313.png">
@@ -12,32 +12,45 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
     
     <!-- TON Connect UI -->
     <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
-    
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     
     <!-- Main Stylesheet -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- ====== SPLASH SCREEN ====== -->
+    <!-- Splash Screen -->
     <div id="splashScreen" class="splash-screen">
         <div class="splash-content">
-            <div class="troll-face">😏</div>
+            <div class="troll-face-svg">
+                <svg viewBox="0 0 100 100" width="120" height="120">
+                    <defs>
+                        <radialGradient id="splashGrad" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" style="stop-color:#FFD700;stop-opacity:0.9" />
+                            <stop offset="100%" style="stop-color:#DAA520;stop-opacity:1" />
+                        </radialGradient>
+                    </defs>
+                    <circle cx="50" cy="50" r="48" fill="url(#splashGrad)" stroke="#B8860B" stroke-width="2"/>
+                    <path d="M 28 68 Q 50 88, 78 58 Q 82 52, 75 48 Q 58 70, 28 62 Z" fill="#2C1810" />
+                    <ellipse cx="35" cy="40" rx="8" ry="10" fill="#FFF" stroke="#333" stroke-width="1"/>
+                    <circle cx="38" cy="40" r="3" fill="#000"/>
+                    <path d="M 23 28 Q 35 22, 47 28" stroke="#2C1810" stroke-width="3" fill="none" stroke-linecap="round"/>
+                    <ellipse cx="65" cy="40" rx="8" ry="10" fill="#FFF" stroke="#333" stroke-width="1"/>
+                    <circle cx="62" cy="42" r="3" fill="#000"/>
+                    <path d="M 53 28 Q 65 22, 77 28" stroke="#2C1810" stroke-width="3" fill="none" stroke-linecap="round"/>
+                </svg>
+            </div>
             <h1>TROLL ARMY</h1>
-            <div class="splash-subtitle">Problem?</div>
+            <div class="splash-subtitle">Problem? 😏</div>
             <div class="loading-bar">
                 <div class="loading-progress"></div>
             </div>
         </div>
     </div>
 
-    <!-- ====== MAIN CONTENT ====== -->
+    <!-- Main Content -->
     <div id="mainContent" class="app-container" style="display: none;">
         
         <!-- ====== HEADER ====== -->
@@ -45,15 +58,15 @@
             <div class="user-info">
                 <div class="avatar" id="userAvatar">🧌</div>
                 <div class="user-details">
-                    <h3 id="userName">Loading...</h3>
+                    <h3 id="userName">جاري التحميل...</h3>
                     <p id="userIdDisplay">Telegram ID: -----</p>
                 </div>
             </div>
             <div class="header-actions">
-                <button class="icon-btn" id="supportBtn" onclick="openSupport()">
+                <button class="icon-btn" onclick="openSupport()">
                     <i class="fa-regular fa-headset"></i>
                 </button>
-                <button class="icon-btn" id="notificationBtn" onclick="showNotifications()">
+                <button class="icon-btn" onclick="showNotifications()">
                     <i class="fa-regular fa-bell"></i>
                     <span class="badge" id="notificationBadge">0</span>
                 </button>
@@ -65,7 +78,7 @@
             
             <!-- Balance Card -->
             <div class="balance-card">
-                <span class="balance-label" data-i18n="wallet.totalBalance">Total Balance</span>
+                <span class="balance-label">الرصيد الإجمالي</span>
                 <div class="total-balance" id="totalBalance">$0.00</div>
                 <div class="token-balances">
                     <span><span id="trollBalance">0</span> TROLL</span>
@@ -74,19 +87,19 @@
                 <div class="action-buttons">
                     <button class="action-btn" onclick="showDepositModal()">
                         <i class="fa-regular fa-arrow-down"></i>
-                        <span data-i18n="actions.deposit">Deposit</span>
+                        <span>إيداع</span>
                     </button>
                     <button class="action-btn" onclick="showWithdrawModal()">
                         <i class="fa-regular fa-arrow-up"></i>
-                        <span data-i18n="actions.withdraw">Withdraw</span>
+                        <span>سحب</span>
                     </button>
                     <button class="action-btn" onclick="showHistory()">
                         <i class="fa-regular fa-clock"></i>
-                        <span data-i18n="actions.history">History</span>
+                        <span>السجل</span>
                     </button>
                     <button class="action-btn" onclick="showComingSoon('Swap')">
                         <i class="fa-regular fa-arrow-right-arrow-left"></i>
-                        <span>Swap</span>
+                        <span>تبديل</span>
                     </button>
                 </div>
             </div>
@@ -94,7 +107,7 @@
             <!-- My Assets -->
             <div class="assets-section">
                 <div class="section-header">
-                    <h4><i class="fa-regular fa-wallet"></i> My Assets</h4>
+                    <h4><i class="fa-regular fa-wallet"></i> أصولي</h4>
                 </div>
                 <div id="assetsList" class="assets-list"></div>
             </div>
@@ -102,7 +115,7 @@
             <!-- Top Cryptocurrencies -->
             <div class="top-crypto-section">
                 <div class="section-header">
-                    <h4><i class="fa-regular fa-chart-line"></i> Top Cryptocurrencies</h4>
+                    <h4><i class="fa-regular fa-chart-line"></i> العملات الرقمية</h4>
                     <button class="refresh-btn" onclick="refreshPrices()">
                         <i class="fa-regular fa-rotate-right"></i>
                     </button>
@@ -111,38 +124,26 @@
             </div>
         </div>
 
-        <!-- ====== AIRDROP SECTION ====== -->
+        <!-- ====== AIRDROP SECTION (المهام الغامضة) ====== -->
         <div id="airdropSection" class="section hidden">
             
             <div class="airdrop-header">
                 <div class="troll-face-large">😏</div>
-                <h2>TROLL AIRDROP</h2>
-                <p>Invite friends • Earn TROLL • Unlock Withdrawal</p>
+                <h2>المهام الغامضة</h2>
+                <p>أكمل 4 مهام غامضة لفتح السحب!</p>
             </div>
 
-            <!-- Stats Grid -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <span><i class="fa-regular fa-users"></i> <span data-i18n="airdrop.totalInvites">Total Invites</span></span>
-                    <span id="totalInvites">0</span>
-                </div>
-                <div class="stat-card">
-                    <span><i class="fa-regular fa-coins"></i> <span data-i18n="airdrop.earned">TROLL Earned</span></span>
-                    <span id="trollEarned">0</span>
-                </div>
-            </div>
-
-            <!-- Withdrawal Lock Status -->
+            <!-- Withdrawal Lock Status - المهام الغامضة -->
             <div class="withdrawal-lock-card" id="withdrawalLockCard">
                 <div class="lock-header">
                     <i class="fa-solid fa-lock"></i>
-                    <span>Loading missions...</span>
+                    <span>جاري تحميل المهام...</span>
                 </div>
             </div>
 
             <!-- Referral Link -->
             <div class="referral-link-card">
-                <label><i class="fa-regular fa-link"></i> <span data-i18n="airdrop.yourLink">Your Invite Link</span></label>
+                <label><i class="fa-regular fa-link"></i> رابط الدعوة</label>
                 <div class="link-container">
                     <input type="text" id="inviteLink" readonly>
                     <button class="copy-btn" onclick="copyInviteLink()">
@@ -150,13 +151,13 @@
                     </button>
                 </div>
                 <button class="share-btn" onclick="shareInviteLink()">
-                    <i class="fa-brands fa-telegram"></i> Share on Telegram
+                    <i class="fa-brands fa-telegram"></i> مشاركة عبر تيليجرام
                 </button>
             </div>
 
-            <!-- Milestones -->
+            <!-- Milestones - مراتب الجيش -->
             <div class="milestones-section">
-                <h4><i class="fa-regular fa-trophy"></i> Troll Ranks</h4>
+                <h4><i class="fa-regular fa-trophy"></i> مراتب الجيش</h4>
                 <div id="milestonesList" class="milestones-list"></div>
             </div>
         </div>
@@ -167,9 +168,9 @@
             <!-- Profile Card -->
             <div class="profile-card">
                 <div class="profile-avatar" id="settingsAvatar">🧌</div>
-                <h3 id="settingsUserName">Loading...</h3>
+                <h3 id="settingsUserName">جاري التحميل...</h3>
                 <p id="settingsUserId">ID: -----</p>
-                <p id="settingsJoinDate">Member since: --</p>
+                <p id="settingsJoinDate">عضو منذ: --</p>
             </div>
 
             <!-- Settings List -->
@@ -180,27 +181,33 @@
                     <div class="settings-item-left">
                         <i class="fa-regular fa-crown" style="color: gold;"></i>
                         <div>
-                            <h4>Premium Unlock</h4>
-                            <p>😏 Avatar + Instant Withdrawal</p>
+                            <h4>تفعيل البريميوم</h4>
+                            <p>😏 أفاتار + سحب فوري</p>
                         </div>
                     </div>
                     <span class="premium-price">5 TON</span>
                 </div>
 
+                <!-- محفظة Solana -->
+                <div class="settings-item" onclick="showSolanaWalletModal()">
+                    <i class="fa-regular fa-wallet"></i>
+                    <span>محفظة Solana</span>
+                    <span id="currentSolanaWallet" style="color: var(--troll-green); font-size: 12px;">غير مضاف</span>
+                </div>
+
                 <!-- TON Connect -->
                 <div class="settings-item" onclick="connectTONWallet()">
                     <i class="fa-regular fa-link"></i>
-                    <span>Connect TON Wallet</span>
-                    <span id="tonWalletStatus">Not connected</span>
+                    <span>ربط محفظة TON</span>
+                    <span id="tonWalletStatus">غير مرتبطة</span>
                 </div>
                 
-                <!-- TON Connect Button (Hidden) -->
                 <div id="tonConnectButton" style="display: none;"></div>
 
                 <!-- Dark Mode -->
                 <div class="settings-item" onclick="toggleTheme()">
                     <i class="fa-regular fa-moon"></i>
-                    <span>Dark Mode</span>
+                    <span>الوضع الليلي</span>
                     <label class="toggle-switch">
                         <input type="checkbox" id="themeToggle" checked>
                         <span class="toggle-slider"></span>
@@ -210,72 +217,62 @@
                 <!-- Notifications -->
                 <div class="settings-item" onclick="showNotifications()">
                     <i class="fa-regular fa-bell"></i>
-                    <span>Notifications</span>
-                    <i class="fa-regular fa-chevron-right"></i>
+                    <span>الإشعارات</span>
+                    <i class="fa-regular fa-chevron-left"></i>
                 </div>
 
                 <!-- Language -->
                 <div class="settings-item" onclick="toggleLanguage()">
                     <i class="fa-regular fa-language"></i>
-                    <span>Language</span>
-                    <span id="currentLanguageFlag">🇬🇧</span>
+                    <span>اللغة</span>
+                    <span id="currentLanguage">🇸🇦 العربية</span>
                 </div>
 
                 <!-- Logout -->
                 <div class="settings-item logout-item" onclick="logout()">
                     <i class="fa-regular fa-sign-out"></i>
-                    <span>Logout</span>
+                    <span>تسجيل الخروج</span>
                 </div>
             </div>
 
             <!-- App Info -->
             <div class="app-info">
-                <p><i class="fa-regular fa-code"></i> Troll TG Wallet v14.0</p>
-                <p><i class="fa-regular fa-calendar"></i> TGE: May 2026</p>
+                <p><i class="fa-regular fa-code"></i> Troll TG Wallet v15.0</p>
+                <p><i class="fa-regular fa-calendar"></i> TGE: مايو 2026</p>
             </div>
         </div>
 
         <!-- ====== BOTTOM NAVIGATION ====== -->
         <div class="bottom-nav">
-            <button class="nav-item active" data-tab="wallet" onclick="showWallet()">
+            <button class="nav-item active" onclick="showWallet()">
                 <i class="fa-regular fa-wallet"></i>
-                <span data-i18n="nav.wallet">Wallet</span>
+                <span>المحفظة</span>
             </button>
-            <button class="nav-item" data-tab="airdrop" onclick="showAirdrop()">
+            <button class="nav-item" onclick="showAirdrop()">
                 <i class="fa-regular fa-parachute-box"></i>
-                <span data-i18n="nav.airdrop">Airdrop</span>
+                <span>المهام</span>
             </button>
-            <button class="nav-item" data-tab="settings" onclick="showSettings()">
+            <button class="nav-item" onclick="showSettings()">
                 <i class="fa-regular fa-gear"></i>
-                <span data-i18n="nav.settings">Settings</span>
+                <span>الإعدادات</span>
             </button>
         </div>
     </div>
 
-    <!-- ====== DEPOSIT MODAL ====== -->
+    <!-- ====== MODALS ====== -->
+    
+    <!-- Deposit Modal -->
     <div id="depositModal" class="modal">
         <div class="modal-content">
             <button class="close-btn" onclick="closeModal('depositModal')">&times;</button>
             <div class="modal-icon">📥</div>
-            <h2>Deposit Crypto</h2>
-            <p class="modal-desc">Send crypto to your unique address</p>
-            
-            <div class="deposit-currency-selector">
-                <label>Select Currency:</label>
-                <select id="depositCurrency" onchange="updateDepositInfo()">
-                    <option value="SOL">Solana (SOL)</option>
-                    <option value="BNB">Binance Coin (BNB)</option>
-                    <option value="ETH">Ethereum (ETH)</option>
-                    <option value="TRON">TRON (TRX)</option>
-                    <option value="TROLL">TROLL Token</option>
-                </select>
-            </div>
+            <h2>إيداع TROLL</h2>
+            <p class="modal-desc">أرسل TROLL إلى عنوانك الفريد</p>
             
             <div class="deposit-address-container">
-                <label>Your Deposit Address:</label>
+                <label>عنوان BSC (BEP-20):</label>
                 <div class="address-box">
-                    <img id="depositIcon" src="https://s2.coinmarketcap.com/static/img/coins/64x64/5426.png" alt="SOL" style="width:24px;height:24px;border-radius:50%;">
-                    <code id="depositAddress">Loading...</code>
+                    <code id="depositAddress">جاري التحميل...</code>
                     <button onclick="copyDepositAddress()">
                         <i class="fa-regular fa-copy"></i>
                     </button>
@@ -285,61 +282,75 @@
             <div class="deposit-info">
                 <div class="info-row">
                     <i class="fa-regular fa-circle-check"></i>
-                    <span>Send only the selected currency to this address</span>
+                    <span>الحد الأدنى: 10,000 TROLL</span>
                 </div>
                 <div class="info-row">
                     <i class="fa-regular fa-clock"></i>
-                    <span>Confirmation: 1-5 minutes</span>
+                    <span>التأكيد: 1-5 دقائق</span>
+                </div>
+                <div class="info-row">
+                    <i class="fa-regular fa-shield"></i>
+                    <span>الشبكة: BSC (BEP-20)</span>
                 </div>
             </div>
             
-            <div class="input-group">
-                <label>Transaction ID (optional):</label>
-                <input type="text" id="txIdInput" placeholder="0x...">
-            </div>
-            
             <button class="modal-action-btn" onclick="submitDeposit()">
-                <i class="fa-regular fa-paper-plane"></i> Submit Deposit
+                <i class="fa-regular fa-paper-plane"></i> تأكيد الإيداع
             </button>
         </div>
     </div>
 
-    <!-- ====== WITHDRAW MODAL ====== -->
+    <!-- Withdraw Modal -->
     <div id="withdrawModal" class="modal">
         <div class="modal-content">
             <button class="close-btn" onclick="closeModal('withdrawModal')">&times;</button>
             <div class="modal-icon">💸</div>
-            <h2>Withdraw TROLL</h2>
+            <h2>سحب العملات</h2>
             <div id="withdrawLockContent">
-                <!-- Dynamic content from JS -->
+                <!-- Dynamic content -->
             </div>
         </div>
     </div>
 
-    <!-- ====== PREMIUM MODAL ====== -->
+    <!-- Premium Modal -->
     <div id="premiumModal" class="modal">
         <div class="modal-content premium-modal">
             <button class="close-btn" onclick="closeModal('premiumModal')">&times;</button>
-            <div class="premium-icon">😏</div>
-            <h2>Premium Unlock</h2>
-            <p>Get the legendary <strong>Troll Face</strong> avatar and <strong>INSTANT withdrawal</strong> access!</p>
+            <div class="premium-icon">
+                <svg viewBox="0 0 100 100" width="80" height="80">
+                    <defs>
+                        <radialGradient id="premiumGrad" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" style="stop-color:#FFD700;stop-opacity:0.9" />
+                            <stop offset="100%" style="stop-color:#DAA520;stop-opacity:1" />
+                        </radialGradient>
+                    </defs>
+                    <circle cx="50" cy="50" r="48" fill="url(#premiumGrad)" stroke="#B8860B" stroke-width="2"/>
+                    <path d="M 28 68 Q 50 88, 78 58 Q 82 52, 75 48 Q 58 70, 28 62 Z" fill="#2C1810" />
+                    <ellipse cx="35" cy="40" rx="8" ry="10" fill="#FFF" stroke="#333" stroke-width="1"/>
+                    <circle cx="38" cy="40" r="3" fill="#000"/>
+                    <ellipse cx="65" cy="40" rx="8" ry="10" fill="#FFF" stroke="#333" stroke-width="1"/>
+                    <circle cx="62" cy="42" r="3" fill="#000"/>
+                </svg>
+            </div>
+            <h2>تفعيل البريميوم</h2>
+            <p>احصل على أفاتار <strong>الوجه الساخر 😏</strong> و<strong>سحب فوري</strong>!</p>
             
             <div class="premium-features">
                 <div class="feature">
                     <i class="fa-regular fa-check-circle"></i>
-                    <span>Exclusive 😏 Avatar</span>
+                    <span>أفاتار 😏 حصري</span>
                 </div>
                 <div class="feature">
                     <i class="fa-regular fa-check-circle"></i>
-                    <span>Instant Withdrawal Access</span>
+                    <span>سحب فوري بدون مهام</span>
                 </div>
                 <div class="feature">
                     <i class="fa-regular fa-check-circle"></i>
-                    <span>Skip All Mystery Missions</span>
+                    <span>تخطي جميع المهام الغامضة</span>
                 </div>
                 <div class="feature">
                     <i class="fa-regular fa-check-circle"></i>
-                    <span>Premium Badge & Glow Effect</span>
+                    <span>شارة بريميوم مميزة</span>
                 </div>
             </div>
             
@@ -348,59 +359,63 @@
             </div>
             
             <button class="premium-buy-btn" onclick="buyPremium()">
-                <i class="fa-brands fa-telegram"></i> Pay with TON
+                <i class="fa-brands fa-telegram"></i> ادفع عبر TON
             </button>
             
-            <p class="premium-note">Payment processed securely via Telegram Wallet</p>
+            <p class="premium-note">الدفع آمن عبر محفظة تيليجرام</p>
         </div>
     </div>
 
-    <!-- ====== HISTORY MODAL ====== -->
+    <!-- History Modal -->
     <div id="historyModal" class="modal">
         <div class="modal-content">
             <button class="close-btn" onclick="closeModal('historyModal')">&times;</button>
             <div class="modal-icon">📋</div>
-            <h2>Transaction History</h2>
+            <h2>سجل المعاملات</h2>
             <div id="historyList" class="history-list">
-                <p class="empty-state">Loading history...</p>
+                <p class="empty-state">جاري تحميل السجل...</p>
             </div>
         </div>
     </div>
 
-    <!-- ====== NOTIFICATIONS MODAL ====== -->
+    <!-- Notifications Modal -->
     <div id="notificationsModal" class="modal">
         <div class="modal-content">
             <button class="close-btn" onclick="closeModal('notificationsModal')">&times;</button>
             <div class="modal-icon">🔔</div>
-            <h2>Notifications</h2>
+            <h2>الإشعارات</h2>
             <div id="notificationsList" class="notifications-list">
-                <p class="empty-state">No new notifications</p>
+                <p class="empty-state">لا توجد إشعارات</p>
             </div>
         </div>
     </div>
 
-    <!-- ====== ADMIN PANEL ====== -->
+    <!-- Admin Panel -->
     <div id="adminPanel" class="admin-panel hidden">
         <div class="admin-header">
-            <h2><i class="fa-solid fa-crown" style="color: gold;"></i> Admin Panel</h2>
+            <h2><i class="fa-solid fa-crown" style="color: gold;"></i> لوحة التحكم</h2>
             <button onclick="closeAdminPanel()">&times;</button>
         </div>
         <div class="admin-tabs">
-            <button class="admin-tab active" onclick="showAdminTab('dashboard')">Dashboard</button>
-            <button class="admin-tab" onclick="showAdminTab('broadcast')">Broadcast</button>
+            <button class="admin-tab active" onclick="showAdminTab('dashboard')">لوحة المعلومات</button>
+            <button class="admin-tab" onclick="showAdminTab('broadcast')">إرسال عام</button>
         </div>
         <div id="adminContent" class="admin-content">
-            <p>Loading admin panel...</p>
+            <p>جاري التحميل...</p>
         </div>
     </div>
 
-    <!-- ====== TOAST NOTIFICATION ====== -->
+    <!-- Toast Notification -->
     <div id="toast" class="toast hidden">
         <i class="fa-regular fa-circle-check"></i>
         <span id="toastMessage"></span>
     </div>
 
-    <!-- ====== MAIN APP SCRIPT ====== -->
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    
+    <!-- Main App -->
     <script src="app.js"></script>
 </body>
 </html>
