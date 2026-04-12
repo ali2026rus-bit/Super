@@ -1,10 +1,9 @@
 // ============================================================
-// TROLL ARMY - ULTIMATE AIRDROP SYSTEM v14.0 (PRODUCTION READY)
-// Telegram WebApp + Firebase + TON Connect + CoinGecko Live Prices
-// جميع الميزات: إحالات، مهام غامضة، Premium Avatar، إيداع، سحب
+// TROLL ARMY - ULTIMATE AIRDROP SYSTEM v15.0 (MYSTERY MISSIONS)
+// Telegram WebApp + Firebase + 4 غامضة + 20 يوم مؤقت + Premium SVG
 // ============================================================
 
-// ====== 1. TELEGRAM WEBAPP INITIALIZATION (FIXED) ======
+// ====== 1. TELEGRAM WEBAPP ======
 const tg = window.Telegram?.WebApp;
 let isTelegramWebApp = false;
 let REAL_USER_ID = null;
@@ -19,7 +18,6 @@ function initTelegramApp() {
     tg.ready();
     tg.expand();
     isTelegramWebApp = true;
-    console.log("✅ Telegram WebApp initialized");
     return true;
 }
 
@@ -29,7 +27,6 @@ function extractUserData() {
         REAL_USER_ID = user.id?.toString();
         USER_NAME = user.first_name || 'Troll';
         USER_USERNAME = user.username || '';
-        console.log("✅ User from initDataUnsafe:", REAL_USER_ID);
         return true;
     }
     if (tg?.initData) {
@@ -37,16 +34,13 @@ function extractUserData() {
             const params = new URLSearchParams(tg.initData);
             const userJson = params.get('user');
             if (userJson) {
-                const user = JSON.parse(decodeURIComponent(userJson));
+                const user = JSON.parse(userJson);
                 REAL_USER_ID = user.id?.toString();
                 USER_NAME = user.first_name || 'Troll';
                 USER_USERNAME = user.username || '';
-                console.log("✅ User from initData:", REAL_USER_ID);
                 return true;
             }
-        } catch(e) {
-            console.error("❌ initData parse error:", e);
-        }
+        } catch(e) {}
     }
     return false;
 }
@@ -54,15 +48,8 @@ function extractUserData() {
 // ====== 2. CONFIGURATION ======
 const WELCOME_BONUS = 1000;
 const REFERRAL_BONUS = 500;
-const TROLL_PRICE_FALLBACK = 0.01915;
 const ADMIN_ID = "1653918641";
 const BOT_LINK = "https://t.me/TROLLMiniappbot/instant";
-
-const MYSTERY_MISSIONS = [
-    { id: 'referrals', requirement: 12, title: '🔒 Mission 1: Build Your Army', description: 'Recruit 12 trolls', hint: 'Share your link! Each friend = 500 TROLL' },
-    { id: 'balance', requirement: 15000, title: '🔒 Mission 2: Gather Wealth', description: 'Accumulate 15,000 TROLL', hint: 'Keep inviting! Each referral gives 500 TROLL' },
-    { id: 'bnb', requirement: 0.02, title: '🔒 Mission 3: Prove Your Worth', description: 'Hold 0.02 BNB', hint: 'Connect wallet to verify BNB balance' }
-];
 
 const MILESTONES = [
     { referrals: 10, reward: 5000, title: '🤡 Baby Troll' },
@@ -82,45 +69,38 @@ const CURRENCY_ICONS = {
     BTC: 'https://s2.coinmarketcap.com/static/img/coins/64x64/1.png'
 };
 
-const TOP_CRYPTOS = [
-    { symbol: 'TROLL', name: 'Troll Token', coingeckoId: 'troll-2' },
-    { symbol: 'BTC', name: 'Bitcoin', coingeckoId: 'bitcoin' },
-    { symbol: 'ETH', name: 'Ethereum', coingeckoId: 'ethereum' },
-    { symbol: 'BNB', name: 'BNB', coingeckoId: 'binancecoin' },
-    { symbol: 'SOL', name: 'Solana', coingeckoId: 'solana' }
-];
-
 // ====== 3. STATE ======
 let userData = null;
 let currentPage = 'wallet';
 let db = null;
 let appConfig = {};
 let cryptoPrices = {};
-let withdrawalMissions = [];
 let tonConnectUI = null;
 let tonConnected = false;
 let tonWalletAddress = null;
-let currentLanguage = localStorage.getItem('language') || 'en';
+let currentLanguage = localStorage.getItem('language') || 'ar';
 let currentTheme = localStorage.getItem('theme') || 'dark';
 
 // ====== 4. TRANSLATIONS ======
 const translations = {
     en: {
-        'nav.wallet': 'Wallet', 'nav.airdrop': 'Airdrop', 'nav.settings': 'Settings',
-        'actions.deposit': 'Deposit', 'actions.withdraw': 'Withdraw', 'actions.history': 'History',
-        'wallet.totalBalance': 'Total Balance', 'airdrop.totalInvites': 'Total Invites',
-        'airdrop.earned': 'TROLL Earned', 'airdrop.yourLink': 'Your Invite Link'
+        'nav.wallet': 'Wallet', 'nav.airdrop': 'Missions', 'nav.settings': 'Settings',
+        'wallet.totalBalance': 'Total Balance', 'airdrop.missions': 'Mystery Missions',
+        'mission.revealLater': 'Will be revealed after completing previous mission',
+        'mission.waitDays': 'Reveals in {days} days'
     },
     ar: {
-        'nav.wallet': 'المحفظة', 'nav.airdrop': 'الإسقاط الجوي', 'nav.settings': 'الإعدادات',
-        'actions.deposit': 'إيداع', 'actions.withdraw': 'سحب', 'actions.history': 'السجل',
-        'wallet.totalBalance': 'الرصيد الإجمالي', 'airdrop.totalInvites': 'إجمالي الدعوات',
-        'airdrop.earned': 'TROLL المكتسبة', 'airdrop.yourLink': 'رابط الدعوة'
+        'nav.wallet': 'المحفظة', 'nav.airdrop': 'المهام', 'nav.settings': 'الإعدادات',
+        'wallet.totalBalance': 'الرصيد الإجمالي', 'airdrop.missions': 'المهام الغامضة',
+        'mission.revealLater': 'ستكشف بعد إكمال المهمة السابقة',
+        'mission.waitDays': 'ستكشف بعد {days} يوم'
     }
 };
 
-function t(key) {
-    return translations[currentLanguage]?.[key] || translations.en[key] || key;
+function t(key, params = {}) {
+    let text = translations[currentLanguage]?.[key] || translations.en[key] || key;
+    Object.keys(params).forEach(k => text = text.replace(`{${k}}`, params[k]));
+    return text;
 }
 
 // ====== 5. API CALLS ======
@@ -143,11 +123,8 @@ async function loadConfig() {
         const res = await fetch('/api/config');
         appConfig = await res.json();
         if (appConfig.firebaseConfig && typeof firebase !== 'undefined') {
-            if (!firebase.apps.length) {
-                firebase.initializeApp(appConfig.firebaseConfig);
-            }
+            if (!firebase.apps.length) firebase.initializeApp(appConfig.firebaseConfig);
             db = firebase.firestore();
-            console.log('🔥 Firebase ready');
         }
         return true;
     } catch (error) {
@@ -161,37 +138,27 @@ function getReferralFromUrl() {
     return params.get('startapp') || params.get('start') || params.get('ref');
 }
 
-async function processReferral(referrerId, newUserId) {
-    if (!referrerId || referrerId === newUserId) return;
-    if (referrerId.startsWith('guest_')) return;
-    console.log('🔗 Referral:', referrerId, '→', newUserId);
-    await apiCall('/api/referral', 'POST', { referrerId, newUserId });
-}
-
 async function loadUserData() {
     try {
-        if (!REAL_USER_ID) {
-            console.error('❌ No user ID available');
-            return false;
-        }
-        console.log('📂 Loading user:', REAL_USER_ID);
+        if (!REAL_USER_ID) return false;
         
         let res = await apiCall(`/api/users/${REAL_USER_ID}`);
         
         if (res.success && res.data) {
             userData = res.data;
-            console.log('✅ Existing user loaded');
+            console.log('✅ User loaded');
         } else {
             const refCode = getReferralFromUrl();
-            const newUserData = {
+            const newUser = {
                 userId: REAL_USER_ID,
                 userName: USER_NAME,
                 userUsername: USER_USERNAME,
-                balances: { TROLL: WELCOME_BONUS },
+                balances: { TROLL: WELCOME_BONUS, BNB: 0, SOL: 0, ETH: 0, TRON: 0 },
                 referralCode: REAL_USER_ID,
                 referredBy: refCode || null,
                 referrals: [],
                 inviteCount: 0,
+                referralEarnings: 0,
                 totalEarned: WELCOME_BONUS,
                 premium: false,
                 avatar: '🧌',
@@ -199,23 +166,25 @@ async function loadUserData() {
                 withdrawalUnlocked: false,
                 claimedMilestones: [],
                 tonWallet: null,
+                settings: { solanaWallet: null },
+                withdrawalMissions: {
+                    mission1: { completed: false, revealed: true, walletAddress: null, savedAt: null },
+                    mission2: { completed: false, revealed: false, requiredAmount: 12500, currentAmount: 0, startDate: null },
+                    mission3: { completed: false, revealed: false, requiredReferrals: 12, referralsAtStart: 0, currentNewReferrals: 0, startDate: null },
+                    mission4: { completed: false, revealed: false, revealDate: null, requiredBNB: 0.025, requiredSOL: 0.25 }
+                },
                 notifications: [{
                     id: Date.now().toString(),
-                    message: '🎉 Welcome! +1,000 TROLL',
+                    message: currentLanguage === 'ar' ? '🎉 أهلاً بك! +1,000 TROLL' : '🎉 Welcome! +1,000 TROLL',
                     read: false,
                     timestamp: new Date().toISOString()
                 }]
             };
             
-            const createRes = await apiCall('/api/users', 'POST', { userId: REAL_USER_ID, userData: newUserData });
+            const createRes = await apiCall('/api/users', 'POST', { userId: REAL_USER_ID, userData: newUser });
             if (createRes.success) {
-                userData = newUserData;
-                console.log('✅ New user created');
-                if (refCode && refCode !== REAL_USER_ID && !refCode.startsWith('guest_')) {
-                    await processReferral(refCode, REAL_USER_ID);
-                }
-            } else {
-                throw new Error(createRes.error || 'Unknown error');
+                userData = newUser;
+                if (refCode && refCode !== REAL_USER_ID) await processReferral(refCode, REAL_USER_ID);
             }
         }
         
@@ -223,187 +192,370 @@ async function loadUserData() {
         localStorage.setItem('troll_user_id', REAL_USER_ID);
         localStorage.setItem('troll_user_name', USER_NAME);
         
-        if (userData.tonWallet) {
-            tonWalletAddress = userData.tonWallet;
-            tonConnected = true;
-        }
-        
+        await updateMissionsProgress();
         updateUI();
-        updateNotificationBadge();
         return true;
     } catch (error) {
         console.error('❌ Load user error:', error);
-        showToast('Error loading user data', 'error');
         return false;
     }
 }
 
-async function loadWithdrawalStatus() {
+async function processReferral(referrerId, newUserId) {
+    if (!referrerId || referrerId === newUserId) return;
+    await apiCall('/api/referral', 'POST', { referrerId, newUserId });
+}
+
+// ====== 7. المهام الغامضة - القلب النابض ======
+async function updateMissionsProgress() {
     if (!userData) return;
-    try {
-        const res = await apiCall(`/api/withdrawal-status/${REAL_USER_ID}`);
-        if (res.missions) {
-            withdrawalMissions = res.missions;
-        } else {
-            const inviteCount = userData?.inviteCount || 0;
-            const trollBalance = userData?.balances?.TROLL || 0;
-            withdrawalMissions = [
-                { id: 'referrals', requirement: 12, current: inviteCount, completed: inviteCount >= 12, progress: Math.min((inviteCount / 12) * 100, 100) },
-                { id: 'balance', requirement: 15000, current: trollBalance, completed: trollBalance >= 15000, progress: Math.min((trollBalance / 15000) * 100, 100) },
-                { id: 'bnb', requirement: 0.02, current: userData?.externalBalances?.BNB || 0, completed: (userData?.externalBalances?.BNB || 0) >= 0.02, progress: Math.min(((userData?.externalBalances?.BNB || 0) / 0.02) * 100, 100) }
-            ];
-        }
-        if (currentPage === 'airdrop') renderWithdrawalLockCard();
-    } catch (error) {
-        console.error('❌ Missions error:', error);
-    }
-}
-
-async function fetchPrices() {
-    try {
-        const ids = TOP_CRYPTOS.map(c => c.coingeckoId).join(',');
-        const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`;
-        const res = await fetch(url);
-        const data = await res.json();
-        
-        TOP_CRYPTOS.forEach(crypto => {
-            if (data[crypto.coingeckoId]) {
-                cryptoPrices[crypto.symbol] = {
-                    price: data[crypto.coingeckoId].usd,
-                    change: data[crypto.coingeckoId].usd_24h_change || 0
-                };
+    
+    const missions = userData.withdrawalMissions;
+    let changed = false;
+    
+    // المهمة 1: محفظة Solana
+    if (!missions.mission1.completed) {
+        missions.mission1.revealed = true;
+        if (userData.settings?.solanaWallet) {
+            missions.mission1.completed = true;
+            missions.mission1.walletAddress = userData.settings.solanaWallet;
+            missions.mission1.savedAt = new Date().toISOString();
+            
+            // كشف المهمة 2
+            if (!missions.mission2.revealed) {
+                missions.mission2.revealed = true;
+                missions.mission2.startDate = new Date().toISOString();
+                addNotification(currentLanguage === 'ar' ? '🔓 تم كشف المهمة الثانية!' : '🔓 Mission 2 revealed!');
             }
-        });
-        
-        if (!cryptoPrices['TROLL']) {
-            cryptoPrices['TROLL'] = { price: TROLL_PRICE_FALLBACK, change: 0 };
+            changed = true;
         }
-        
-        if (currentPage === 'wallet') renderTopCryptos();
-        updateUI();
-    } catch (error) {
-        console.error('❌ Prices error:', error);
-        cryptoPrices['TROLL'] = { price: TROLL_PRICE_FALLBACK, change: 0 };
     }
+    
+    // المهمة 2: 12,500 من الإحالات
+    if (missions.mission2.revealed && !missions.mission2.completed) {
+        missions.mission2.currentAmount = (userData.inviteCount || 0) * REFERRAL_BONUS;
+        if (missions.mission2.currentAmount >= missions.mission2.requiredAmount) {
+            missions.mission2.completed = true;
+            
+            if (!missions.mission3.revealed) {
+                missions.mission3.revealed = true;
+                missions.mission3.startDate = new Date().toISOString();
+                missions.mission3.referralsAtStart = userData.inviteCount || 0;
+                addNotification(currentLanguage === 'ar' ? '🔓 تم كشف المهمة الثالثة!' : '🔓 Mission 3 revealed!');
+            }
+            changed = true;
+        }
+    }
+    
+    // المهمة 3: 12 إحالة جديدة
+    if (missions.mission3.revealed && !missions.mission3.completed) {
+        const currentTotal = userData.inviteCount || 0;
+        const atStart = missions.mission3.referralsAtStart || 0;
+        missions.mission3.currentNewReferrals = Math.max(0, currentTotal - atStart);
+        
+        if (missions.mission3.currentNewReferrals >= missions.mission3.requiredReferrals) {
+            missions.mission3.completed = true;
+            
+            // تحديد تاريخ كشف المهمة 4 (بعد 20 يوم)
+            const revealDate = new Date();
+            revealDate.setDate(revealDate.getDate() + 20);
+            missions.mission4.revealDate = revealDate.toISOString();
+            
+            addNotification(currentLanguage === 'ar' ? '⏳ المهمة النهائية ستكشف بعد 20 يوم!' : '⏳ Final mission reveals in 20 days!');
+            changed = true;
+        }
+    }
+    
+    // المهمة 4: التحقق من التاريخ
+    if (missions.mission3.completed && !missions.mission4.revealed) {
+        const revealDate = new Date(missions.mission4.revealDate);
+        if (new Date() >= revealDate) {
+            missions.mission4.revealed = true;
+            addNotification(currentLanguage === 'ar' ? '🔓 تم كشف المهمة النهائية!' : '🔓 Final mission revealed!');
+            changed = true;
+        }
+    }
+    
+    // المهمة 4: التحقق من الرصيد
+    if (missions.mission4.revealed && !missions.mission4.completed) {
+        const bnb = userData.balances?.BNB || 0;
+        const sol = userData.balances?.SOL || 0;
+        if (bnb >= missions.mission4.requiredBNB || sol >= missions.mission4.requiredSOL) {
+            missions.mission4.completed = true;
+            changed = true;
+        }
+    }
+    
+    // فتح السحب
+    const allCompleted = missions.mission1.completed && missions.mission2.completed && 
+                        missions.mission3.completed && missions.mission4.completed;
+    
+    if (allCompleted && !userData.withdrawalUnlocked) {
+        userData.withdrawalUnlocked = true;
+        addNotification('🎉🎉 ' + (currentLanguage === 'ar' ? 'تم فتح السحب! يمكنك الآن سحب عملاتك!' : 'Withdrawal Unlocked! You can now withdraw!'));
+        celebrateUnlock();
+        changed = true;
+    }
+    
+    if (changed) {
+        await apiCall(`/api/users/${REAL_USER_ID}`, 'PATCH', { 
+            updates: { 
+                withdrawalMissions: missions, 
+                withdrawalUnlocked: userData.withdrawalUnlocked 
+            } 
+        });
+    }
+    
+    if (currentPage === 'airdrop') renderMissionsUI();
 }
 
-// ====== 7. TON CONNECT ======
-async function initTONConnect() {
-    if (typeof TON_CONNECT_UI === 'undefined') {
-        console.warn('⚠️ TON Connect not loaded');
+function addNotification(message) {
+    if (!userData.notifications) userData.notifications = [];
+    userData.notifications.unshift({
+        id: Date.now().toString(),
+        message,
+        read: false,
+        timestamp: new Date().toISOString()
+    });
+    updateNotificationBadge();
+}
+
+function celebrateUnlock() {
+    for (let i = 0; i < 50; i++) {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti';
+        confetti.style.left = Math.random() * 100 + '%';
+        confetti.style.background = ['#FFD700', '#2ecc71', '#e74c3c', '#3498db'][Math.floor(Math.random() * 4)];
+        document.body.appendChild(confetti);
+        setTimeout(() => confetti.remove(), 4000);
+    }
+    showToast(currentLanguage === 'ar' ? '🎉 تهانينا! تم فتح السحب!' : '🎉 Withdrawal Unlocked!', 'success');
+}
+
+// ====== 8. RENDER MISSIONS UI ======
+function renderMissionsUI() {
+    const container = document.getElementById('withdrawalLockCard');
+    if (!container || !userData) return;
+    
+    const missions = userData.withdrawalMissions;
+    
+    if (userData.premium) {
+        container.innerHTML = `
+            <div class="premium-unlocked-card">
+                <div class="premium-icon-large">${getTrollFaceSVG()}</div>
+                <h3>${currentLanguage === 'ar' ? 'بريميوم مفعل!' : 'Premium Unlocked!'}</h3>
+                <p>${currentLanguage === 'ar' ? 'سحب فوري بدون مهام!' : 'Instant withdrawal access!'}</p>
+            </div>
+        `;
         return;
     }
-    try {
-        tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
-            manifestUrl: `${window.location.origin}/tonconnect-manifest.json`,
-            buttonRootId: 'tonConnectButton'
+    
+    let html = `
+        <div class="lock-header">
+            <i class="fa-solid fa-lock"></i>
+            <span>${userData.withdrawalUnlocked ? '✅ ' + (currentLanguage === 'ar' ? 'السحب متاح!' : 'Withdrawal Available!') : (currentLanguage === 'ar' ? 'السحب مقفل - أكمل المهام' : 'Withdrawal Locked - Complete Missions')}</span>
+        </div>
+        <div class="missions-list-vertical">
+    `;
+    
+    // المهمة 1
+    html += renderMissionCard(1, missions.mission1, {
+        title: currentLanguage === 'ar' ? 'إضافة محفظة Solana' : 'Add Solana Wallet',
+        desc: currentLanguage === 'ar' ? 'أدخل عنوان TROLL على شبكة Solana' : 'Enter TROLL address on Solana',
+        action: !missions.mission1.completed ? 'showSolanaWalletModal()' : null,
+        actionText: currentLanguage === 'ar' ? 'إضافة عنوان' : 'Add Address'
+    });
+    
+    // المهمة 2
+    if (missions.mission2.revealed) {
+        html += renderMissionCard(2, missions.mission2, {
+            title: currentLanguage === 'ar' ? 'جمع 12,500 TROLL من الإحالات' : 'Earn 12,500 TROLL from referrals',
+            desc: `${missions.mission2.currentAmount.toLocaleString()} / 12,500`,
+            progress: (missions.mission2.currentAmount / 12500) * 100
         });
-        const connected = await tonConnectUI.connectionRestored;
-        if (connected && tonConnectUI.wallet) {
-            tonConnected = true;
-            tonWalletAddress = tonConnectUI.wallet.account.address;
-            console.log('✅ TON restored:', tonWalletAddress);
-            updateUI();
-        }
-    } catch (error) {
-        console.error('❌ TON init error:', error);
+    } else {
+        html += renderMysteryCard(2);
     }
+    
+    // المهمة 3
+    if (missions.mission3.revealed) {
+        html += renderMissionCard(3, missions.mission3, {
+            title: currentLanguage === 'ar' ? 'جلب 12 إحالة جديدة' : 'Get 12 New Referrals',
+            desc: `${missions.mission3.currentNewReferrals} / 12`,
+            progress: (missions.mission3.currentNewReferrals / 12) * 100
+        });
+    } else {
+        html += renderMysteryCard(3);
+    }
+    
+    // المهمة 4
+    if (missions.mission4.revealed) {
+        const bnb = userData.balances?.BNB || 0;
+        const sol = userData.balances?.SOL || 0;
+        const completed = bnb >= 0.025 || sol >= 0.25;
+        html += renderMissionCard(4, { completed }, {
+            title: currentLanguage === 'ar' ? 'إثبات الملاءة' : 'Prove Solvency',
+            desc: currentLanguage === 'ar' ? '0.025 BNB أو 0.25 SOL في المحفظة' : '0.025 BNB or 0.25 SOL in wallet',
+            extra: `<div style="font-size:12px;margin-top:8px;">BNB: ${bnb.toFixed(4)} | SOL: ${sol.toFixed(4)}</div>`
+        });
+    } else if (missions.mission3.completed) {
+        const revealDate = new Date(missions.mission4.revealDate);
+        const now = new Date();
+        const daysLeft = Math.max(0, Math.ceil((revealDate - now) / (1000 * 60 * 60 * 24)));
+        
+        html += `
+            <div class="mission-card mystery-timer">
+                <div class="mission-icon">⏳</div>
+                <div class="mission-content">
+                    <h4>${currentLanguage === 'ar' ? 'المهمة الغامضة النهائية' : 'Final Mystery Mission'}</h4>
+                    <p>${t('mission.waitDays', {days: daysLeft})}</p>
+                    <div class="timer-progress-bar">
+                        <div class="timer-fill" style="width:${((20 - daysLeft) / 20) * 100}%"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+    } else {
+        html += renderMysteryCard(4);
+    }
+    
+    html += `</div>`;
+    container.innerHTML = html;
 }
 
-async function connectTONWallet() {
-    if (!tonConnectUI) {
-        showToast('TON Connect not ready', 'error');
+function renderMissionCard(num, mission, opts) {
+    const completed = mission.completed;
+    return `
+        <div class="mission-card ${completed ? 'completed' : ''}">
+            <div class="mission-icon">${completed ? '✅' : '🔒'}</div>
+            <div class="mission-content">
+                <h4>${opts.title}</h4>
+                <p>${opts.desc}</p>
+                ${opts.progress !== undefined ? `
+                    <div class="progress-bar small">
+                        <div class="progress-fill" style="width:${opts.progress}%"></div>
+                    </div>
+                ` : ''}
+                ${opts.extra || ''}
+            </div>
+            ${opts.action && !completed ? `
+                <button class="mission-action-btn" onclick="${opts.action}">${opts.actionText}</button>
+            ` : ''}
+        </div>
+    `;
+}
+
+function renderMysteryCard(num) {
+    return `
+        <div class="mission-card mystery">
+            <div class="mission-icon">❓</div>
+            <div class="mission-content">
+                <h4>${currentLanguage === 'ar' ? `المهمة ${num} - غامضة` : `Mission ${num} - Mystery`}</h4>
+                <p>${t('mission.revealLater')}</p>
+            </div>
+        </div>
+    `;
+}
+
+// ====== 9. SVG TROLL FACE ======
+function getTrollFaceSVG() {
+    return `
+        <svg viewBox="0 0 100 100" width="60" height="60">
+            <defs>
+                <radialGradient id="faceGrad" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" style="stop-color:#FFD700;stop-opacity:0.9" />
+                    <stop offset="100%" style="stop-color:#DAA520;stop-opacity:1" />
+                </radialGradient>
+                <linearGradient id="eyeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" style="stop-color:#FFFFFF" />
+                    <stop offset="100%" style="stop-color:#E0E0E0" />
+                </linearGradient>
+            </defs>
+            <circle cx="50" cy="50" r="48" fill="url(#faceGrad)" stroke="#B8860B" stroke-width="2"/>
+            <path d="M 28 68 Q 50 88, 78 58 Q 82 52, 75 48 Q 58 70, 28 62 Z" fill="#2C1810" />
+            <ellipse cx="35" cy="40" rx="8" ry="10" fill="url(#eyeGrad)" stroke="#333" stroke-width="1"/>
+            <circle cx="38" cy="40" r="3" fill="#000"/>
+            <path d="M 23 28 Q 35 22, 47 28" stroke="#2C1810" stroke-width="3" fill="none" stroke-linecap="round"/>
+            <ellipse cx="65" cy="40" rx="8" ry="10" fill="url(#eyeGrad)" stroke="#333" stroke-width="1"/>
+            <circle cx="62" cy="42" r="3" fill="#000"/>
+            <path d="M 53 28 Q 65 22, 77 28" stroke="#2C1810" stroke-width="3" fill="none" stroke-linecap="round"/>
+            <circle cx="75" cy="35" r="2" fill="#FF4444" opacity="0.6"/>
+        </svg>
+    `;
+}
+
+// ====== 10. ACTIONS ======
+function showSolanaWalletModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal show';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <button class="close-btn" onclick="this.closest('.modal').remove()">&times;</button>
+            <div class="modal-icon">🔑</div>
+            <h2>${currentLanguage === 'ar' ? 'إضافة محفظة Solana' : 'Add Solana Wallet'}</h2>
+            <p style="color:var(--text-secondary);margin-bottom:16px;">${currentLanguage === 'ar' ? 'أدخل عنوان TROLL على شبكة Solana' : 'Enter TROLL address on Solana network'}</p>
+            <div class="input-group">
+                <input type="text" id="solanaAddressInput" placeholder="GzR...kLp" style="width:100%;padding:12px;border-radius:8px;border:1px solid var(--border-light);background:var(--bg-primary);color:var(--text-primary);">
+            </div>
+            <button class="modal-action-btn" onclick="saveSolanaWallet()">${currentLanguage === 'ar' ? 'حفظ العنوان' : 'Save Address'}</button>
+            <p style="font-size:11px;margin-top:12px;color:#e74c3c;">${currentLanguage === 'ar' ? 'تأكد من صحة العنوان!' : 'Ensure address is correct!'}</p>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+async function saveSolanaWallet() {
+    const input = document.getElementById('solanaAddressInput');
+    const address = input?.value.trim();
+    
+    if (!address || address.length < 32) {
+        showToast(currentLanguage === 'ar' ? 'عنوان غير صالح' : 'Invalid address', 'error');
         return;
     }
-    try {
-        await tonConnectUI.openModal();
-        const checkConnection = setInterval(async () => {
-            if (tonConnectUI.wallet) {
-                clearInterval(checkConnection);
-                const wallet = tonConnectUI.wallet;
-                tonConnected = true;
-                tonWalletAddress = wallet.account.address;
-                await apiCall(`/api/users/${REAL_USER_ID}`, 'PATCH', { updates: { tonWallet: tonWalletAddress } });
-                userData.tonWallet = tonWalletAddress;
-                localStorage.setItem(`troll_${REAL_USER_ID}`, JSON.stringify(userData));
-                updateUI();
-                showToast('✅ TON Wallet connected!', 'success');
-            }
-        }, 500);
-        setTimeout(() => clearInterval(checkConnection), 30000);
-    } catch (error) {
-        showToast('Failed to connect', 'error');
-    }
+    
+    userData.settings = userData.settings || {};
+    userData.settings.solanaWallet = address;
+    
+    await apiCall(`/api/users/${REAL_USER_ID}`, 'PATCH', { updates: { settings: userData.settings } });
+    await updateMissionsProgress();
+    
+    document.querySelector('.modal')?.remove();
+    showToast(currentLanguage === 'ar' ? '✅ تم حفظ العنوان!' : '✅ Address saved!', 'success');
 }
 
-// ====== 8. UI UPDATES ======
+function copyInviteLink() {
+    const link = `${BOT_LINK}?startapp=${REAL_USER_ID}`;
+    navigator.clipboard?.writeText(link);
+    showToast(currentLanguage === 'ar' ? '🔗 تم نسخ الرابط!' : '🔗 Link copied!');
+}
+
+// ====== 11. UI UPDATES ======
 function updateUI() {
     if (!userData) return;
     
     // Header
-    const userNameEl = document.getElementById('userName');
-    const userIdEl = document.getElementById('userIdDisplay');
-    const userAvatarEl = document.getElementById('userAvatar');
-    
-    if (userNameEl) userNameEl.textContent = userData.userName || USER_NAME;
-    if (userIdEl) userIdEl.textContent = `Telegram ID: ${REAL_USER_ID}`;
-    if (userAvatarEl) {
-        userAvatarEl.textContent = userData.avatar || '🧌';
-        if (userData.premium) userAvatarEl.classList.add('avatar-premium');
-    }
-    
-    // Settings
-    const settingsAvatar = document.getElementById('settingsAvatar');
-    const settingsUserName = document.getElementById('settingsUserName');
-    const settingsUserId = document.getElementById('settingsUserId');
-    
-    if (settingsAvatar) settingsAvatar.textContent = userData.avatar || '🧌';
-    if (settingsUserName) settingsUserName.textContent = userData.userName || USER_NAME;
-    if (settingsUserId) settingsUserId.textContent = `ID: ${REAL_USER_ID}`;
-    
-    // TON Status
-    const tonWalletStatus = document.getElementById('tonWalletStatus');
-    if (tonWalletStatus) {
-        if (tonConnected && tonWalletAddress) {
-            tonWalletStatus.textContent = `${tonWalletAddress.slice(0, 6)}...${tonWalletAddress.slice(-6)}`;
-            tonWalletStatus.style.color = '#2ecc71';
+    document.getElementById('userName').textContent = userData.userName || USER_NAME;
+    document.getElementById('userIdDisplay').textContent = `ID: ${REAL_USER_ID}`;
+    const avatarEl = document.getElementById('userAvatar');
+    if (avatarEl) {
+        if (userData.premium) {
+            avatarEl.innerHTML = getTrollFaceSVG();
+            avatarEl.classList.add('avatar-premium');
         } else {
-            tonWalletStatus.textContent = 'Not connected';
-            tonWalletStatus.style.color = 'var(--text-secondary)';
+            avatarEl.textContent = userData.avatar || '🧌';
         }
     }
     
     // Balance
-    const trollBalance = userData.balances?.TROLL || 0;
-    const trollPrice = cryptoPrices['TROLL']?.price || TROLL_PRICE_FALLBACK;
-    
-    const trollBalanceEl = document.getElementById('trollBalance');
-    const trollUsdEl = document.getElementById('trollUsdValue');
-    const totalBalanceEl = document.getElementById('totalBalance');
-    
-    if (trollBalanceEl) trollBalanceEl.textContent = trollBalance.toLocaleString();
-    if (trollUsdEl) trollUsdEl.textContent = (trollBalance * trollPrice).toFixed(2);
-    if (totalBalanceEl) totalBalanceEl.textContent = '$' + (trollBalance * trollPrice).toFixed(2);
-    
-    // Airdrop Stats
-    const totalInvitesEl = document.getElementById('totalInvites');
-    const trollEarnedEl = document.getElementById('trollEarned');
-    const inviteLinkEl = document.getElementById('inviteLink');
-    
-    if (totalInvitesEl) totalInvitesEl.textContent = userData.inviteCount || 0;
-    if (trollEarnedEl) trollEarnedEl.textContent = (userData.totalEarned || 0).toLocaleString();
-    if (inviteLinkEl) inviteLinkEl.value = getReferralLink();
+    const troll = userData.balances?.TROLL || 0;
+    document.getElementById('trollBalance').textContent = troll.toLocaleString();
+    document.getElementById('totalInvites').textContent = userData.inviteCount || 0;
+    document.getElementById('trollEarned').textContent = (userData.referralEarnings || 0).toLocaleString();
+    document.getElementById('inviteLink').value = `${BOT_LINK}?startapp=${REAL_USER_ID}`;
     
     renderAssets();
     renderMilestones();
-    if (currentPage === 'airdrop') renderWithdrawalLockCard();
-}
-
-function getReferralLink() {
-    if (!REAL_USER_ID || REAL_USER_ID.startsWith('guest_')) {
-        return BOT_LINK;
-    }
-    return `${BOT_LINK}?startapp=${REAL_USER_ID}`;
+    if (currentPage === 'airdrop') renderMissionsUI();
 }
 
 function renderAssets() {
@@ -413,21 +565,17 @@ function renderAssets() {
     const assets = [
         { symbol: 'TROLL', name: 'Troll Token' },
         { symbol: 'SOL', name: 'Solana' },
-        { symbol: 'BNB', name: 'Binance Coin' },
+        { symbol: 'BNB', name: 'BNB' },
         { symbol: 'ETH', name: 'Ethereum' },
         { symbol: 'TRON', name: 'TRON' }
     ];
     
     container.innerHTML = assets.map(asset => {
         const balance = userData?.balances?.[asset.symbol] || 0;
-        const price = cryptoPrices[asset.symbol]?.price || 0;
-        const value = balance * price;
-        const icon = CURRENCY_ICONS[asset.symbol] || CURRENCY_ICONS.TROLL;
-        
         return `
-            <div class="asset-item" onclick="showAssetDetails('${asset.symbol}')">
+            <div class="asset-item">
                 <div class="asset-left">
-                    <img src="${icon}" class="asset-icon-img" alt="${asset.symbol}">
+                    <img src="${CURRENCY_ICONS[asset.symbol]}" class="asset-icon-img">
                     <div class="asset-info">
                         <h4>${asset.name}</h4>
                         <p>${asset.symbol}</p>
@@ -435,36 +583,6 @@ function renderAssets() {
                 </div>
                 <div class="asset-right">
                     <div class="asset-balance">${balance.toLocaleString()} ${asset.symbol}</div>
-                    ${value > 0 ? `<div class="asset-value">$${value.toFixed(2)}</div>` : ''}
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
-function renderTopCryptos() {
-    const container = document.getElementById('topCryptoList');
-    if (!container) return;
-    
-    container.innerHTML = TOP_CRYPTOS.map(crypto => {
-        const data = cryptoPrices[crypto.symbol] || { price: 0, change: 0 };
-        const changeClass = data.change >= 0 ? 'positive' : 'negative';
-        const changeSymbol = data.change >= 0 ? '+' : '';
-        const decimals = crypto.symbol === 'TROLL' ? 5 : 2;
-        const icon = CURRENCY_ICONS[crypto.symbol] || CURRENCY_ICONS.TROLL;
-        
-        return `
-            <div class="crypto-item" onclick="showCryptoDetails('${crypto.symbol}')">
-                <div class="crypto-left">
-                    <img src="${icon}" class="crypto-icon-img" alt="${crypto.symbol}">
-                    <div class="crypto-info">
-                        <h4>${crypto.name}</h4>
-                        <p>${crypto.symbol}</p>
-                    </div>
-                </div>
-                <div class="crypto-right">
-                    <div class="crypto-price">$${data.price.toFixed(decimals)}</div>
-                    <div class="crypto-change ${changeClass}">${changeSymbol}${data.change.toFixed(1)}%</div>
                 </div>
             </div>
         `;
@@ -473,135 +591,32 @@ function renderTopCryptos() {
 
 function renderMilestones() {
     const container = document.getElementById('milestonesList');
-    if (!container || !userData) return;
+    if (!container) return;
     
     container.innerHTML = MILESTONES.map(m => {
         const progress = Math.min((userData.inviteCount / m.referrals) * 100, 100);
         const claimed = userData.claimedMilestones?.includes(m.referrals);
-        const canClaim = userData.inviteCount >= m.referrals && !claimed && !m.isSpecial;
         
         return `
             <div class="milestone-item ${claimed ? 'claimed' : ''}">
                 <div class="milestone-header">
                     <span>${m.title}</span>
-                    <span>${m.isSpecial ? '🎁 Mystery Box' : m.reward.toLocaleString() + ' TROLL'}</span>
+                    <span>${m.isSpecial ? '🎁' : m.reward.toLocaleString() + ' TROLL'}</span>
                 </div>
                 <div class="progress-bar">
                     <div class="progress-fill" style="width:${progress}%"></div>
                 </div>
                 <div class="progress-text">${userData.inviteCount}/${m.referrals}</div>
-                ${canClaim ? `<button class="claim-btn" onclick="claimMilestone(${m.referrals})">Claim</button>` : ''}
-                ${claimed ? '<p style="color:#2ecc71;text-align:center;">✓ Claimed</p>' : ''}
+                ${!claimed && userData.inviteCount >= m.referrals && !m.isSpecial ? 
+                    `<button class="claim-btn" onclick="claimMilestone(${m.referrals})">${currentLanguage === 'ar' ? 'مطالبة' : 'Claim'}</button>` : ''}
             </div>
         `;
     }).join('');
 }
 
-function renderWithdrawalLockCard() {
-    const container = document.getElementById('withdrawalLockCard');
-    if (!container) return;
-    
-    if (userData?.premium) {
-        container.innerHTML = `
-            <div class="premium-unlocked-card">
-                <div class="premium-icon-large">😏</div>
-                <h3>Premium Unlocked!</h3>
-                <p>Instant withdrawal access!</p>
-            </div>
-        `;
-        return;
-    }
-    
-    if (!withdrawalMissions?.length) {
-        container.innerHTML = `<div class="lock-header"><i class="fa-solid fa-lock"></i><span>Loading missions...</span></div>`;
-        return;
-    }
-    
-    const completed = withdrawalMissions.filter(m => m.completed).length;
-    const total = withdrawalMissions.length;
-    const nextMission = withdrawalMissions.find(m => !m.completed);
-    
-    let missionHtml = '';
-    if (nextMission) {
-        const info = MYSTERY_MISSIONS.find(m => m.id === nextMission.id);
-        missionHtml = `
-            <div class="current-mission">
-                <h4>${info?.title || 'Current Mission'}</h4>
-                <p>${info?.description || ''}</p>
-                <div class="mission-progress">
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width:${nextMission.progress}%"></div>
-                    </div>
-                    <span>${nextMission.current}/${nextMission.requirement}</span>
-                </div>
-                <p class="mission-hint">💡 ${info?.hint || ''}</p>
-            </div>
-        `;
-    }
-    
-    container.innerHTML = `
-        <div class="lock-header">
-            <i class="fa-solid fa-lock"></i>
-            <span>Withdrawal Locked</span>
-        </div>
-        ${missionHtml}
-        <div class="lock-footer">
-            <span>${completed}/${total} missions complete</span>
-        </div>
-    `;
-}
-
-// ====== 9. PREMIUM ======
-function showPremiumModal() {
-    document.getElementById('premiumModal')?.classList.add('show');
-}
-
-function celebratePremium() {
-    for (let i = 0; i < 30; i++) {
-        const confetti = document.createElement('div');
-        confetti.className = 'confetti';
-        confetti.style.left = Math.random() * 100 + '%';
-        confetti.style.animationDelay = Math.random() * 0.5 + 's';
-        confetti.style.background = ['#2ecc71', '#f1c40f', '#e74c3c', '#3498db', '#9b59b6'][Math.floor(Math.random() * 5)];
-        document.body.appendChild(confetti);
-        setTimeout(() => confetti.remove(), 3000);
-    }
-    document.body.classList.add('shake');
-    setTimeout(() => document.body.classList.remove('shake'), 500);
-}
-
-async function buyPremium() {
-    if (!tonConnected || !tonConnectUI) {
-        showToast('Connect TON wallet first', 'error');
-        return;
-    }
-    showToast('🔄 Processing payment...', 'info');
-    try {
-        const transaction = {
-            validUntil: Math.floor(Date.now() / 1000) + 300,
-            messages: [{ address: appConfig.ownerWallet, amount: '5000000000' }]
-        };
-        const result = await tonConnectUI.sendTransaction(transaction);
-        if (result.boc) {
-            await apiCall('/api/buy-premium', 'POST', { userId: REAL_USER_ID, txHash: result.boc });
-            userData.premium = true;
-            userData.avatar = '😏';
-            userData.withdrawalUnlocked = true;
-            localStorage.setItem(`troll_${REAL_USER_ID}`, JSON.stringify(userData));
-            updateUI();
-            closeModal('premiumModal');
-            showToast('🎉 Premium Unlocked! 😏', 'success');
-            celebratePremium();
-        }
-    } catch (error) {
-        showToast('Payment failed: ' + error.message, 'error');
-    }
-}
-
-// ====== 10. ACTIONS ======
 async function claimMilestone(referrals) {
     const milestone = MILESTONES.find(m => m.referrals === referrals);
-    if (!milestone || milestone.isSpecial) return;
+    if (!milestone) return;
     
     const res = await apiCall('/api/claim-milestone', 'POST', {
         userId: REAL_USER_ID,
@@ -614,397 +629,94 @@ async function claimMilestone(referrals) {
         userData.totalEarned += milestone.reward;
         if (!userData.claimedMilestones) userData.claimedMilestones = [];
         userData.claimedMilestones.push(referrals);
-        localStorage.setItem(`troll_${REAL_USER_ID}`, JSON.stringify(userData));
         updateUI();
-        showToast(`🎉 Claimed ${milestone.reward.toLocaleString()} TROLL!`);
+        showToast(`🎉 +${milestone.reward.toLocaleString()} TROLL!`);
     }
 }
 
-function copyInviteLink() {
-    navigator.clipboard?.writeText(getReferralLink());
-    showToast('🔗 Link copied!');
-}
-
-function shareInviteLink() {
-    const link = getReferralLink();
-    const text = `🧌 Join Troll Army! Get 1,000 TROLL + 500 per referral!\n\n👉 ${link}`;
-    tg?.openTelegramLink(`https://t.me/share/url?url=&text=${encodeURIComponent(text)}`);
-}
-
-function showDepositModal() {
-    document.getElementById('depositModal')?.classList.add('show');
-    const currency = document.getElementById('depositCurrency')?.value || 'TROLL';
-    apiCall('/api/deposit-address', 'POST', { userId: REAL_USER_ID, currency }).then(res => {
-        if (res.address) {
-            const addrEl = document.getElementById('depositAddress');
-            if (addrEl) addrEl.textContent = res.address;
-        }
-    });
-}
-
-function showWithdrawModal() {
-    const content = document.getElementById('withdrawLockContent');
-    if (!content) return;
-    
-    if (userData?.premium || (withdrawalMissions.length && withdrawalMissions.every(m => m.completed))) {
-        content.innerHTML = `
-            <div class="mission-complete">
-                <div class="celebration">🎉🧌👑</div>
-                <h3>You're Eligible!</h3>
-                <input type="number" id="withdrawAmount" placeholder="Amount (min 10,000 TROLL)" min="10000">
-                <input type="text" id="withdrawAddress" placeholder="Solana wallet address">
-                <button class="modal-action-btn" onclick="submitWithdraw()">Request Withdrawal</button>
-                <p style="margin-top:12px;color:var(--text-secondary);font-size:12px;">Distribution: May 1, 2026</p>
-            </div>
-        `;
-    } else {
-        const completed = withdrawalMissions.filter(m => m.completed).length;
-        const nextMission = withdrawalMissions.find(m => !m.completed);
-        
-        let missionsHtml = '';
-        withdrawalMissions.forEach((m, i) => {
-            const info = MYSTERY_MISSIONS.find(mm => mm.id === m.id);
-            missionsHtml += `
-                <div class="mission-progress-item ${m.completed ? 'completed' : ''} ${i > completed ? 'hidden-mission' : ''}">
-                    <div class="mission-progress-header">
-                        <span>${info?.title || m.id}</span>
-                        <span>${m.current}/${m.requirement}</span>
-                    </div>
-                    <div class="progress-bar small">
-                        <div class="progress-fill" style="width:${m.progress}%"></div>
-                    </div>
-                </div>
-            `;
-        });
-        
-        content.innerHTML = `
-            <div class="withdraw-locked-message">
-                <i class="fa-solid fa-lock lock-icon-large"></i>
-                <h3>Withdrawal Locked</h3>
-                <p>Complete missions to unlock:</p>
-                <div class="mission-progress-list">${missionsHtml}</div>
-                ${nextMission ? `<p class="next-mission-hint">💡 ${MYSTERY_MISSIONS.find(mm => mm.id === nextMission.id)?.hint || ''}</p>` : ''}
-                <button class="modal-action-btn secondary" onclick="closeModal('withdrawModal')">Close</button>
-            </div>
-        `;
-    }
-    
-    document.getElementById('withdrawModal')?.classList.add('show');
-}
-
-async function submitWithdraw() {
-    const amount = document.getElementById('withdrawAmount')?.value;
-    if (!amount || amount < 10000) {
-        showToast('Min 10,000 TROLL', 'error');
-        return;
-    }
-    showToast('✅ Withdrawal requested!', 'success');
-    closeModal('withdrawModal');
-}
-
-// ====== 11. NAVIGATION ======
+// ====== 12. NAVIGATION ======
 function showWallet() {
     currentPage = 'wallet';
-    document.getElementById('walletSection')?.classList.remove('hidden');
-    document.getElementById('airdropSection')?.classList.add('hidden');
-    document.getElementById('settingsSection')?.classList.add('hidden');
+    document.getElementById('walletSection').classList.remove('hidden');
+    document.getElementById('airdropSection').classList.add('hidden');
+    document.getElementById('settingsSection').classList.add('hidden');
     document.querySelectorAll('.nav-item').forEach((i, idx) => i.classList.toggle('active', idx === 0));
-    renderTopCryptos();
 }
 
 function showAirdrop() {
     currentPage = 'airdrop';
-    document.getElementById('walletSection')?.classList.add('hidden');
-    document.getElementById('airdropSection')?.classList.remove('hidden');
-    document.getElementById('settingsSection')?.classList.add('hidden');
+    document.getElementById('walletSection').classList.add('hidden');
+    document.getElementById('airdropSection').classList.remove('hidden');
+    document.getElementById('settingsSection').classList.add('hidden');
     document.querySelectorAll('.nav-item').forEach((i, idx) => i.classList.toggle('active', idx === 1));
-    loadWithdrawalStatus();
+    renderMissionsUI();
+    renderMilestones();
 }
 
 function showSettings() {
     currentPage = 'settings';
-    document.getElementById('walletSection')?.classList.add('hidden');
-    document.getElementById('airdropSection')?.classList.add('hidden');
-    document.getElementById('settingsSection')?.classList.remove('hidden');
+    document.getElementById('walletSection').classList.add('hidden');
+    document.getElementById('airdropSection').classList.add('hidden');
+    document.getElementById('settingsSection').classList.remove('hidden');
     document.querySelectorAll('.nav-item').forEach((i, idx) => i.classList.toggle('active', idx === 2));
-    updateUI();
+    
+    document.getElementById('settingsAvatar').innerHTML = userData.premium ? getTrollFaceSVG() : (userData.avatar || '🧌');
+    document.getElementById('settingsUserName').textContent = userData.userName;
+    document.getElementById('settingsUserId').textContent = `ID: ${REAL_USER_ID}`;
+    document.getElementById('currentSolanaWallet').textContent = userData.settings?.solanaWallet || (currentLanguage === 'ar' ? 'غير مضاف' : 'Not added');
 }
 
-// ====== 12. HELPERS ======
+// ====== 13. HELPERS ======
 function showToast(message, type = 'success') {
     const toast = document.getElementById('toast');
-    if (!toast) return;
     const msgEl = document.getElementById('toastMessage');
     const iconEl = toast.querySelector('i');
-    if (msgEl) msgEl.textContent = message;
-    if (iconEl) iconEl.className = type === 'error' ? 'fa-solid fa-circle-exclamation' : 'fa-solid fa-circle-check';
+    msgEl.textContent = message;
+    iconEl.className = type === 'error' ? 'fa-solid fa-circle-exclamation' : 'fa-solid fa-circle-check';
     toast.classList.remove('hidden');
     setTimeout(() => toast.classList.add('hidden'), 3000);
 }
 
-function closeModal(id) {
-    document.getElementById(id)?.classList.remove('show');
-}
-
-function openSupport() {
-    tg?.openTelegramLink?.(`https://t.me/${appConfig.supportUsername || 'TrollSupport'}`);
-}
-
-function copyDepositAddress() {
-    const address = document.getElementById('depositAddress')?.innerText;
-    if (address) {
-        navigator.clipboard?.writeText(address);
-        showToast('Address copied!');
-    }
-}
-
-function submitDeposit() {
-    showToast('Deposit submitted', 'success');
-    closeModal('depositModal');
-}
-
-function showHistory() {
-    document.getElementById('historyModal')?.classList.add('show');
-}
-
-function showNotifications() {
-    const modal = document.getElementById('notificationsModal');
-    const list = document.getElementById('notificationsList');
-    if (!modal || !list || !userData) return;
-    
-    const notifications = userData.notifications || [];
-    if (notifications.length === 0) {
-        list.innerHTML = '<div class="empty-state">No notifications</div>';
-    } else {
-        list.innerHTML = notifications.map(n => `
-            <div class="notification-item">
-                <div>${n.message}</div>
-                <div style="font-size:10px;">${new Date(n.timestamp).toLocaleString()}</div>
-            </div>
-        `).join('');
-    }
-    modal.classList.add('show');
-}
-
-function toggleTheme() {
-    currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    localStorage.setItem('theme', currentTheme);
-    document.documentElement.setAttribute('data-theme', currentTheme);
-}
-
-function toggleLanguage() {
-    currentLanguage = currentLanguage === 'en' ? 'ar' : 'en';
-    localStorage.setItem('language', currentLanguage);
-    const flagEl = document.getElementById('currentLanguageFlag');
-    if (flagEl) flagEl.textContent = currentLanguage === 'en' ? '🇬🇧' : '🇸🇦';
-    if (currentLanguage === 'ar') {
-        document.body.classList.add('rtl');
-        document.documentElement.dir = 'rtl';
-    } else {
-        document.body.classList.remove('rtl');
-        document.documentElement.dir = 'ltr';
-    }
-    showToast('Language changed');
-    updateUITexts();
-}
-
-function updateUITexts() {
-    document.querySelectorAll('[data-i18n]').forEach(el => {
-        const key = el.getAttribute('data-i18n');
-        el.textContent = t(key);
-    });
-}
-
-function logout() {
-    localStorage.clear();
-    location.reload();
-}
-
-function showComingSoon(feature) {
-    showToast(`${feature} coming soon!`, 'info');
-}
-
-function refreshPrices() {
-    fetchPrices();
-    showToast('Prices refreshed!');
-}
-
-function showAssetDetails(symbol) {
-    const balance = userData?.balances?.[symbol] || 0;
-    const price = cryptoPrices[symbol]?.price || 0;
-    showToast(`${symbol}: ${balance.toLocaleString()} ($${(balance * price).toFixed(2)})`);
-}
-
-function showCryptoDetails(symbol) {
-    const data = cryptoPrices[symbol] || { price: 0, change: 0 };
-    const changeSymbol = data.change >= 0 ? '+' : '';
-    showToast(`${symbol}: $${data.price.toFixed(4)} (${changeSymbol}${data.change.toFixed(1)}%)`);
-}
-
 function updateNotificationBadge() {
     const badge = document.querySelector('.badge');
-    if (badge && userData) {
-        const unread = userData.notifications?.filter(n => !n.read).length || 0;
+    if (badge) {
+        const unread = userData?.notifications?.filter(n => !n.read).length || 0;
         badge.textContent = unread;
         badge.style.display = unread > 0 ? 'block' : 'none';
     }
 }
 
-function updateDepositInfo() {
-    const currency = document.getElementById('depositCurrency')?.value;
-    const icon = document.getElementById('depositIcon');
-    if (icon && currency) icon.src = CURRENCY_ICONS[currency] || CURRENCY_ICONS.TROLL;
-}
-
-// ====== 13. ADMIN ======
-function checkAdminAndAddCrown() {
-    if (REAL_USER_ID !== ADMIN_ID) return;
-    const header = document.querySelector('.header-actions');
-    if (!header || document.getElementById('adminCrownBtn')) return;
-    
-    const btn = document.createElement('button');
-    btn.id = 'adminCrownBtn';
-    btn.className = 'icon-btn';
-    btn.innerHTML = '<i class="fa-solid fa-crown" style="color: gold;"></i>';
-    btn.onclick = () => document.getElementById('adminPanel')?.classList.remove('hidden');
-    header.insertBefore(btn, header.firstChild);
-    console.log("👑 Admin crown added");
-}
-
-function closeAdminPanel() {
-    document.getElementById('adminPanel')?.classList.add('hidden');
-}
-
-async function showAdminTab(tab) {
-    const content = document.getElementById('adminContent');
-    if (!content) return;
-    
-    if (tab === 'dashboard') {
-        content.innerHTML = `
-            <div class="admin-stats">
-                <div class="admin-stat-card"><h3>Total Users</h3><div class="stat-value" id="adminTotalUsers">...</div></div>
-                <div class="admin-stat-card"><h3>Premium Users</h3><div class="stat-value" id="adminPremiumUsers">...</div></div>
-            </div>
-            <button onclick="adminRefreshStats()">Refresh</button>
-        `;
-        await adminRefreshStats();
-    } else if (tab === 'broadcast') {
-        content.innerHTML = `
-            <div class="admin-broadcast">
-                <h3>Send Broadcast</h3>
-                <textarea id="broadcastMessage" placeholder="Message to all users..."></textarea>
-                <button onclick="adminSendBroadcast()">Send Broadcast</button>
-            </div>
-        `;
-    }
-}
-
-async function adminRefreshStats() {
-    if (!db) return;
-    try {
-        const usersSnapshot = await db.collection('users').get();
-        const premiumSnapshot = await db.collection('users').where('premium', '==', true).get();
-        document.getElementById('adminTotalUsers').textContent = usersSnapshot.size;
-        document.getElementById('adminPremiumUsers').textContent = premiumSnapshot.size;
-    } catch(e) {
-        console.error('Admin stats error:', e);
-    }
-}
-
-async function adminSendBroadcast() {
-    const msg = document.getElementById('broadcastMessage')?.value;
-    if (!msg) {
-        showToast('Enter message', 'error');
-        return;
-    }
-    const password = prompt('Enter admin password:');
-    const res = await apiCall('/api/admin/broadcast', 'POST', { message: msg, password });
-    if (res.success) {
-        showToast(`Broadcast sent to ${res.sentTo} users!`, 'success');
-        closeAdminPanel();
-    } else {
-        showToast('Unauthorized', 'error');
-    }
+function toggleLanguage() {
+    currentLanguage = currentLanguage === 'en' ? 'ar' : 'en';
+    localStorage.setItem('language', currentLanguage);
+    location.reload();
 }
 
 // ====== 14. INIT ======
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Troll Army v14.0 - Starting...');
+    console.log('🚀 Troll Army v15.0 - Mystery Missions System');
     
     initTheme();
-    updateUITexts();
+    initTelegramApp();
+    extractUserData();
+    
+    if (!REAL_USER_ID) {
+        const savedId = localStorage.getItem('troll_user_id');
+        if (savedId) REAL_USER_ID = savedId;
+        else REAL_USER_ID = 'guest_' + Date.now();
+    }
     
     setTimeout(() => {
         document.getElementById('splashScreen')?.classList.add('hidden');
-        const mainContent = document.getElementById('mainContent');
-        if (mainContent) mainContent.style.display = 'block';
+        document.getElementById('mainContent').style.display = 'block';
     }, 2000);
     
-    const tgReady = initTelegramApp();
-    let userExtracted = extractUserData();
-    
-    if (!userExtracted && tgReady) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        userExtracted = extractUserData();
-        if (!userExtracted) {
-            await new Promise(resolve => setTimeout(resolve, 500));
-            userExtracted = extractUserData();
-        }
-    }
-    
-    if (!REAL_USER_ID) {
-        const urlParams = new URLSearchParams(window.location.search);
-        const startParam = urlParams.get('startapp') || urlParams.get('start') || urlParams.get('ref');
-        if (startParam && /^\d+$/.test(startParam)) {
-            REAL_USER_ID = startParam;
-            console.log("⚠️ User from URL:", REAL_USER_ID);
-        } else {
-            const savedId = localStorage.getItem('troll_user_id');
-            if (savedId && !savedId.startsWith('guest_')) {
-                REAL_USER_ID = savedId;
-                USER_NAME = localStorage.getItem('troll_user_name') || 'Troll';
-                console.log("📦 User from localStorage:", REAL_USER_ID);
-            }
-        }
-    }
-    
-    if (!REAL_USER_ID) {
-        REAL_USER_ID = 'guest_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-        USER_NAME = 'Guest Troll';
-        console.warn("⚠️ Guest mode activated");
-    }
-    
-    console.log('👤 Final User ID:', REAL_USER_ID);
-    
     await loadConfig();
-    await initTONConnect();
+    await loadUserData();
     
-    if (REAL_USER_ID && !REAL_USER_ID.startsWith('guest_')) {
-        await loadUserData();
-    } else {
-        userData = {
-            userId: REAL_USER_ID,
-            userName: USER_NAME,
-            balances: { TROLL: 0 },
-            referralCode: REAL_USER_ID,
-            referrals: [],
-            inviteCount: 0,
-            totalEarned: 0,
-            premium: false,
-            avatar: '🧌',
-            notifications: []
-        };
-        updateUI();
-    }
+    setInterval(updateMissionsProgress, 30000);
     
-    await fetchPrices();
-    await loadWithdrawalStatus();
-    checkAdminAndAddCrown();
-    
-    setInterval(fetchPrices, 300000);
-    setInterval(loadWithdrawalStatus, 30000);
-    
-    console.log('✅ Troll Army ready!');
+    console.log('✅ Troll Army Ready with Mystery Missions!');
 });
 
 function initTheme() {
