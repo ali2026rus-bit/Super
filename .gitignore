@@ -1,23 +1,25 @@
 # Dependencies
 node_modules/
 
-# Environment variables and secrets
+# Secrets & Environment
 .env
 firebase-key.json
+firebase-admin-key.json
+firebase-web-config.json
+admin-config.json
+ton-api-key.txt
+coinpayments-keys.json
 *.pem
 *.key
-
-# Logs
-*.log
 
 # OS files
 .DS_Store
 Thumbs.db
 
-# IDE files
+# IDE
 .vscode/
 .idea/
 
-# Build files
-dist/
-build/
+# Logs
+*.log
+npm-debug.log*
