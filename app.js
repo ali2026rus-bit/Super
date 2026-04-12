@@ -1,5 +1,6 @@
 // ============================================================
-// TROLL ARMY - ULTIMATE AIRDROP SYSTEM v5.0
+// TROLL ARMY - ULTIMATE AIRDROP SYSTEM v6.0
+// FEATURES: Live Prices, Real TON Connect, Premium Avatar 😏
 // ============================================================
 
 // ====== TELEGRAM WEBAPP INIT ======
@@ -56,7 +57,6 @@ localStorage.setItem('troll_user_id', userId);
 localStorage.setItem('troll_user_name', userName);
 
 // ====== CONFIGURATION ======
-const TROLL_PRICE = 0.01915;
 const WELCOME_BONUS = 1000;
 const REFERRAL_BONUS = 500;
 
@@ -115,18 +115,14 @@ let db = null;
 let appConfig = {};
 let cryptoPrices = {};
 let withdrawalMissions = [];
+let tonConnect = null;
 let tonConnected = false;
 let tonWalletAddress = null;
 
 // ====== API CALLS ======
 async function apiCall(endpoint, method = 'GET', body = null) {
-    const options = {
-        method: method,
-        headers: { 'Content-Type': 'application/json' }
-    };
-    if (body) {
-        options.body = JSON.stringify(body);
-    }
+    const options = { method, headers: { 'Content-Type': 'application/json' } };
+    if (body) options.body = JSON.stringify(body);
     try {
         const res = await fetch(endpoint, options);
         return await res.json();
@@ -153,45 +149,29 @@ async function loadConfig() {
     }
 }
 
+function getReferralFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('startapp') || params.get('start') || params.get('ref');
+}
+
+async function processReferral(referrerId, newUserId) {
+    await apiCall('/api/referral', 'POST', { referrerId, newUserId });
+}
+
 async function loadUserData() {
     try {
         const res = await apiCall(`/api/users/${userId}`);
         
         if (res.success && res.data) {
             userData = res.data;
-            
-            if (!userData.createdAt) {
-                userData = {
-                    ...userData,
-                    userId: userId,
-                    userName: userName,
-                    balances: { TROLL: WELCOME_BONUS },
-                    referralCode: userId,
-                    inviteCount: 0,
-                    totalEarned: WELCOME_BONUS,
-                    premium: false,
-                    avatar: '🧌',
-                    createdAt: new Date().toISOString(),
-                    withdrawalUnlocked: false,
-                    claimedMilestones: []
-                };
-                await apiCall('/api/users', 'POST', { userId: userId, userData: userData });
-            }
-            
-            localStorage.setItem(`troll_${userId}`, JSON.stringify(userData));
-            
-            if (userData.tonWallet) {
-                tonWalletAddress = userData.tonWallet;
-                tonConnected = true;
-            }
-            
-            updateUI();
+            console.log('✅ Existing user loaded:', userId);
         } else {
             userData = {
-                userId: userId,
-                userName: userName,
+                userId, userName,
                 balances: { TROLL: WELCOME_BONUS },
                 referralCode: userId,
+                referredBy: getReferralFromUrl() || null,
+                referrals: [],
                 inviteCount: 0,
                 totalEarned: WELCOME_BONUS,
                 premium: false,
@@ -201,10 +181,24 @@ async function loadUserData() {
                 claimedMilestones: []
             };
             
-            await apiCall('/api/users', 'POST', { userId: userId, userData: userData });
-            localStorage.setItem(`troll_${userId}`, JSON.stringify(userData));
-            updateUI();
+            await apiCall('/api/users', 'POST', { userId, userData });
+            
+            const refCode = getReferralFromUrl();
+            if (refCode && refCode !== userId) {
+                await processReferral(refCode, userId);
+            }
+            
+            console.log('✅ New user created:', userId);
         }
+        
+        localStorage.setItem(`troll_${userId}`, JSON.stringify(userData));
+        
+        if (userData.tonWallet) {
+            tonWalletAddress = userData.tonWallet;
+            tonConnected = true;
+        }
+        
+        updateUI();
     } catch (error) {
         console.error('Load user error:', error);
     }
@@ -236,8 +230,6 @@ async function fetchPrices() {
             }
         });
         
-        cryptoPrices['TROLL'] = { price: TROLL_PRICE, change: 50.3 };
-        
         if (currentPage === 'wallet') {
             renderTopCryptos();
         }
@@ -246,43 +238,83 @@ async function fetchPrices() {
     }
 }
 
-// ====== UI UPDATES ======
-function updateUI() {
-    if (!userData) {
+// ====== TON CONNECT (حقيقي) ======
+async function initTONConnect() {
+    if (typeof TON_CONNECT === 'undefined') {
+        console.warn('TON Connect SDK not loaded');
         return;
     }
     
+    tonConnect = new TON_CONNECT.TonConnect({
+        manifestUrl: `${window.location.origin}/tonconnect-manifest.json`
+    });
+    
+    try {
+        const connected = await tonConnect.restoreConnection();
+        if (connected) {
+            tonConnected = true;
+            tonWalletAddress = tonConnect.wallet.account.address;
+            console.log('✅ TON Wallet restored:', tonWalletAddress);
+            updateUI();
+        }
+    } catch (error) {
+        console.error('TON restore error:', error);
+    }
+}
+
+async function connectTONWallet() {
+    if (!tonConnect) {
+        showToast('TON Connect not ready', 'error');
+        return;
+    }
+    
+    try {
+        const wallets = await tonConnect.getWallets();
+        const telegramWallet = wallets.find(w => w.name === 'Telegram Wallet');
+        
+        if (telegramWallet) {
+            await tonConnect.connect(telegramWallet);
+            tonConnected = true;
+            tonWalletAddress = tonConnect.wallet.account.address;
+            
+            await apiCall(`/api/users/${userId}`, 'PATCH', {
+                updates: { tonWallet: tonWalletAddress }
+            });
+            
+            userData.tonWallet = tonWalletAddress;
+            localStorage.setItem(`troll_${userId}`, JSON.stringify(userData));
+            
+            updateUI();
+            showToast('✅ TON Wallet connected!', 'success');
+        } else {
+            showToast('Telegram Wallet not found', 'error');
+        }
+    } catch (error) {
+        showToast('Failed to connect', 'error');
+    }
+}
+
+// ====== UI UPDATES ======
+function updateUI() {
+    if (!userData) return;
+    
     // Header
-    const userNameEl = document.getElementById('userName');
-    if (userNameEl) {
-        userNameEl.textContent = userData.userName || userName;
-    }
+    document.getElementById('userName').textContent = userData.userName || userName;
+    document.getElementById('userIdDisplay').textContent = `Telegram ID: ${realUserId || userId}`;
+    document.getElementById('userAvatar').textContent = userData.avatar || '🧌';
     
-    const userIdDisplay = document.getElementById('userIdDisplay');
-    if (userIdDisplay) {
-        userIdDisplay.textContent = `Telegram ID: ${realUserId || userId}`;
-    }
-    
-    const userAvatar = document.getElementById('userAvatar');
-    if (userAvatar) {
-        userAvatar.textContent = userData.avatar || '🧌';
+    // Avatar premium class
+    if (userData.premium) {
+        document.getElementById('userAvatar').classList.add('avatar-premium');
     }
     
     // Settings
     const settingsAvatar = document.getElementById('settingsAvatar');
-    if (settingsAvatar) {
-        settingsAvatar.textContent = userData.avatar || '🧌';
-    }
-    
+    if (settingsAvatar) settingsAvatar.textContent = userData.avatar || '🧌';
     const settingsUserName = document.getElementById('settingsUserName');
-    if (settingsUserName) {
-        settingsUserName.textContent = userData.userName || userName;
-    }
-    
+    if (settingsUserName) settingsUserName.textContent = userData.userName || userName;
     const settingsUserId = document.getElementById('settingsUserId');
-    if (settingsUserId) {
-        settingsUserId.textContent = `ID: ${realUserId || userId}`;
-    }
+    if (settingsUserId) settingsUserId.textContent = `ID: ${realUserId || userId}`;
     
     // TON Status
     const tonWalletStatus = document.getElementById('tonWalletStatus');
@@ -298,38 +330,18 @@ function updateUI() {
     
     // Balance
     const trollBalance = userData.balances?.TROLL || 0;
+    const trollPrice = cryptoPrices['TROLL']?.price || 0.01915;
     
-    const trollBalanceEl = document.getElementById('trollBalance');
-    if (trollBalanceEl) {
-        trollBalanceEl.textContent = trollBalance.toLocaleString();
-    }
-    
-    const trollUsdValue = document.getElementById('trollUsdValue');
-    if (trollUsdValue) {
-        trollUsdValue.textContent = (trollBalance * TROLL_PRICE).toFixed(2);
-    }
-    
-    const totalBalance = document.getElementById('totalBalance');
-    if (totalBalance) {
-        totalBalance.textContent = '$' + (trollBalance * TROLL_PRICE).toFixed(2);
-    }
+    document.getElementById('trollBalance').textContent = trollBalance.toLocaleString();
+    document.getElementById('trollUsdValue').textContent = (trollBalance * trollPrice).toFixed(2);
+    document.getElementById('totalBalance').textContent = '$' + (trollBalance * trollPrice).toFixed(2);
     
     // Airdrop Stats
-    const totalInvites = document.getElementById('totalInvites');
-    if (totalInvites) {
-        totalInvites.textContent = userData.inviteCount || 0;
-    }
+    document.getElementById('totalInvites').textContent = userData.inviteCount || 0;
+    document.getElementById('trollEarned').textContent = (userData.totalEarned || 0).toLocaleString();
     
-    const trollEarned = document.getElementById('trollEarned');
-    if (trollEarned) {
-        trollEarned.textContent = (userData.totalEarned || 0).toLocaleString();
-    }
-    
-    const inviteLink = document.getElementById('inviteLink');
-    if (inviteLink) {
-        const botUsername = appConfig.botUsername || 'TROLLMiniappbot';
-        inviteLink.value = `https://t.me/${botUsername}?start=${userId}`;
-    }
+    const botUsername = appConfig.botUsername || 'TROLLMiniappbot';
+    document.getElementById('inviteLink').value = `https://t.me/${botUsername}?start=${userId}`;
     
     renderAssets();
     renderMilestones();
@@ -341,20 +353,11 @@ function updateUI() {
 
 function renderAssets() {
     const container = document.getElementById('assetsList');
-    if (!container) {
-        return;
-    }
+    if (!container) return;
     
     container.innerHTML = MY_ASSETS.map(asset => {
         const balance = userData?.balances?.[asset.symbol] || 0;
-        let price = 0;
-        
-        if (asset.symbol === 'TROLL') {
-            price = TROLL_PRICE;
-        } else {
-            price = cryptoPrices[asset.symbol]?.price || 0;
-        }
-        
+        const price = cryptoPrices[asset.symbol]?.price || 0;
         const value = balance * price;
         
         return `
@@ -377,15 +380,13 @@ function renderAssets() {
 
 function renderTopCryptos() {
     const container = document.getElementById('topCryptoList');
-    if (!container) {
-        return;
-    }
+    if (!container) return;
     
     container.innerHTML = TOP_CRYPTOS.map(crypto => {
         const data = cryptoPrices[crypto.symbol] || { price: 0, change: 0 };
         const changeClass = data.change >= 0 ? 'positive' : 'negative';
         const changeSymbol = data.change >= 0 ? '+' : '';
-        const priceDecimals = crypto.symbol === 'TROLL' ? 5 : 2;
+        const decimals = crypto.symbol === 'TROLL' ? 5 : 2;
         
         return `
             <div class="crypto-item" onclick="showCryptoDetails('${crypto.symbol}')">
@@ -397,7 +398,7 @@ function renderTopCryptos() {
                     </div>
                 </div>
                 <div class="crypto-right">
-                    <div class="crypto-price">$${data.price.toFixed(priceDecimals)}</div>
+                    <div class="crypto-price">$${data.price.toFixed(decimals)}</div>
                     <div class="crypto-change ${changeClass}">${changeSymbol}${data.change.toFixed(1)}%</div>
                 </div>
             </div>
@@ -407,39 +408,25 @@ function renderTopCryptos() {
 
 function renderMilestones() {
     const container = document.getElementById('milestonesList');
-    if (!container || !userData) {
-        return;
-    }
+    if (!container || !userData) return;
     
     container.innerHTML = MILESTONES.map(m => {
         const progress = Math.min((userData.inviteCount / m.referrals) * 100, 100);
         const claimed = userData.claimedMilestones?.includes(m.referrals);
         const canClaim = userData.inviteCount >= m.referrals && !claimed && !m.isSpecial;
         
-        let claimButton = '';
-        if (canClaim) {
-            claimButton = `<button class="claim-btn" onclick="claimMilestone(${m.referrals})">Claim</button>`;
-        }
-        
-        let claimedText = '';
-        if (claimed) {
-            claimedText = '<p style="color:#2ecc71;text-align:center;">✓ Claimed</p>';
-        }
-        
-        const rewardText = m.isSpecial ? '🎁 Mystery Box' : m.reward.toLocaleString() + ' TROLL';
-        
         return `
             <div class="milestone-item ${claimed ? 'claimed' : ''}">
                 <div class="milestone-header">
                     <span>${m.title}</span>
-                    <span>${rewardText}</span>
+                    <span>${m.isSpecial ? '🎁 Mystery Box' : m.reward.toLocaleString() + ' TROLL'}</span>
                 </div>
                 <div class="progress-bar">
                     <div class="progress-fill" style="width:${progress}%"></div>
                 </div>
                 <div class="progress-text">${userData.inviteCount}/${m.referrals}</div>
-                ${claimButton}
-                ${claimedText}
+                ${canClaim ? `<button class="claim-btn" onclick="claimMilestone(${m.referrals})">Claim</button>` : ''}
+                ${claimed ? '<p style="color:#2ecc71;text-align:center;">✓ Claimed</p>' : ''}
             </div>
         `;
     }).join('');
@@ -447,9 +434,7 @@ function renderMilestones() {
 
 function renderWithdrawalLockCard() {
     const container = document.getElementById('withdrawalLockCard');
-    if (!container) {
-        return;
-    }
+    if (!container) return;
     
     if (userData?.premium) {
         container.innerHTML = `
@@ -473,141 +458,107 @@ function renderWithdrawalLockCard() {
     
     let missionHtml = '';
     if (nextMission) {
-        const missionInfo = MYSTERY_MISSIONS.find(m => m.id === nextMission.id);
+        const info = MYSTERY_MISSIONS.find(m => m.id === nextMission.id);
         missionHtml = `
             <div class="current-mission">
-                <h4>${missionInfo?.title || 'Current Mission'}</h4>
-                <p>${missionInfo?.description || ''}</p>
+                <h4>${info?.title || 'Current Mission'}</h4>
+                <p>${info?.description || ''}</p>
                 <div class="mission-progress">
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width:${nextMission.progress}%"></div>
-                    </div>
+                    <div class="progress-bar"><div class="progress-fill" style="width:${nextMission.progress}%"></div></div>
                     <span>${nextMission.current}/${nextMission.requirement}</span>
                 </div>
-                <p class="mission-hint">💡 ${missionInfo?.hint || ''}</p>
+                <p class="mission-hint">💡 ${info?.hint || ''}</p>
             </div>
         `;
     }
     
     container.innerHTML = `
-        <div class="lock-header">
-            <i class="fa-solid fa-lock"></i>
-            <span>Withdrawal Locked</span>
-        </div>
+        <div class="lock-header"><i class="fa-solid fa-lock"></i><span>Withdrawal Locked</span></div>
         ${missionHtml}
-        <div class="lock-footer">
-            <span>${completed}/${total} missions complete</span>
-        </div>
+        <div class="lock-footer"><span>${completed}/${total} missions complete</span></div>
     `;
 }
 
-// ====== TON CONNECT ======
-async function connectTONWallet() {
-    if (!tg) {
-        showToast('Please open in Telegram', 'error');
-        return;
-    }
-    
-    showToast('🔄 Connecting to TON wallet...', 'info');
-    
-    try {
-        tg.openLink('https://t.me/wallet');
-        
-        setTimeout(async () => {
-            const mockAddress = `UQD${userId.slice(-40)}`;
-            tonWalletAddress = mockAddress;
-            tonConnected = true;
-            
-            await apiCall(`/api/users/${userId}`, 'PATCH', {
-                updates: { tonWallet: mockAddress, tonBalance: 5.5 }
-            });
-            
-            userData.tonWallet = mockAddress;
-            localStorage.setItem(`troll_${userId}`, JSON.stringify(userData));
-            
-            updateUI();
-            showToast('✅ TON Wallet connected!', 'success');
-        }, 2000);
-        
-    } catch (error) {
-        showToast('Failed to connect TON wallet', 'error');
-    }
-}
-
-// ====== PREMIUM AVATAR ======
+// ====== PREMIUM ======
 function showPremiumModal() {
     document.getElementById('premiumModal').classList.add('show');
 }
 
+function celebratePremium() {
+    const sticker = document.getElementById('welcomeSticker');
+    sticker.textContent = '😏';
+    sticker.classList.add('sticker-pop', 'sticker-shake');
+    
+    for (let i = 0; i < 30; i++) {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti';
+        confetti.style.left = Math.random() * 100 + '%';
+        confetti.style.animationDelay = Math.random() * 0.5 + 's';
+        confetti.style.background = ['#2ecc71', '#f1c40f', '#e74c3c', '#3498db', '#9b59b6'][Math.floor(Math.random() * 5)];
+        document.body.appendChild(confetti);
+        setTimeout(() => confetti.remove(), 3000);
+    }
+    
+    setTimeout(() => {
+        sticker.classList.remove('sticker-pop', 'sticker-shake');
+        sticker.textContent = '😏👑';
+    }, 3000);
+}
+
 async function buyPremium() {
-    if (!tonConnected) {
-        showToast('Please connect TON wallet first', 'error');
+    if (!tonConnected || !tonConnect) {
+        showToast('Connect TON wallet first', 'error');
         return;
     }
     
     showToast('🔄 Processing payment...', 'info');
     
-    if (tg) {
-        tg.openInvoice?.({
-            title: 'Troll Premium',
-            description: '😏 Avatar + Instant Withdrawal',
-            payload: `premium_${userId}_${Date.now()}`,
-            currency: 'TON',
-            prices: [{ label: 'Premium Unlock', amount: 500 }]
-        }, async (status) => {
-            if (status === 'paid') {
-                await apiCall('/api/buy-premium', 'POST', {
-                    userId: userId,
-                    txHash: 'telegram_payment'
-                });
-                
-                userData.premium = true;
-                userData.avatar = '😏';
-                userData.withdrawalUnlocked = true;
-                
-                localStorage.setItem(`troll_${userId}`, JSON.stringify(userData));
-                
-                updateUI();
-                closeModal('premiumModal');
-                showToast('🎉 Premium Unlocked! 😏 Instant withdrawal enabled!', 'success');
-                
-                const sticker = document.getElementById('welcomeSticker');
-                sticker.textContent = '😏👑🔥';
-                sticker.classList.add('sticker-pop');
-                setTimeout(() => sticker.classList.remove('sticker-pop'), 2000);
-            } else {
-                showToast('Payment cancelled or failed', 'error');
-            }
-        });
-    } else {
-        showToast('Please open in Telegram to pay', 'error');
+    try {
+        const transaction = {
+            validUntil: Math.floor(Date.now() / 1000) + 300,
+            messages: [{
+                address: appConfig.ownerWallet,
+                amount: '5000000000'
+            }]
+        };
+        
+        const result = await tonConnect.sendTransaction(transaction);
+        
+        if (result.boc) {
+            await apiCall('/api/buy-premium', 'POST', { userId, txHash: result.boc });
+            
+            userData.premium = true;
+            userData.avatar = '😏';
+            userData.withdrawalUnlocked = true;
+            
+            localStorage.setItem(`troll_${userId}`, JSON.stringify(userData));
+            
+            updateUI();
+            closeModal('premiumModal');
+            showToast('🎉 Premium Unlocked! 😏', 'success');
+            celebratePremium();
+        }
+    } catch (error) {
+        showToast('Payment failed: ' + error.message, 'error');
     }
 }
 
 // ====== ACTIONS ======
 async function claimMilestone(referrals) {
     const milestone = MILESTONES.find(m => m.referrals === referrals);
-    if (!milestone || milestone.isSpecial) {
-        return;
-    }
+    if (!milestone || milestone.isSpecial) return;
     
     const res = await apiCall('/api/claim-milestone', 'POST', {
-        userId: userId,
-        milestoneReferrals: referrals,
-        reward: milestone.reward
+        userId, milestoneReferrals: referrals, reward: milestone.reward
     });
     
     if (res.success) {
         userData.balances.TROLL += milestone.reward;
         userData.totalEarned += milestone.reward;
-        
-        if (!userData.claimedMilestones) {
-            userData.claimedMilestones = [];
-        }
+        if (!userData.claimedMilestones) userData.claimedMilestones = [];
         userData.claimedMilestones.push(referrals);
         
         localStorage.setItem(`troll_${userId}`, JSON.stringify(userData));
-        
         updateUI();
         showToast(`🎉 Claimed ${milestone.reward.toLocaleString()} TROLL!`);
         showRandomSticker();
@@ -615,32 +566,20 @@ async function claimMilestone(referrals) {
 }
 
 function copyInviteLink() {
-    const link = document.getElementById('inviteLink').value;
-    navigator.clipboard?.writeText(link);
-    showToast('🔗 Link copied! Share with friends!');
+    navigator.clipboard?.writeText(document.getElementById('inviteLink').value);
+    showToast('🔗 Link copied!');
 }
 
 function shareInviteLink() {
     const link = document.getElementById('inviteLink').value;
-    const text = `🧌 Join Troll Army and get 1,000 TROLL!\n\n💰 500 TROLL per referral!\n\n👉 ${link}`;
-    
-    if (tg) {
-        tg.openTelegramLink(`https://t.me/share/url?url=&text=${encodeURIComponent(text)}`);
-    } else {
-        window.open(`https://t.me/share/url?url=&text=${encodeURIComponent(text)}`, '_blank');
-    }
+    const text = `🧌 Join Troll Army! Get 1,000 TROLL + 500 per referral!\n\n👉 ${link}`;
+    tg?.openTelegramLink(`https://t.me/share/url?url=&text=${encodeURIComponent(text)}`);
 }
 
 function showDepositModal() {
     document.getElementById('depositModal').classList.add('show');
-    
-    apiCall('/api/deposit-address', 'POST', {
-        userId: userId,
-        currency: 'TROLL'
-    }).then(res => {
-        if (res.address) {
-            document.getElementById('depositAddress').textContent = res.address;
-        }
+    apiCall('/api/deposit-address', 'POST', { userId, currency: 'TROLL' }).then(res => {
+        if (res.address) document.getElementById('depositAddress').textContent = res.address;
     });
 }
 
@@ -652,73 +591,46 @@ function showWithdrawModal() {
             <div class="mission-complete">
                 <div class="celebration">🎉🧌👑</div>
                 <h3>You're Eligible!</h3>
-                <p>Enter withdrawal details:</p>
                 <input type="number" id="withdrawAmount" placeholder="Amount (min 10,000 TROLL)" min="10000">
-                <input type="text" id="withdrawAddress" placeholder="Your Solana wallet address">
+                <input type="text" id="withdrawAddress" placeholder="Solana wallet address">
                 <button class="modal-action-btn" onclick="submitWithdraw()">Request Withdrawal</button>
             </div>
         `;
     } else {
         const completed = withdrawalMissions.filter(m => m.completed).length;
-        const total = withdrawalMissions.length;
         const nextMission = withdrawalMissions.find(m => !m.completed);
         
         let missionsHtml = '';
         withdrawalMissions.forEach((m, i) => {
-            const missionInfo = MYSTERY_MISSIONS.find(mm => mm.id === m.id);
-            const hiddenClass = i > completed ? 'hidden-mission' : '';
-            
+            const info = MYSTERY_MISSIONS.find(mm => mm.id === m.id);
             missionsHtml += `
-                <div class="mission-progress-item ${m.completed ? 'completed' : ''} ${hiddenClass}">
+                <div class="mission-progress-item ${m.completed ? 'completed' : ''} ${i > completed ? 'hidden-mission' : ''}">
                     <div class="mission-progress-header">
-                        <span>${missionInfo?.title || m.id}</span>
+                        <span>${info?.title || m.id}</span>
                         <span>${m.current}/${m.requirement}</span>
                     </div>
-                    <div class="progress-bar small">
-                        <div class="progress-fill" style="width:${m.progress}%"></div>
-                    </div>
+                    <div class="progress-bar small"><div class="progress-fill" style="width:${m.progress}%"></div></div>
                 </div>
             `;
         });
-        
-        let hintHtml = '';
-        if (nextMission) {
-            const missionInfo = MYSTERY_MISSIONS.find(mm => mm.id === nextMission.id);
-            hintHtml = `<p class="next-mission-hint">💡 ${missionInfo?.hint || ''}</p>`;
-        }
         
         content.innerHTML = `
             <div class="withdraw-locked-message">
                 <i class="fa-solid fa-lock lock-icon-large"></i>
                 <h3>Withdrawal Locked</h3>
-                <p>Complete missions to unlock:</p>
-                <div class="mission-progress-list">
-                    ${missionsHtml}
-                </div>
-                ${hintHtml}
+                <div class="mission-progress-list">${missionsHtml}</div>
+                ${nextMission ? `<p class="next-mission-hint">💡 ${MYSTERY_MISSIONS.find(mm => mm.id === nextMission.id)?.hint || ''}</p>` : ''}
                 <button class="modal-action-btn secondary" onclick="closeModal('withdrawModal')">Close</button>
             </div>
         `;
     }
-    
     document.getElementById('withdrawModal').classList.add('show');
 }
 
 async function submitWithdraw() {
     const amount = document.getElementById('withdrawAmount')?.value;
-    const address = document.getElementById('withdrawAddress')?.value;
-    
-    if (!amount || amount < 10000) {
-        showToast('Minimum withdrawal: 10,000 TROLL', 'error');
-        return;
-    }
-    
-    if (!address) {
-        showToast('Please enter Solana address', 'error');
-        return;
-    }
-    
-    showToast('✅ Withdrawal request submitted!', 'success');
+    if (!amount || amount < 10000) { showToast('Min 10,000 TROLL', 'error'); return; }
+    showToast('✅ Withdrawal requested!', 'success');
     closeModal('withdrawModal');
 }
 
@@ -728,11 +640,7 @@ function showWallet() {
     document.getElementById('walletSection').classList.remove('hidden');
     document.getElementById('airdropSection').classList.add('hidden');
     document.getElementById('settingsSection').classList.add('hidden');
-    
-    document.querySelectorAll('.nav-item').forEach((item, index) => {
-        item.classList.toggle('active', index === 0);
-    });
-    
+    document.querySelectorAll('.nav-item').forEach((i, idx) => i.classList.toggle('active', idx === 0));
     renderTopCryptos();
     showRandomSticker();
 }
@@ -742,11 +650,7 @@ function showAirdrop() {
     document.getElementById('walletSection').classList.add('hidden');
     document.getElementById('airdropSection').classList.remove('hidden');
     document.getElementById('settingsSection').classList.add('hidden');
-    
-    document.querySelectorAll('.nav-item').forEach((item, index) => {
-        item.classList.toggle('active', index === 1);
-    });
-    
+    document.querySelectorAll('.nav-item').forEach((i, idx) => i.classList.toggle('active', idx === 1));
     loadWithdrawalStatus();
     showRandomSticker();
 }
@@ -756,149 +660,73 @@ function showSettings() {
     document.getElementById('walletSection').classList.add('hidden');
     document.getElementById('airdropSection').classList.add('hidden');
     document.getElementById('settingsSection').classList.remove('hidden');
-    
-    document.querySelectorAll('.nav-item').forEach((item, index) => {
-        item.classList.toggle('active', index === 2);
-    });
-    
+    document.querySelectorAll('.nav-item').forEach((i, idx) => i.classList.toggle('active', idx === 2));
     updateUI();
 }
 
 // ====== HELPERS ======
 function showToast(message, type = 'success') {
     const toast = document.getElementById('toast');
-    const toastMessage = document.getElementById('toastMessage');
-    const icon = toast.querySelector('i');
-    
-    toastMessage.textContent = message;
-    
-    if (type === 'error') {
-        icon.className = 'fa-solid fa-circle-exclamation';
-    } else {
-        icon.className = 'fa-solid fa-circle-check';
-    }
-    
+    document.getElementById('toastMessage').textContent = message;
+    document.querySelector('#toast i').className = type === 'error' ? 'fa-solid fa-circle-exclamation' : 'fa-solid fa-circle-check';
     toast.classList.remove('hidden');
-    setTimeout(() => {
-        toast.classList.add('hidden');
-    }, 3000);
+    setTimeout(() => toast.classList.add('hidden'), 3000);
 }
 
-function closeModal(id) {
-    document.getElementById(id).classList.remove('show');
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+function openSupport() { tg?.openTelegramLink?.(`https://t.me/${appConfig.supportUsername || 'TrollSupport'}`); }
+function copyDepositAddress() { navigator.clipboard?.writeText(document.getElementById('depositAddress').textContent); showToast('Address copied!'); }
+function submitDeposit() { showToast('Deposit submitted', 'success'); closeModal('depositModal'); }
+function showHistory() { document.getElementById('historyModal').classList.add('show'); }
+function showNotifications() { document.getElementById('notificationsModal').classList.add('show'); }
+function toggleTheme() { const t = document.documentElement.getAttribute('data-theme'); document.documentElement.setAttribute('data-theme', t === 'dark' ? 'light' : 'dark'); }
+function toggleLanguage() { showToast('English', 'info'); }
+function logout() { localStorage.clear(); location.reload(); }
+function showComingSoon(f) { showToast(`${f} coming soon!`, 'info'); }
+function refreshPrices() { fetchPrices(); showToast('Prices refreshed!'); }
+function showAssetDetails(s) { 
+    const b = userData?.balances?.[s] || 0;
+    const p = cryptoPrices[s]?.price || 0;
+    showToast(`${s}: ${b.toLocaleString()} ($${(b * p).toFixed(2)})`);
 }
-
-function openSupport() {
-    const username = appConfig.supportUsername || 'TrollSupport';
-    tg?.openTelegramLink?.(`https://t.me/${username}`);
-    showToast('Opening support...', 'info');
+function showCryptoDetails(s) {
+    const d = cryptoPrices[s] || { price: 0, change: 0 };
+    showToast(`${s}: $${d.price.toFixed(4)} (${d.change > 0 ? '+' : ''}${d.change.toFixed(1)}%)`);
 }
-
-function copyDepositAddress() {
-    const address = document.getElementById('depositAddress').textContent;
-    navigator.clipboard?.writeText(address);
-    showToast('Address copied!');
-}
-
-function submitDeposit() {
-    showToast('Deposit submitted for review', 'success');
-    closeModal('depositModal');
-}
-
-function showHistory() {
-    document.getElementById('historyModal').classList.add('show');
-    document.getElementById('historyList').innerHTML = '<p class="empty-state">Transaction history coming soon!</p>';
-}
-
-function showNotifications() {
-    document.getElementById('notificationsModal').classList.add('show');
-    document.getElementById('notificationsList').innerHTML = '<p class="empty-state">No new notifications</p>';
-}
-
-function toggleTheme() {
-    const theme = document.documentElement.getAttribute('data-theme');
-    document.documentElement.setAttribute('data-theme', theme === 'dark' ? 'light' : 'dark');
-    showToast('Theme updated');
-}
-
-function toggleLanguage() {
-    showToast('Language: English', 'info');
-}
-
-function logout() {
-    localStorage.clear();
-    location.reload();
-}
-
-function showComingSoon(feature) {
-    showToast(`${feature} coming soon!`, 'info');
-}
-
-function refreshPrices() {
-    fetchPrices();
-    showToast('Prices refreshed!');
-}
-
-function showAssetDetails(symbol) {
-    const balance = userData?.balances?.[symbol] || 0;
-    let price = symbol === 'TROLL' ? TROLL_PRICE : (cryptoPrices[symbol]?.price || 0);
-    const value = balance * price;
-    showToast(`${symbol}: ${balance.toLocaleString()} ($${value.toFixed(2)})`);
-}
-
-function showCryptoDetails(symbol) {
-    const data = cryptoPrices[symbol] || { price: 0, change: 0 };
-    const changeSymbol = data.change >= 0 ? '+' : '';
-    showToast(`${symbol}: $${data.price.toFixed(4)} (${changeSymbol}${data.change.toFixed(1)}%)`);
-}
-
 function showRandomSticker() {
     const el = document.getElementById('welcomeSticker');
     if (!el) return;
-    
-    const randomIndex = Math.floor(Math.random() * TROLL_STICKERS.length);
-    el.textContent = TROLL_STICKERS[randomIndex];
+    el.textContent = TROLL_STICKERS[Math.floor(Math.random() * TROLL_STICKERS.length)];
     el.classList.add('sticker-pop');
-    
-    setTimeout(() => {
-        el.classList.remove('sticker-pop');
-    }, 800);
+    setTimeout(() => el.classList.remove('sticker-pop'), 800);
 }
-
 function checkAdminAndAddCrown() {
     if (userId === appConfig.adminId) {
-        const header = document.querySelector('.header-actions');
-        const crownBtn = document.createElement('button');
-        crownBtn.id = 'adminCrownBtn';
-        crownBtn.className = 'icon-btn';
-        crownBtn.innerHTML = '<i class="fa-solid fa-crown" style="color: gold;"></i>';
-        crownBtn.onclick = function() {
-            document.getElementById('adminPanel').classList.remove('hidden');
-        };
-        header.insertBefore(crownBtn, header.firstChild);
+        const btn = document.createElement('button');
+        btn.id = 'adminCrownBtn'; btn.className = 'icon-btn';
+        btn.innerHTML = '<i class="fa-solid fa-crown" style="color: gold;"></i>';
+        btn.onclick = () => document.getElementById('adminPanel').classList.remove('hidden');
+        document.querySelector('.header-actions').insertBefore(btn, document.querySelector('.header-actions').firstChild);
     }
 }
-
-function closeAdminPanel() {
-    document.getElementById('adminPanel').classList.add('hidden');
-}
+function closeAdminPanel() { document.getElementById('adminPanel').classList.add('hidden'); }
 
 // ====== INIT ======
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🧌 TROLL ARMY v5.0 - PRODUCTION READY');
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('🧌 TROLL ARMY v6.0 - ULTIMATE');
     
-    setTimeout(function() {
+    setTimeout(() => {
         document.getElementById('splashScreen').classList.add('hidden');
         document.getElementById('mainContent').style.display = 'block';
         showRandomSticker();
     }, 1500);
     
-    loadConfig().then(function() {
-        loadUserData();
-        fetchPrices();
-        loadWithdrawalStatus();
-        checkAdminAndAddCrown();
-    });
+    await loadConfig();
+    await initTONConnect();
+    await loadUserData();
+    await fetchPrices();
+    await loadWithdrawalStatus();
+    checkAdminAndAddCrown();
     
     setInterval(fetchPrices, 300000);
     setInterval(loadWithdrawalStatus, 30000);
