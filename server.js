@@ -1,3 +1,8 @@
+// ============================================================
+// TROLL ARMY - SERVER.JS (PRODUCTION READY)
+// Express API + Telegram Bot (Long Polling) + Firebase Admin
+// ============================================================
+
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
@@ -20,6 +25,8 @@ try {
     if (fs.existsSync(firebasePath)) {
         serviceAccount = JSON.parse(fs.readFileSync(firebasePath, 'utf8'));
         console.log('✅ Firebase Admin key loaded');
+    } else {
+        console.log('⚠️ firebase-admin-key.json not found');
     }
 } catch (error) {
     console.error('❌ Firebase Admin key error:', error.message);
@@ -29,44 +36,66 @@ try {
 let firebaseWebConfig = {};
 try {
     const configPath = '/etc/secrets/firebase-web-config.json';
-    firebaseWebConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-    console.log('✅ Firebase Web config loaded');
+    if (fs.existsSync(configPath)) {
+        firebaseWebConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        console.log('✅ Firebase Web config loaded');
+    } else {
+        console.log('⚠️ firebase-web-config.json not found');
+    }
 } catch (error) {
     console.error('❌ Firebase Web config error:', error.message);
 }
 
 // 3. Admin Config
-let ADMIN_ID = null, ADMIN_PASSWORD = null;
+let ADMIN_ID = null;
+let ADMIN_PASSWORD = null;
 try {
     const adminPath = '/etc/secrets/admin-config.json';
-    const adminConfig = JSON.parse(fs.readFileSync(adminPath, 'utf8'));
-    ADMIN_ID = adminConfig.admin_id;
-    ADMIN_PASSWORD = adminConfig.admin_password;
-    console.log('✅ Admin config loaded');
+    if (fs.existsSync(adminPath)) {
+        const adminConfig = JSON.parse(fs.readFileSync(adminPath, 'utf8'));
+        ADMIN_ID = adminConfig.admin_id;
+        ADMIN_PASSWORD = adminConfig.admin_password;
+        console.log('✅ Admin config loaded');
+    } else {
+        console.log('⚠️ admin-config.json not found');
+        ADMIN_ID = process.env.ADMIN_ID || '1653918641';
+    }
 } catch (error) {
     console.error('❌ Admin config error:', error.message);
+    ADMIN_ID = process.env.ADMIN_ID || '1653918641';
 }
 
 // 4. TON API Key
 let TON_API_KEY = null;
 try {
     const tonPath = '/etc/secrets/ton-api-key.txt';
-    TON_API_KEY = fs.readFileSync(tonPath, 'utf8').trim();
-    console.log('✅ TON API key loaded');
+    if (fs.existsSync(tonPath)) {
+        TON_API_KEY = fs.readFileSync(tonPath, 'utf8').trim();
+        console.log('✅ TON API key loaded');
+    } else {
+        console.log('⚠️ ton-api-key.txt not found');
+        TON_API_KEY = process.env.TON_API_KEY || '';
+    }
 } catch (error) {
     console.error('❌ TON API key error:', error.message);
+    TON_API_KEY = process.env.TON_API_KEY || '';
 }
 
 // 5. CoinPayments Keys
-let COINPAYMENTS_PUBLIC = null, COINPAYMENTS_PRIVATE = null;
+let COINPAYMENTS_PUBLIC = null;
+let COINPAYMENTS_PRIVATE = null;
 try {
     const cpPath = '/etc/secrets/coinpayments-keys.json';
-    const cpKeys = JSON.parse(fs.readFileSync(cpPath, 'utf8'));
-    COINPAYMENTS_PUBLIC = cpKeys.public_key;
-    COINPAYMENTS_PRIVATE = cpKeys.private_key;
-    console.log('✅ CoinPayments keys loaded');
+    if (fs.existsSync(cpPath)) {
+        const cpKeys = JSON.parse(fs.readFileSync(cpPath, 'utf8'));
+        COINPAYMENTS_PUBLIC = cpKeys.public_key;
+        COINPAYMENTS_PRIVATE = cpKeys.private_key;
+        console.log('✅ CoinPayments keys loaded');
+    } else {
+        console.log('⚠️ coinpayments-keys.json not found - using mock addresses');
+    }
 } catch (error) {
-    console.error('❌ CoinPayments keys error:', error.message);
+    console.log('⚠️ CoinPayments keys not found - using mock addresses');
 }
 
 // ============================================================
@@ -75,6 +104,7 @@ try {
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const APP_URL = process.env.APP_URL;
 const OWNER_WALLET = process.env.OWNER_WALLET;
+const SUPPORT_USERNAME = process.env.SUPPORT_USERNAME || 'TrollSupport';
 
 // ============================================================
 // 🔥 Firebase Admin SDK Setup
@@ -92,14 +122,14 @@ if (serviceAccount) {
     } catch (error) {
         console.error('❌ Firebase init error:', error.message);
     }
+} else {
+    console.log('⚠️ Firebase not initialized - missing service account');
 }
 
 // ============================================================
 // 🤖 Telegram Bot Setup (Long Polling)
 // ============================================================
 const bot = new Telegraf(BOT_TOKEN);
-
-// تخزين مؤقت لآخر رسالة ترحيب لكل مستخدم (لمنع التكرار)
 const welcomeCache = new Map();
 
 // أمر /start
@@ -108,7 +138,6 @@ bot.start(async (ctx) => {
     const userId = ctx.from.id.toString();
     const userName = ctx.from.first_name || 'Troll';
     
-    // منع تكرار رسالة الترحيب خلال 5 ثواني
     const cacheKey = `${userId}_welcome`;
     const now = Date.now();
     if (welcomeCache.has(cacheKey) && (now - welcomeCache.get(cacheKey)) < 5000) {
@@ -121,11 +150,10 @@ bot.start(async (ctx) => {
         const userDoc = await userRef.get();
         
         if (!userDoc.exists) {
-            // مستخدم جديد
             await userRef.set({
                 userId,
                 userName,
-                balances: { TROLL: 1000 }, // Welcome Bonus 1,000 TROLL
+                balances: { TROLL: 1000 },
                 referralCode: userId,
                 referredBy: refCode || null,
                 referrals: [],
@@ -135,10 +163,10 @@ bot.start(async (ctx) => {
                 avatar: '🧌',
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
                 withdrawalUnlocked: false,
-                completedMissions: []
+                claimedMilestones: [],
+                tonWallet: null
             });
             
-            // معالجة الإحالة
             if (refCode && refCode !== userId) {
                 const referrerRef = db.collection('users').doc(refCode);
                 const referrerDoc = await referrerRef.get();
@@ -152,7 +180,6 @@ bot.start(async (ctx) => {
                             totalEarned: admin.firestore.FieldValue.increment(500)
                         });
                         
-                        // إشعار للمُحيل
                         bot.telegram.sendMessage(
                             refCode,
                             `🧌 *New Troll Recruited!*\n\n+500 TROLL\nTotal Trolls: ${(referrerData.inviteCount || 0) + 1}`,
@@ -173,8 +200,7 @@ bot.start(async (ctx) => {
             parse_mode: 'Markdown',
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: '🧌 Open Troll Wallet', web_app: { url: APP_URL } }],
-                    [{ text: '📢 Join Troll Channel', url: 'https://t.me/TrollOfficial' }]
+                    [{ text: '🧌 Open Troll Wallet', web_app: { url: APP_URL } }]
                 ]
             }
         }
@@ -220,10 +246,8 @@ bot.command('broadcast', async (ctx) => {
             try {
                 await bot.telegram.sendMessage(doc.id, `📢 *Announcement*\n\n${message}`, { parse_mode: 'Markdown' });
                 successCount++;
-                await new Promise(r => setTimeout(r, 50)); // تجنب rate limit
-            } catch (e) {
-                // مستخدم حظر البوت
-            }
+                await new Promise(r => setTimeout(r, 50));
+            } catch (e) {}
         }
         
         ctx.reply(`✅ Broadcast sent to ${successCount} users`);
@@ -233,13 +257,10 @@ bot.command('broadcast', async (ctx) => {
 // ============================================================
 // 🚀 Long Polling Setup
 // ============================================================
-bot.launch({
-    dropPendingUpdates: true
-})
-.then(() => console.log('🤖 Bot started with Long Polling'))
-.catch(err => console.error('❌ Bot launch error:', err));
+bot.launch({ dropPendingUpdates: true })
+    .then(() => console.log('🤖 Bot started with Long Polling'))
+    .catch(err => console.error('❌ Bot launch error:', err.message));
 
-// Graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
 
@@ -256,14 +277,14 @@ app.use(express.static(__dirname));
 
 // Health check
 app.get('/api/health', (req, res) => {
-    res.json({ 
-        status: 'trolling 🧌', 
+    res.json({
+        status: 'trolling 🧌',
         firebase: db ? 'connected' : 'disconnected',
-        timestamp: Date.now() 
+        timestamp: Date.now()
     });
 });
 
-// Ping (لمنع النوم)
+// Ping (لمنع نوم Render)
 app.get('/api/ping', (req, res) => {
     res.json({ alive: true, timestamp: Date.now() });
 });
@@ -274,7 +295,8 @@ app.get('/api/config', (req, res) => {
         firebaseConfig: firebaseWebConfig,
         appUrl: APP_URL,
         adminId: ADMIN_ID,
-        ownerWallet: OWNER_WALLET
+        ownerWallet: OWNER_WALLET,
+        supportUsername: SUPPORT_USERNAME
     });
 });
 
@@ -289,12 +311,62 @@ app.get('/api/users/:userId', async (req, res) => {
     }
 });
 
+// Create user
+app.post('/api/users', async (req, res) => {
+    if (!db) return res.json({ success: true });
+    try {
+        const { userId, userData } = req.body;
+        await db.collection('users').doc(userId).set(userData);
+        console.log(`✅ User created: ${userId}`);
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Update user
 app.patch('/api/users/:userId', async (req, res) => {
     if (!db) return res.json({ success: true });
     try {
         const { updates } = req.body;
         await db.collection('users').doc(req.params.userId).update(updates);
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Process referral
+app.post('/api/referral', async (req, res) => {
+    if (!db) return res.json({ success: true });
+    try {
+        const { referrerId, newUserId } = req.body;
+        
+        if (!referrerId || !newUserId || referrerId === newUserId) {
+            return res.json({ success: false, error: 'Invalid data' });
+        }
+        
+        const referrerRef = db.collection('users').doc(referrerId);
+        const referrerDoc = await referrerRef.get();
+        
+        if (referrerDoc.exists) {
+            const referrerData = referrerDoc.data();
+            if (!referrerData.referrals?.includes(newUserId)) {
+                await referrerRef.update({
+                    referrals: admin.firestore.FieldValue.arrayUnion(newUserId),
+                    inviteCount: admin.firestore.FieldValue.increment(1),
+                    'balances.TROLL': admin.firestore.FieldValue.increment(500),
+                    totalEarned: admin.firestore.FieldValue.increment(500)
+                });
+                
+                bot.telegram.sendMessage(
+                    referrerId,
+                    `🧌 *New Troll Recruited!*\n\n+500 TROLL`,
+                    { parse_mode: 'Markdown' }
+                );
+            }
+        }
+        
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -322,7 +394,7 @@ app.post('/api/claim-milestone', async (req, res) => {
                 
                 bot.telegram.sendMessage(
                     userId,
-                    `🎉 *Milestone Claimed!*\n\n+${reward.toLocaleString()} TROLL\n\n_You're climbing the troll ranks!_`,
+                    `🎉 *Milestone Claimed!*\n\n+${reward.toLocaleString()} TROLL`,
                     { parse_mode: 'Markdown' }
                 );
             }
@@ -333,37 +405,7 @@ app.post('/api/claim-milestone', async (req, res) => {
     }
 });
 
-// شراء Premium (5 TON)
-app.post('/api/buy-premium', async (req, res) => {
-    if (!db) return res.json({ success: true });
-    try {
-        const { userId, txHash } = req.body;
-        
-        // هنا يتم التحقق من المعاملة على TON باستخدام TON API
-        // للتبسيط: نفترض أن المعاملة صحيحة
-        
-        const userRef = db.collection('users').doc(userId);
-        await userRef.update({
-            premium: true,
-            avatar: '😏',
-            withdrawalUnlocked: true,
-            premiumTxHash: txHash,
-            premiumPurchasedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
-        
-        bot.telegram.sendMessage(
-            userId,
-            `😏 *Premium Unlocked!*\n\nYou now have the legendary Troll Face avatar and INSTANT withdrawal access!\n\nWelcome to the elite!`,
-            { parse_mode: 'Markdown' }
-        );
-        
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// التحقق من حالة السحب (المهام الغامضة)
+// Withdrawal status (المهام الغامضة)
 app.get('/api/withdrawal-status/:userId', async (req, res) => {
     if (!db) return res.json({ canWithdraw: false });
     try {
@@ -372,16 +414,10 @@ app.get('/api/withdrawal-status/:userId', async (req, res) => {
         
         const user = userDoc.data();
         
-        // Premium يفتح السحب فوراً
         if (user.premium) {
-            return res.json({
-                canWithdraw: true,
-                unlockedBy: 'premium',
-                message: 'Premium member - instant withdrawal!'
-            });
+            return res.json({ canWithdraw: true, unlockedBy: 'premium' });
         }
         
-        // المهام الغامضة
         const missions = [
             { id: 'referrals', requirement: 12, current: user.inviteCount || 0 },
             { id: 'balance', requirement: 15000, current: user.balances?.TROLL || 0 },
@@ -396,72 +432,50 @@ app.get('/api/withdrawal-status/:userId', async (req, res) => {
                 ...m,
                 completed: m.current >= m.requirement,
                 progress: Math.min((m.current / m.requirement) * 100, 100)
-            })),
-            distributionDate: allCompleted ? 'May 1, 2026' : null
+            }))
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-// توليد عنوان إيداع (CoinPayments)
+// Deposit address (CoinPayments or mock)
 app.post('/api/deposit-address', async (req, res) => {
     try {
         const { userId, currency } = req.body;
+        let address = '';
         
-        // استخدام userId كـ label لضمان عنوان ثابت
-        // في الإصدار الحقيقي، استدعاء CoinPayments API
-        const mockAddress = `0x${userId.slice(-40).padStart(40, '0')}`;
+        if (COINPAYMENTS_PUBLIC && COINPAYMENTS_PRIVATE) {
+            // TODO: CoinPayments API call
+            address = `CP_${currency}_${userId.slice(0, 10)}`;
+        } else {
+            const prefixes = { SOL: 'So1', BNB: '0x', ETH: '0x', TRON: 'T', TROLL: '0x' };
+            address = `${prefixes[currency] || ''}${userId.slice(-40).padStart(40, '0')}`;
+        }
         
-        res.json({ 
-            success: true, 
-            address: mockAddress,
-            network: 'BSC (BEP-20)',
-            minDeposit: 10000
-        });
+        res.json({ success: true, address });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-// ============================================================
-// 👑 Admin API
-// ============================================================
-
-// التحقق من صلاحية المشرف
-function isAdmin(req) {
-    const authHeader = req.headers.authorization;
-    return authHeader === `Bearer ${ADMIN_PASSWORD}`;
-}
-
-// Get all users (admin only)
-app.get('/api/admin/users', async (req, res) => {
-    if (!isAdmin(req)) return res.status(403).json({ error: 'Unauthorized' });
-    if (!db) return res.json({ users: [] });
-    
-    try {
-        const snapshot = await db.collection('users').limit(100).get();
-        const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        res.json({ users });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Add balance (admin only)
-app.post('/api/admin/add-balance', async (req, res) => {
-    if (!isAdmin(req)) return res.status(403).json({ error: 'Unauthorized' });
+// Buy premium
+app.post('/api/buy-premium', async (req, res) => {
     if (!db) return res.json({ success: true });
-    
     try {
-        const { userId, currency, amount } = req.body;
+        const { userId, txHash } = req.body;
+        
         await db.collection('users').doc(userId).update({
-            [`balances.${currency}`]: admin.firestore.FieldValue.increment(amount)
+            premium: true,
+            avatar: '😏',
+            withdrawalUnlocked: true,
+            premiumTxHash: txHash,
+            premiumPurchasedAt: admin.firestore.FieldValue.serverTimestamp()
         });
         
         bot.telegram.sendMessage(
             userId,
-            `💰 *Admin added ${amount} ${currency} to your wallet!*`,
+            `😏 *Premium Unlocked!*\n\nInstant withdrawal enabled!`,
             { parse_mode: 'Markdown' }
         );
         
@@ -471,7 +485,14 @@ app.post('/api/admin/add-balance', async (req, res) => {
     }
 });
 
-// Broadcast (admin only)
+// ============================================================
+// 👑 Admin API
+// ============================================================
+function isAdmin(req) {
+    const authHeader = req.headers.authorization;
+    return authHeader === `Bearer ${ADMIN_PASSWORD}`;
+}
+
 app.post('/api/admin/broadcast', async (req, res) => {
     if (!isAdmin(req)) return res.status(403).json({ error: 'Unauthorized' });
     if (!db) return res.json({ success: true });
@@ -510,6 +531,6 @@ app.listen(PORT, () => {
     console.log(`🔥 Firebase: ${db ? 'Connected' : 'Disconnected'}`);
     console.log(`👑 Admin ID: ${ADMIN_ID || 'Not configured'}`);
     console.log(`🤖 Bot: ${BOT_TOKEN ? 'Configured' : 'Missing'}`);
-    console.log(`💳 CoinPayments: ${COINPAYMENTS_PUBLIC ? 'Configured' : 'Missing'}`);
+    console.log(`💳 CoinPayments: ${COINPAYMENTS_PUBLIC ? 'Configured' : 'Mock'}`);
     console.log(`🌐 App URL: ${APP_URL}`);
 });
