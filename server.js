@@ -95,7 +95,7 @@ if (serviceAccount) {
 }
 
 // ============================================================
-// 🤖 Telegram Bot Setup
+// 🤖 Telegram Bot Setup (Long Polling)
 // ============================================================
 const bot = new Telegraf(BOT_TOKEN);
 
@@ -231,14 +231,24 @@ bot.command('broadcast', async (ctx) => {
 });
 
 // ============================================================
+// 🚀 Long Polling Setup
+// ============================================================
+bot.launch({
+    dropPendingUpdates: true
+})
+.then(() => console.log('🤖 Bot started with Long Polling'))
+.catch(err => console.error('❌ Bot launch error:', err));
+
+// Graceful stop
+process.once('SIGINT', () => bot.stop('SIGINT'));
+process.once('SIGTERM', () => bot.stop('SIGTERM'));
+
+// ============================================================
 // 🌐 Middleware
 // ============================================================
 app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
-
-// Webhook للبوت
-app.use(await bot.createWebhook({ domain: APP_URL }));
 
 // ============================================================
 // 📡 API Endpoints
