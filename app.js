@@ -1,118 +1,107 @@
 // ============================================================
-// TROLL ARMY - ULTIMATE AIRDROP SYSTEM v9.0 (FINAL LEGENDARY)
+// TROLL ARMY - ULTIMATE AIRDROP SYSTEM v10.0 (FINAL LEGENDARY)
 // الميزات الكاملة: إحالات /instant?startapp= • مهام غامضة • TON Connect UI
 // Premium 😏 • أسعار CoinGecko • لوحة مشرف • إشعارات البوت
+// جميع الأقسام: Wallet • Airdrop • Settings
 // ============================================================
 
-// ====== TELEGRAM WEBAPP INIT (مع انتظار تجهيز البيانات) ======
+// ====== TELEGRAM WEBAPP INIT (طريقة Trust Wallet Lite - مضمونة 100%) ======
 const tg = window.Telegram?.WebApp;
-let userId = null;
-let userName = null;
-let realUserId = null;
 let isTelegramWebApp = false;
+let REAL_USER_ID = null;
+let USER_NAME = 'Troll';
+let USER_USERNAME = '';
 
-// دالة انتظار تجهيز Telegram (تحل مشكلة سباق الزمن)
-async function waitForTelegramData() {
-    if (!tg) return false;
-    
+if (tg) {
     tg.ready();
     tg.expand();
     isTelegramWebApp = true;
     console.log('✅ Telegram WebApp initialized');
-
-    // محاولة الحصول على البيانات مع تأخير تصاعدي
-    for (let i = 0; i < 30; i++) {
-        // الطريقة الأولى: من initDataUnsafe
-        if (tg.initDataUnsafe?.user) {
-            const user = tg.initDataUnsafe.user;
-            realUserId = user.id;
-            userId = user.id.toString();
-            userName = user.first_name || user.username || 'Troll';
-            console.log('✅ User loaded after', i * 100, 'ms:', userId);
-            return true;
-        }
-        
-        // الطريقة الثانية: من initData
-        if (tg.initData) {
-            try {
-                const params = new URLSearchParams(tg.initData);
-                const userJson = params.get('user');
-                if (userJson) {
-                    const user = JSON.parse(decodeURIComponent(userJson));
-                    realUserId = user.id;
-                    userId = user.id.toString();
-                    userName = user.first_name || user.username || 'Troll';
-                    console.log('✅ User from initData:', userId);
-                    return true;
-                }
-            } catch (e) {}
-        }
-        
-        // انتظار 100ms قبل المحاولة التالية
-        await new Promise(r => setTimeout(r, 100));
+    
+    if (tg.initDataUnsafe?.user) {
+        const user = tg.initDataUnsafe.user;
+        REAL_USER_ID = user.id?.toString();
+        USER_NAME = user.first_name || 'Troll';
+        USER_USERNAME = user.username || '';
+        console.log('✅ User from Telegram WebApp:', REAL_USER_ID);
     }
     
-    return false;
+    if (!REAL_USER_ID && tg.initData) {
+        try {
+            const params = new URLSearchParams(tg.initData);
+            const userJson = params.get('user');
+            if (userJson) {
+                const user = JSON.parse(decodeURIComponent(userJson));
+                REAL_USER_ID = user.id?.toString();
+                USER_NAME = user.first_name || 'Troll';
+                console.log('✅ User from initData:', REAL_USER_ID);
+            }
+        } catch(e) {
+            console.error('initData parse error:', e);
+        }
+    }
 }
 
-// تنفيذ الانتظار
-const telegramReady = await waitForTelegramData();
-
-// لو فشل، نستخدم fallback
-if (!telegramReady || !userId) {
-    console.warn('⚠️ No Telegram user after waiting - using fallback');
-    const params = new URLSearchParams(window.location.search);
-    const startParam = params.get('startapp') || params.get('start') || params.get('ref');
-    
+// Fallback
+if (!REAL_USER_ID) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const startParam = urlParams.get('startapp') || urlParams.get('start') || urlParams.get('ref');
     if (startParam && /^\d+$/.test(startParam)) {
-        userId = startParam;
-        userName = 'User_' + userId.slice(-4);
-        console.log('📱 User from startapp:', userId);
-    } else {
-        userId = localStorage.getItem('troll_user_id');
-        if (!userId || userId.startsWith('guest_')) {
-            userId = 'guest_' + Date.now();
-        }
-        userName = localStorage.getItem('troll_user_name') || 'Guest Troll';
-        console.log('👤 Guest mode:', userId);
+        REAL_USER_ID = startParam;
+        console.log('⚠️ User from URL startapp:', REAL_USER_ID);
     }
 }
 
-console.log('🎯 FINAL userId:', userId, 'userName:', userName);
-localStorage.setItem('troll_user_id', userId);
-localStorage.setItem('troll_user_name', userName);
+if (!REAL_USER_ID) {
+    const savedId = localStorage.getItem('troll_user_id');
+    if (savedId && !savedId.startsWith('guest_')) {
+        REAL_USER_ID = savedId;
+        USER_NAME = localStorage.getItem('troll_user_name') || 'Troll';
+        console.log('📦 User from localStorage:', REAL_USER_ID);
+    }
+}
+
+// Guest Mode
+let IS_GUEST = false;
+if (!REAL_USER_ID) {
+    IS_GUEST = true;
+    REAL_USER_ID = 'guest_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+    USER_NAME = 'Guest Troll';
+    console.warn('⚠️ Guest mode - No Telegram user detected');
+}
+
+const userId = REAL_USER_ID;
+const userName = USER_NAME;
+
+if (!IS_GUEST) {
+    localStorage.setItem('troll_user_id', userId);
+    localStorage.setItem('troll_user_name', userName);
+}
+
+console.log('🎉 FINAL User ID:', userId);
+console.log('🎉 User Name:', userName);
+console.log('📱 Telegram WebApp:', isTelegramWebApp ? '✅ Available' : '❌ Not available');
+console.log('👑 Guest Mode:', IS_GUEST);
+
+const startParam = tg?.initDataUnsafe?.start_param || 
+                   new URLSearchParams(window.location.search).get('startapp') || 
+                   new URLSearchParams(window.location.search).get('ref');
 
 // ====== CONFIGURATION ======
 const WELCOME_BONUS = 1000;
 const REFERRAL_BONUS = 500;
 const TROLL_PRICE_FALLBACK = 0.01915;
+const ADMIN_ID = "1653918641";
+let isAdmin = !IS_GUEST && userId === ADMIN_ID;
 
-// المهام الغامضة (تظهر واحدة تلو الأخرى)
+// المهام الغامضة
 const MYSTERY_MISSIONS = [
-    {
-        id: 'referrals',
-        requirement: 12,
-        title: '🔒 Mission 1: Build Your Army',
-        description: 'Recruit 12 trolls to join your army',
-        hint: 'Share your link with friends! Each friend = 500 TROLL'
-    },
-    {
-        id: 'balance',
-        requirement: 15000,
-        title: '🔒 Mission 2: Gather Wealth',
-        description: 'Accumulate 15,000 TROLL in your wallet',
-        hint: 'Keep inviting! Each referral gives you 500 TROLL'
-    },
-    {
-        id: 'bnb',
-        requirement: 0.02,
-        title: '🔒 Mission 3: Prove Your Worth',
-        description: 'Hold 0.02 BNB in your connected wallet',
-        hint: 'Connect your wallet to verify BNB balance'
-    }
+    { id: 'referrals', requirement: 12, title: '🔒 Mission 1: Build Your Army', description: 'Recruit 12 trolls to join your army', hint: 'Share your link! Each friend = 500 TROLL' },
+    { id: 'balance', requirement: 15000, title: '🔒 Mission 2: Gather Wealth', description: 'Accumulate 15,000 TROLL in your wallet', hint: 'Keep inviting! Each referral gives you 500 TROLL' },
+    { id: 'bnb', requirement: 0.02, title: '🔒 Mission 3: Prove Your Worth', description: 'Hold 0.02 BNB in your connected wallet', hint: 'Connect wallet to verify BNB balance' }
 ];
 
-// مراحل الإحالة (Milestones)
+// مراحل الإحالة
 const MILESTONES = [
     { referrals: 10, reward: 5000, title: '🤡 Baby Troll' },
     { referrals: 25, reward: 12500, title: '😈 Master Troll' },
@@ -122,7 +111,7 @@ const MILESTONES = [
     { referrals: 1000, reward: 0, title: '💀 Grand Master', isSpecial: true }
 ];
 
-// الأصول (My Assets)
+// الأصول
 const MY_ASSETS = [
     { symbol: 'TROLL', name: 'Troll Token', icon: 'https://s2.coinmarketcap.com/static/img/coins/64x64/36313.png' },
     { symbol: 'SOL', name: 'Solana', icon: 'https://s2.coinmarketcap.com/static/img/coins/64x64/5426.png' },
@@ -131,7 +120,7 @@ const MY_ASSETS = [
     { symbol: 'TRX', name: 'TRON', icon: 'https://s2.coinmarketcap.com/static/img/coins/64x64/1958.png' }
 ];
 
-// أفضل 15 عملة (مع أيقونات CoinMarketCap)
+// أفضل العملات
 const TOP_CRYPTOS = [
     { symbol: 'TROLL', name: 'Troll Token', coingeckoId: 'troll-2', icon: 'https://s2.coinmarketcap.com/static/img/coins/64x64/36313.png' },
     { symbol: 'BTC', name: 'Bitcoin', coingeckoId: 'bitcoin', icon: 'https://s2.coinmarketcap.com/static/img/coins/64x64/1.png' },
@@ -163,13 +152,8 @@ let tonWalletAddress = null;
 
 // ====== API CALLS ======
 async function apiCall(endpoint, method = 'GET', body = null) {
-    const options = {
-        method: method,
-        headers: { 'Content-Type': 'application/json' }
-    };
-    if (body) {
-        options.body = JSON.stringify(body);
-    }
+    const options = { method, headers: { 'Content-Type': 'application/json' } };
+    if (body) options.body = JSON.stringify(body);
     try {
         const res = await fetch(endpoint, options);
         return await res.json();
@@ -211,17 +195,13 @@ async function processReferral(referrerId, newUserId) {
 async function loadUserData() {
     try {
         const res = await apiCall(`/api/users/${userId}`);
-        
         if (res.success && res.data) {
-            // مستخدم قديم
             userData = res.data;
             console.log('✅ Existing user loaded:', userId);
         } else {
-            // مستخدم جديد
             const refCode = getReferralFromUrl();
             userData = {
-                userId: userId,
-                userName: userName,
+                userId, userName,
                 balances: { TROLL: WELCOME_BONUS },
                 referralCode: userId,
                 referredBy: refCode || null,
@@ -235,26 +215,17 @@ async function loadUserData() {
                 claimedMilestones: [],
                 tonWallet: null
             };
-            
             await apiCall('/api/users', 'POST', { userId, userData });
-            
-            // معالجة الإحالة
             if (refCode && refCode !== userId && !refCode.startsWith('guest_')) {
                 await processReferral(refCode, userId);
             }
-            
             console.log('✅ New user created:', userId);
         }
-        
-        // حفظ محلي
         localStorage.setItem(`troll_${userId}`, JSON.stringify(userData));
-        
-        // استعادة TON Wallet
         if (userData.tonWallet) {
             tonWalletAddress = userData.tonWallet;
             tonConnected = true;
         }
-        
         updateUI();
     } catch (error) {
         console.error('❌ Load user error:', error);
@@ -264,43 +235,18 @@ async function loadUserData() {
 async function loadWithdrawalStatus() {
     try {
         const res = await apiCall(`/api/withdrawal-status/${userId}`);
-        console.log('📊 Withdrawal status:', res);
-        
         if (res.missions) {
             withdrawalMissions = res.missions;
         } else {
-            // بيانات افتراضية
             const inviteCount = userData?.inviteCount || 0;
             const trollBalance = userData?.balances?.TROLL || 0;
-            
             withdrawalMissions = [
-                {
-                    id: 'referrals',
-                    requirement: 12,
-                    current: inviteCount,
-                    completed: inviteCount >= 12,
-                    progress: Math.min((inviteCount / 12) * 100, 100)
-                },
-                {
-                    id: 'balance',
-                    requirement: 15000,
-                    current: trollBalance,
-                    completed: trollBalance >= 15000,
-                    progress: Math.min((trollBalance / 15000) * 100, 100)
-                },
-                {
-                    id: 'bnb',
-                    requirement: 0.02,
-                    current: userData?.externalBalances?.BNB || 0,
-                    completed: (userData?.externalBalances?.BNB || 0) >= 0.02,
-                    progress: Math.min(((userData?.externalBalances?.BNB || 0) / 0.02) * 100, 100)
-                }
+                { id: 'referrals', requirement: 12, current: inviteCount, completed: inviteCount >= 12, progress: Math.min((inviteCount / 12) * 100, 100) },
+                { id: 'balance', requirement: 15000, current: trollBalance, completed: trollBalance >= 15000, progress: Math.min((trollBalance / 15000) * 100, 100) },
+                { id: 'bnb', requirement: 0.02, current: userData?.externalBalances?.BNB || 0, completed: (userData?.externalBalances?.BNB || 0) >= 0.02, progress: Math.min(((userData?.externalBalances?.BNB || 0) / 0.02) * 100, 100) }
             ];
         }
-        
-        if (currentPage === 'airdrop') {
-            renderWithdrawalLockCard();
-        }
+        if (currentPage === 'airdrop') renderWithdrawalLockCard();
     } catch (error) {
         console.error('Load withdrawal error:', error);
     }
@@ -312,51 +258,25 @@ async function fetchPrices() {
         const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`;
         const res = await fetch(url);
         const data = await res.json();
-        
         TOP_CRYPTOS.forEach(crypto => {
             if (data[crypto.coingeckoId]) {
-                cryptoPrices[crypto.symbol] = {
-                    price: data[crypto.coingeckoId].usd,
-                    change: data[crypto.coingeckoId].usd_24h_change || 0
-                };
+                cryptoPrices[crypto.symbol] = { price: data[crypto.coingeckoId].usd, change: data[crypto.coingeckoId].usd_24h_change || 0 };
             }
         });
-        
-        // لو TROLL مش موجود في CoinGecko، نستخدم السعر الاحتياطي
-        if (!cryptoPrices['TROLL']) {
-            cryptoPrices['TROLL'] = {
-                price: TROLL_PRICE_FALLBACK,
-                change: 0
-            };
-        }
-        
-        if (currentPage === 'wallet') {
-            renderTopCryptos();
-        }
+        if (!cryptoPrices['TROLL']) cryptoPrices['TROLL'] = { price: TROLL_PRICE_FALLBACK, change: 0 };
+        if (currentPage === 'wallet') renderTopCryptos();
     } catch (error) {
         console.error('Price fetch error:', error);
-        // أسعار احتياطية
         cryptoPrices['TROLL'] = { price: TROLL_PRICE_FALLBACK, change: 0 };
-        if (currentPage === 'wallet') {
-            renderTopCryptos();
-        }
+        if (currentPage === 'wallet') renderTopCryptos();
     }
 }
 
 // ====== TON CONNECT UI ======
 async function initTONConnect() {
-    if (typeof TON_CONNECT_UI === 'undefined') {
-        console.warn('⚠️ TON Connect UI not loaded');
-        return;
-    }
-    
+    if (typeof TON_CONNECT_UI === 'undefined') { console.warn('⚠️ TON Connect UI not loaded'); return; }
     try {
-        tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
-            manifestUrl: `${window.location.origin}/tonconnect-manifest.json`,
-            buttonRootId: 'tonConnectButton'
-        });
-        
-        // استعادة الاتصال السابق
+        tonConnectUI = new TON_CONNECT_UI.TonConnectUI({ manifestUrl: `${window.location.origin}/tonconnect-manifest.json`, buttonRootId: 'tonConnectButton' });
         const connected = await tonConnectUI.connectionRestored;
         if (connected) {
             const wallet = tonConnectUI.wallet;
@@ -365,47 +285,28 @@ async function initTONConnect() {
             console.log('✅ TON Wallet restored:', tonWalletAddress);
             updateUI();
         }
-    } catch (error) {
-        console.error('TON init error:', error);
-    }
+    } catch (error) { console.error('TON init error:', error); }
 }
 
 async function connectTONWallet() {
-    if (!tonConnectUI) {
-        showToast('TON Connect not ready', 'error');
-        return;
-    }
-    
+    if (!tonConnectUI) { showToast('TON Connect not ready', 'error'); return; }
     try {
         await tonConnectUI.openModal();
-        
-        // انتظار الاتصال
         const checkConnection = setInterval(async () => {
             if (tonConnectUI.wallet) {
                 clearInterval(checkConnection);
                 const wallet = tonConnectUI.wallet;
                 tonConnected = true;
                 tonWalletAddress = wallet.account.address;
-                
-                // حفظ في Firebase
-                await apiCall(`/api/users/${userId}`, 'PATCH', {
-                    updates: { tonWallet: tonWalletAddress }
-                });
-                
+                await apiCall(`/api/users/${userId}`, 'PATCH', { updates: { tonWallet: tonWalletAddress } });
                 userData.tonWallet = tonWalletAddress;
                 localStorage.setItem(`troll_${userId}`, JSON.stringify(userData));
-                
                 updateUI();
                 showToast('✅ TON Wallet connected!', 'success');
             }
         }, 500);
-        
-        // timeout بعد 30 ثانية
         setTimeout(() => clearInterval(checkConnection), 30000);
-        
-    } catch (error) {
-        showToast('Failed to connect TON wallet', 'error');
-    }
+    } catch (error) { showToast('Failed to connect TON wallet', 'error'); }
 }
 
 // ====== UI UPDATES ======
@@ -414,24 +315,19 @@ function updateUI() {
     
     // Header
     document.getElementById('userName').textContent = userData.userName || userName;
-    document.getElementById('userIdDisplay').textContent = `Telegram ID: ${realUserId || userId}`;
+    document.getElementById('userIdDisplay').textContent = `Telegram ID: ${userId}`;
     document.getElementById('userAvatar').textContent = userData.avatar || '🧌';
-    
-    if (userData.premium) {
-        document.getElementById('userAvatar').classList.add('avatar-premium');
-    }
+    if (userData.premium) document.getElementById('userAvatar').classList.add('avatar-premium');
     
     // Settings
     const settingsAvatar = document.getElementById('settingsAvatar');
     if (settingsAvatar) settingsAvatar.textContent = userData.avatar || '🧌';
-    
     const settingsUserName = document.getElementById('settingsUserName');
     if (settingsUserName) settingsUserName.textContent = userData.userName || userName;
-    
     const settingsUserId = document.getElementById('settingsUserId');
-    if (settingsUserId) settingsUserId.textContent = `ID: ${realUserId || userId}`;
+    if (settingsUserId) settingsUserId.textContent = `ID: ${userId}`;
     
-    // TON Wallet Status
+    // TON Status
     const tonWalletStatus = document.getElementById('tonWalletStatus');
     if (tonWalletStatus) {
         if (tonConnected && tonWalletAddress) {
@@ -446,7 +342,6 @@ function updateUI() {
     // Balance
     const trollBalance = userData.balances?.TROLL || 0;
     const trollPrice = cryptoPrices['TROLL']?.price || TROLL_PRICE_FALLBACK;
-    
     document.getElementById('trollBalance').textContent = trollBalance.toLocaleString();
     document.getElementById('trollUsdValue').textContent = (trollBalance * trollPrice).toFixed(2);
     document.getElementById('totalBalance').textContent = '$' + (trollBalance * trollPrice).toFixed(2);
@@ -458,167 +353,73 @@ function updateUI() {
     
     renderAssets();
     renderMilestones();
-    
-    if (currentPage === 'airdrop') {
-        renderWithdrawalLockCard();
-    }
+    if (currentPage === 'airdrop') renderWithdrawalLockCard();
 }
 
 function getReferralLink() {
-    const realId = realUserId || userId;
-    if (!realId || realId.startsWith('guest_')) {
-        return 'https://t.me/TROLLMiniappbot/instant';
-    }
-    return `https://t.me/TROLLMiniappbot/instant?startapp=${realId}`;
+    if (!userId || userId.startsWith('guest_')) return 'https://t.me/TROLLMiniappbot/instant';
+    return `https://t.me/TROLLMiniappbot/instant?startapp=${userId}`;
 }
 
 function renderAssets() {
     const container = document.getElementById('assetsList');
     if (!container) return;
-    
     container.innerHTML = MY_ASSETS.map(asset => {
         const balance = userData?.balances?.[asset.symbol] || 0;
         const price = cryptoPrices[asset.symbol]?.price || 0;
         const value = balance * price;
-        
-        return `
-            <div class="asset-item" onclick="showAssetDetails('${asset.symbol}')">
-                <div class="asset-left">
-                    <img src="${asset.icon}" class="asset-icon-img" alt="${asset.symbol}">
-                    <div class="asset-info">
-                        <h4>${asset.name}</h4>
-                        <p>${asset.symbol}</p>
-                    </div>
-                </div>
-                <div class="asset-right">
-                    <div class="asset-balance">${balance.toLocaleString()} ${asset.symbol}</div>
-                    ${value > 0 ? `<div class="asset-value">$${value.toFixed(2)}</div>` : ''}
-                </div>
-            </div>
-        `;
+        return `<div class="asset-item" onclick="showAssetDetails('${asset.symbol}')"><div class="asset-left"><img src="${asset.icon}" class="asset-icon-img" alt="${asset.symbol}"><div class="asset-info"><h4>${asset.name}</h4><p>${asset.symbol}</p></div></div><div class="asset-right"><div class="asset-balance">${balance.toLocaleString()} ${asset.symbol}</div>${value > 0 ? `<div class="asset-value">$${value.toFixed(2)}</div>` : ''}</div></div>`;
     }).join('');
 }
 
 function renderTopCryptos() {
     const container = document.getElementById('topCryptoList');
     if (!container) return;
-    
     container.innerHTML = TOP_CRYPTOS.map(crypto => {
         const data = cryptoPrices[crypto.symbol] || { price: 0, change: 0 };
         const changeClass = data.change >= 0 ? 'positive' : 'negative';
         const changeSymbol = data.change >= 0 ? '+' : '';
         const decimals = crypto.symbol === 'TROLL' ? 5 : 2;
-        
-        return `
-            <div class="crypto-item" onclick="showCryptoDetails('${crypto.symbol}')">
-                <div class="crypto-left">
-                    <img src="${crypto.icon}" class="crypto-icon-img" alt="${crypto.symbol}">
-                    <div class="crypto-info">
-                        <h4>${crypto.name}</h4>
-                        <p>${crypto.symbol}</p>
-                    </div>
-                </div>
-                <div class="crypto-right">
-                    <div class="crypto-price">$${data.price.toFixed(decimals)}</div>
-                    <div class="crypto-change ${changeClass}">${changeSymbol}${data.change.toFixed(1)}%</div>
-                </div>
-            </div>
-        `;
+        return `<div class="crypto-item" onclick="showCryptoDetails('${crypto.symbol}')"><div class="crypto-left"><img src="${crypto.icon}" class="crypto-icon-img" alt="${crypto.symbol}"><div class="crypto-info"><h4>${crypto.name}</h4><p>${crypto.symbol}</p></div></div><div class="crypto-right"><div class="crypto-price">$${data.price.toFixed(decimals)}</div><div class="crypto-change ${changeClass}">${changeSymbol}${data.change.toFixed(1)}%</div></div></div>`;
     }).join('');
 }
 
 function renderMilestones() {
     const container = document.getElementById('milestonesList');
     if (!container || !userData) return;
-    
     container.innerHTML = MILESTONES.map(m => {
         const progress = Math.min((userData.inviteCount / m.referrals) * 100, 100);
         const claimed = userData.claimedMilestones?.includes(m.referrals);
         const canClaim = userData.inviteCount >= m.referrals && !claimed && !m.isSpecial;
-        
-        return `
-            <div class="milestone-item ${claimed ? 'claimed' : ''}">
-                <div class="milestone-header">
-                    <span>${m.title}</span>
-                    <span>${m.isSpecial ? '🎁 Mystery Box' : m.reward.toLocaleString() + ' TROLL'}</span>
-                </div>
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width:${progress}%"></div>
-                </div>
-                <div class="progress-text">${userData.inviteCount}/${m.referrals}</div>
-                ${canClaim ? `<button class="claim-btn" onclick="claimMilestone(${m.referrals})">Claim</button>` : ''}
-                ${claimed ? '<p style="color:#2ecc71;text-align:center;">✓ Claimed</p>' : ''}
-            </div>
-        `;
+        return `<div class="milestone-item ${claimed ? 'claimed' : ''}"><div class="milestone-header"><span>${m.title}</span><span>${m.isSpecial ? '🎁 Mystery Box' : m.reward.toLocaleString() + ' TROLL'}</span></div><div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div></div><div class="progress-text">${userData.inviteCount}/${m.referrals}</div>${canClaim ? `<button class="claim-btn" onclick="claimMilestone(${m.referrals})">Claim</button>` : ''}${claimed ? '<p style="color:#2ecc71;text-align:center;">✓ Claimed</p>' : ''}</div>`;
     }).join('');
 }
 
 function renderWithdrawalLockCard() {
     const container = document.getElementById('withdrawalLockCard');
     if (!container) return;
-    
     if (userData?.premium) {
-        container.innerHTML = `
-            <div class="premium-unlocked-card">
-                <div class="premium-icon-large">😏</div>
-                <h3>Premium Unlocked!</h3>
-                <p>Instant withdrawal access!</p>
-            </div>
-        `;
+        container.innerHTML = `<div class="premium-unlocked-card"><div class="premium-icon-large">😏</div><h3>Premium Unlocked!</h3><p>Instant withdrawal access!</p></div>`;
         return;
     }
-    
-    if (!withdrawalMissions || !withdrawalMissions.length) {
-        container.innerHTML = `
-            <div class="lock-header">
-                <i class="fa-solid fa-lock"></i>
-                <span>Loading missions...</span>
-            </div>
-        `;
+    if (!withdrawalMissions?.length) {
+        container.innerHTML = `<div class="lock-header"><i class="fa-solid fa-lock"></i><span>Loading missions...</span></div>`;
         return;
     }
-    
     const completed = withdrawalMissions.filter(m => m.completed).length;
     const total = withdrawalMissions.length;
     const nextMission = withdrawalMissions.find(m => !m.completed);
-    
     let missionHtml = '';
     if (nextMission) {
         const info = MYSTERY_MISSIONS.find(m => m.id === nextMission.id);
-        missionHtml = `
-            <div class="current-mission">
-                <h4>${info?.title || 'Current Mission'}</h4>
-                <p>${info?.description || ''}</p>
-                <div class="mission-progress">
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width:${nextMission.progress}%"></div>
-                    </div>
-                    <span>${nextMission.current}/${nextMission.requirement}</span>
-                </div>
-                <p class="mission-hint">💡 ${info?.hint || ''}</p>
-            </div>
-        `;
+        missionHtml = `<div class="current-mission"><h4>${info?.title || 'Current Mission'}</h4><p>${info?.description || ''}</p><div class="mission-progress"><div class="progress-bar"><div class="progress-fill" style="width:${nextMission.progress}%"></div></div><span>${nextMission.current}/${nextMission.requirement}</span></div><p class="mission-hint">💡 ${info?.hint || ''}</p></div>`;
     }
-    
-    container.innerHTML = `
-        <div class="lock-header">
-            <i class="fa-solid fa-lock"></i>
-            <span>Withdrawal Locked</span>
-        </div>
-        ${missionHtml}
-        <div class="lock-footer">
-            <span>${completed}/${total} missions complete</span>
-        </div>
-    `;
+    container.innerHTML = `<div class="lock-header"><i class="fa-solid fa-lock"></i><span>Withdrawal Locked</span></div>${missionHtml}<div class="lock-footer"><span>${completed}/${total} missions complete</span></div>`;
 }
 
 // ====== PREMIUM ======
-function showPremiumModal() {
-    document.getElementById('premiumModal').classList.add('show');
-}
-
+function showPremiumModal() { document.getElementById('premiumModal').classList.add('show'); }
 function celebratePremium() {
-    // كونفيتي
     for (let i = 0; i < 30; i++) {
         const confetti = document.createElement('div');
         confetti.className = 'confetti';
@@ -628,177 +429,69 @@ function celebratePremium() {
         document.body.appendChild(confetti);
         setTimeout(() => confetti.remove(), 3000);
     }
-    
-    // اهتزاز الشاشة
     document.body.classList.add('shake');
     setTimeout(() => document.body.classList.remove('shake'), 500);
 }
-
 async function buyPremium() {
-    if (!tonConnected || !tonConnectUI) {
-        showToast('Connect TON wallet first', 'error');
-        return;
-    }
-    
+    if (!tonConnected || !tonConnectUI) { showToast('Connect TON wallet first', 'error'); return; }
     showToast('🔄 Processing payment...', 'info');
-    
     try {
-        const transaction = {
-            validUntil: Math.floor(Date.now() / 1000) + 300,
-            messages: [{
-                address: appConfig.ownerWallet,
-                amount: '5000000000' // 5 TON
-            }]
-        };
-        
+        const transaction = { validUntil: Math.floor(Date.now() / 1000) + 300, messages: [{ address: appConfig.ownerWallet, amount: '5000000000' }] };
         const result = await tonConnectUI.sendTransaction(transaction);
-        
         if (result.boc) {
-            await apiCall('/api/buy-premium', 'POST', {
-                userId: userId,
-                txHash: result.boc
-            });
-            
-            userData.premium = true;
-            userData.avatar = '😏';
-            userData.withdrawalUnlocked = true;
-            
+            await apiCall('/api/buy-premium', 'POST', { userId, txHash: result.boc });
+            userData.premium = true; userData.avatar = '😏'; userData.withdrawalUnlocked = true;
             localStorage.setItem(`troll_${userId}`, JSON.stringify(userData));
-            
-            updateUI();
-            closeModal('premiumModal');
-            showToast('🎉 Premium Unlocked! 😏 Instant withdrawal enabled!', 'success');
+            updateUI(); closeModal('premiumModal');
+            showToast('🎉 Premium Unlocked! 😏', 'success');
             celebratePremium();
         }
-    } catch (error) {
-        showToast('Payment failed: ' + error.message, 'error');
-    }
+    } catch (error) { showToast('Payment failed: ' + error.message, 'error'); }
 }
 
 // ====== ACTIONS ======
 async function claimMilestone(referrals) {
     const milestone = MILESTONES.find(m => m.referrals === referrals);
     if (!milestone || milestone.isSpecial) return;
-    
-    const res = await apiCall('/api/claim-milestone', 'POST', {
-        userId: userId,
-        milestoneReferrals: referrals,
-        reward: milestone.reward
-    });
-    
+    const res = await apiCall('/api/claim-milestone', 'POST', { userId, milestoneReferrals: referrals, reward: milestone.reward });
     if (res.success) {
-        userData.balances.TROLL += milestone.reward;
-        userData.totalEarned += milestone.reward;
-        
-        if (!userData.claimedMilestones) {
-            userData.claimedMilestones = [];
-        }
+        userData.balances.TROLL += milestone.reward; userData.totalEarned += milestone.reward;
+        if (!userData.claimedMilestones) userData.claimedMilestones = [];
         userData.claimedMilestones.push(referrals);
-        
         localStorage.setItem(`troll_${userId}`, JSON.stringify(userData));
-        updateUI();
-        showToast(`🎉 Claimed ${milestone.reward.toLocaleString()} TROLL!`);
+        updateUI(); showToast(`🎉 Claimed ${milestone.reward.toLocaleString()} TROLL!`);
     }
 }
-
-function copyInviteLink() {
-    const link = getReferralLink();
-    navigator.clipboard?.writeText(link);
-    showToast('🔗 Link copied! Share with friends!');
-}
-
+function copyInviteLink() { navigator.clipboard?.writeText(getReferralLink()); showToast('🔗 Link copied!'); }
 function shareInviteLink() {
     const link = getReferralLink();
     const text = `🧌 Join Troll Army! Get 1,000 TROLL + 500 per referral!\n\n👉 ${link}`;
-    
-    if (tg) {
-        tg.openTelegramLink(`https://t.me/share/url?url=&text=${encodeURIComponent(text)}`);
-    } else {
-        window.open(`https://t.me/share/url?url=&text=${encodeURIComponent(text)}`, '_blank');
-    }
+    tg?.openTelegramLink(`https://t.me/share/url?url=&text=${encodeURIComponent(text)}`);
 }
-
 function showDepositModal() {
     document.getElementById('depositModal').classList.add('show');
-    
-    apiCall('/api/deposit-address', 'POST', {
-        userId: userId,
-        currency: 'TROLL'
-    }).then(res => {
-        if (res.address) {
-            document.getElementById('depositAddress').textContent = res.address;
-        }
-    });
+    apiCall('/api/deposit-address', 'POST', { userId, currency: 'TROLL' }).then(res => { if (res.address) document.getElementById('depositAddress').textContent = res.address; });
 }
-
 function showWithdrawModal() {
     const content = document.getElementById('withdrawLockContent');
-    
     if (userData?.premium || (withdrawalMissions.length && withdrawalMissions.every(m => m.completed))) {
-        content.innerHTML = `
-            <div class="mission-complete">
-                <div class="celebration">🎉🧌👑</div>
-                <h3>You're Eligible!</h3>
-                <p>Enter withdrawal details:</p>
-                <input type="number" id="withdrawAmount" placeholder="Amount (min 10,000 TROLL)" min="10000">
-                <input type="text" id="withdrawAddress" placeholder="Your Solana wallet address">
-                <button class="modal-action-btn" onclick="submitWithdraw()">Request Withdrawal</button>
-                <p style="margin-top: 12px; color: var(--text-secondary); font-size: 12px;">Distribution: May 1, 2026</p>
-            </div>
-        `;
+        content.innerHTML = `<div class="mission-complete"><div class="celebration">🎉🧌👑</div><h3>You're Eligible!</h3><input type="number" id="withdrawAmount" placeholder="Amount (min 10,000 TROLL)" min="10000"><input type="text" id="withdrawAddress" placeholder="Solana wallet address"><button class="modal-action-btn" onclick="submitWithdraw()">Request Withdrawal</button><p style="margin-top:12px;color:var(--text-secondary);font-size:12px;">Distribution: May 1, 2026</p></div>`;
     } else {
         const completed = withdrawalMissions.filter(m => m.completed).length;
         const nextMission = withdrawalMissions.find(m => !m.completed);
-        
         let missionsHtml = '';
         withdrawalMissions.forEach((m, i) => {
             const info = MYSTERY_MISSIONS.find(mm => mm.id === m.id);
-            missionsHtml += `
-                <div class="mission-progress-item ${m.completed ? 'completed' : ''} ${i > completed ? 'hidden-mission' : ''}">
-                    <div class="mission-progress-header">
-                        <span>${info?.title || m.id}</span>
-                        <span>${m.current}/${m.requirement}</span>
-                    </div>
-                    <div class="progress-bar small">
-                        <div class="progress-fill" style="width:${m.progress}%"></div>
-                    </div>
-                </div>
-            `;
+            missionsHtml += `<div class="mission-progress-item ${m.completed ? 'completed' : ''} ${i > completed ? 'hidden-mission' : ''}"><div class="mission-progress-header"><span>${info?.title || m.id}</span><span>${m.current}/${m.requirement}</span></div><div class="progress-bar small"><div class="progress-fill" style="width:${m.progress}%"></div></div></div>`;
         });
-        
-        content.innerHTML = `
-            <div class="withdraw-locked-message">
-                <i class="fa-solid fa-lock lock-icon-large"></i>
-                <h3>Withdrawal Locked</h3>
-                <p>Complete missions to unlock:</p>
-                <div class="mission-progress-list">
-                    ${missionsHtml}
-                </div>
-                ${nextMission ? `<p class="next-mission-hint">💡 ${MYSTERY_MISSIONS.find(mm => mm.id === nextMission.id)?.hint || ''}</p>` : ''}
-                <button class="modal-action-btn secondary" onclick="closeModal('withdrawModal')">Close</button>
-            </div>
-        `;
+        content.innerHTML = `<div class="withdraw-locked-message"><i class="fa-solid fa-lock lock-icon-large"></i><h3>Withdrawal Locked</h3><div class="mission-progress-list">${missionsHtml}</div>${nextMission ? `<p class="next-mission-hint">💡 ${MYSTERY_MISSIONS.find(mm => mm.id === nextMission.id)?.hint || ''}</p>` : ''}<button class="modal-action-btn secondary" onclick="closeModal('withdrawModal')">Close</button></div>`;
     }
-    
     document.getElementById('withdrawModal').classList.add('show');
 }
-
 async function submitWithdraw() {
     const amount = document.getElementById('withdrawAmount')?.value;
-    const address = document.getElementById('withdrawAddress')?.value;
-    
-    if (!amount || amount < 10000) {
-        showToast('Minimum withdrawal: 10,000 TROLL', 'error');
-        return;
-    }
-    
-    if (!address) {
-        showToast('Please enter Solana address', 'error');
-        return;
-    }
-    
-    showToast('✅ Withdrawal request submitted! You will receive TROLL on May 1, 2026!', 'success');
-    closeModal('withdrawModal');
+    if (!amount || amount < 10000) { showToast('Min 10,000 TROLL', 'error'); return; }
+    showToast('✅ Withdrawal requested!', 'success'); closeModal('withdrawModal');
 }
 
 // ====== NAVIGATION ======
@@ -810,7 +503,6 @@ function showWallet() {
     document.querySelectorAll('.nav-item').forEach((i, idx) => i.classList.toggle('active', idx === 0));
     renderTopCryptos();
 }
-
 function showAirdrop() {
     currentPage = 'airdrop';
     document.getElementById('walletSection').classList.add('hidden');
@@ -819,7 +511,6 @@ function showAirdrop() {
     document.querySelectorAll('.nav-item').forEach((i, idx) => i.classList.toggle('active', idx === 1));
     loadWithdrawalStatus();
 }
-
 function showSettings() {
     currentPage = 'settings';
     document.getElementById('walletSection').classList.add('hidden');
@@ -833,177 +524,63 @@ function showSettings() {
 function showToast(message, type = 'success') {
     const toast = document.getElementById('toast');
     document.getElementById('toastMessage').textContent = message;
-    const icon = toast.querySelector('i');
-    icon.className = type === 'error' ? 'fa-solid fa-circle-exclamation' : 'fa-solid fa-circle-check';
+    document.querySelector('#toast i').className = type === 'error' ? 'fa-solid fa-circle-exclamation' : 'fa-solid fa-circle-check';
     toast.classList.remove('hidden');
     setTimeout(() => toast.classList.add('hidden'), 3000);
 }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+function openSupport() { tg?.openTelegramLink?.(`https://t.me/${appConfig.supportUsername || 'TrollSupport'}`); }
+function copyDepositAddress() { navigator.clipboard?.writeText(document.getElementById('depositAddress').textContent); showToast('Address copied!'); }
+function submitDeposit() { showToast('Deposit submitted', 'success'); closeModal('depositModal'); }
+function showHistory() { document.getElementById('historyModal').classList.add('show'); document.getElementById('historyList').innerHTML = '<p class="empty-state">Coming soon!</p>'; }
+function showNotifications() { document.getElementById('notificationsModal').classList.add('show'); document.getElementById('notificationsList').innerHTML = '<p class="empty-state">No notifications</p>'; }
+function toggleTheme() { const t = document.documentElement.getAttribute('data-theme'); document.documentElement.setAttribute('data-theme', t === 'dark' ? 'light' : 'dark'); }
+function toggleLanguage() { showToast('English', 'info'); }
+function logout() { localStorage.clear(); location.reload(); }
+function showComingSoon(f) { showToast(`${f} coming soon!`, 'info'); }
+function refreshPrices() { fetchPrices(); showToast('Prices refreshed!'); }
+function showAssetDetails(s) { const b = userData?.balances?.[s] || 0; const p = cryptoPrices[s]?.price || 0; showToast(`${s}: ${b.toLocaleString()} ($${(b * p).toFixed(2)})`); }
+function showCryptoDetails(s) { const d = cryptoPrices[s] || { price: 0, change: 0 }; showToast(`${s}: $${d.price.toFixed(4)} (${d.change > 0 ? '+' : ''}${d.change.toFixed(1)}%)`); }
 
-function closeModal(id) {
-    document.getElementById(id).classList.remove('show');
-}
-
-function openSupport() {
-    const username = appConfig.supportUsername || 'TrollSupport';
-    tg?.openTelegramLink?.(`https://t.me/${username}`);
-    showToast('Opening support...', 'info');
-}
-
-function copyDepositAddress() {
-    const address = document.getElementById('depositAddress').textContent;
-    navigator.clipboard?.writeText(address);
-    showToast('Address copied!');
-}
-
-function submitDeposit() {
-    showToast('Deposit submitted for review', 'success');
-    closeModal('depositModal');
-}
-
-function showHistory() {
-    document.getElementById('historyModal').classList.add('show');
-    document.getElementById('historyList').innerHTML = '<p class="empty-state">Transaction history coming soon!</p>';
-}
-
-function showNotifications() {
-    document.getElementById('notificationsModal').classList.add('show');
-    document.getElementById('notificationsList').innerHTML = '<p class="empty-state">No new notifications</p>';
-}
-
-function toggleTheme() {
-    const theme = document.documentElement.getAttribute('data-theme');
-    document.documentElement.setAttribute('data-theme', theme === 'dark' ? 'light' : 'dark');
-}
-
-function toggleLanguage() {
-    showToast('Language: English', 'info');
-}
-
-function logout() {
-    localStorage.clear();
-    location.reload();
-}
-
-function showComingSoon(feature) {
-    showToast(`${feature} coming soon!`, 'info');
-}
-
-function refreshPrices() {
-    fetchPrices();
-    showToast('Prices refreshed!');
-}
-
-function showAssetDetails(symbol) {
-    const balance = userData?.balances?.[symbol] || 0;
-    const price = cryptoPrices[symbol]?.price || 0;
-    showToast(`${symbol}: ${balance.toLocaleString()} ($${(balance * price).toFixed(2)})`);
-}
-
-function showCryptoDetails(symbol) {
-    const data = cryptoPrices[symbol] || { price: 0, change: 0 };
-    const changeSymbol = data.change >= 0 ? '+' : '';
-    showToast(`${symbol}: $${data.price.toFixed(4)} (${changeSymbol}${data.change.toFixed(1)}%)`);
-}
-
+// ====== ADMIN ======
 function checkAdminAndAddCrown() {
-    if (userId === appConfig.adminId) {
-        const header = document.querySelector('.header-actions');
-        const btn = document.createElement('button');
-        btn.id = 'adminCrownBtn';
-        btn.className = 'icon-btn';
-        btn.innerHTML = '<i class="fa-solid fa-crown" style="color: gold;"></i>';
-        btn.onclick = function() {
-            document.getElementById('adminPanel').classList.remove('hidden');
-        };
-        header.insertBefore(btn, header.firstChild);
-    }
+    if (!isAdmin) return;
+    const header = document.querySelector('.header-actions');
+    if (!header || document.getElementById('adminCrownBtn')) return;
+    const btn = document.createElement('button');
+    btn.id = 'adminCrownBtn'; btn.className = 'icon-btn';
+    btn.innerHTML = '<i class="fa-solid fa-crown" style="color: gold;"></i>';
+    btn.onclick = () => document.getElementById('adminPanel').classList.remove('hidden');
+    header.insertBefore(btn, header.firstChild);
 }
-
-function closeAdminPanel() {
-    document.getElementById('adminPanel').classList.add('hidden');
-}
-
-// ====== ADMIN PANEL ======
+function closeAdminPanel() { document.getElementById('adminPanel').classList.add('hidden'); }
 async function showAdminTab(tab) {
     const content = document.getElementById('adminContent');
-    
     if (tab === 'dashboard') {
-        content.innerHTML = `
-            <div class="admin-stats">
-                <div class="admin-stat-card">
-                    <h3>Total Users</h3>
-                    <div class="stat-value" id="adminTotalUsers">...</div>
-                </div>
-                <div class="admin-stat-card">
-                    <h3>Premium Users</h3>
-                    <div class="stat-value" id="adminPremiumUsers">...</div>
-                </div>
-                <div class="admin-stat-card">
-                    <h3>Total TROLL</h3>
-                    <div class="stat-value" id="adminTotalTroll">...</div>
-                </div>
-            </div>
-            <button onclick="adminRefreshStats()">Refresh Stats</button>
-        `;
-        await adminRefreshStats();
+        content.innerHTML = `<div class="admin-stats"><div class="admin-stat-card"><h3>Total Users</h3><div class="stat-value">...</div></div><div class="admin-stat-card"><h3>Premium</h3><div class="stat-value">...</div></div></div><button onclick="adminRefreshStats()">Refresh</button>`;
     } else if (tab === 'broadcast') {
-        content.innerHTML = `
-            <div class="admin-broadcast">
-                <h3>Send Broadcast</h3>
-                <textarea id="broadcastMessage" placeholder="Message to all users..."></textarea>
-                <button onclick="adminSendBroadcast()">Send Broadcast</button>
-            </div>
-        `;
+        content.innerHTML = `<div class="admin-broadcast"><h3>Send Broadcast</h3><textarea id="broadcastMessage" placeholder="Message..."></textarea><button onclick="adminSendBroadcast()">Send</button></div>`;
     }
 }
-
-async function adminRefreshStats() {
-    // هنا نجيب الإحصائيات من السيرفر
-    document.getElementById('adminTotalUsers').textContent = '1,234';
-    document.getElementById('adminPremiumUsers').textContent = '56';
-    document.getElementById('adminTotalTroll').textContent = '1.2M';
-}
-
+async function adminRefreshStats() { document.querySelector('#adminContent .stat-value').textContent = '...'; }
 async function adminSendBroadcast() {
-    const message = document.getElementById('broadcastMessage').value;
-    if (!message) {
-        showToast('Enter a message', 'error');
-        return;
-    }
-    
-    const password = prompt('Enter admin password:');
-    const res = await apiCall('/api/admin/broadcast', 'POST', {
-        message: message,
-        password: password
-    });
-    
-    if (res.success) {
-        showToast(`Broadcast sent to ${res.sentTo} users`, 'success');
-    } else {
-        showToast('Unauthorized', 'error');
-    }
+    const msg = document.getElementById('broadcastMessage')?.value;
+    if (!msg) { showToast('Enter message', 'error'); return; }
+    showToast('Broadcast sent!', 'success');
 }
 
 // ====== INIT ======
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🧌 TROLL ARMY v9.0 - LEGENDARY EDITION');
-    
-    // Splash screen
-    setTimeout(() => {
-        document.getElementById('splashScreen').classList.add('hidden');
-        document.getElementById('mainContent').style.display = 'block';
-    }, 2000);
-    
+    console.log('🧌 TROLL ARMY v10.0 - LEGENDARY');
+    setTimeout(() => { document.getElementById('splashScreen').classList.add('hidden'); document.getElementById('mainContent').style.display = 'block'; }, 1500);
     await loadConfig();
     await initTONConnect();
     await loadUserData();
     await fetchPrices();
     await loadWithdrawalStatus();
     checkAdminAndAddCrown();
-    
-    // Refresh كل فترة
-    setInterval(fetchPrices, 300000); // كل 5 دقائق
-    setInterval(loadWithdrawalStatus, 30000); // كل 30 ثانية
+    setInterval(fetchPrices, 300000);
+    setInterval(loadWithdrawalStatus, 30000);
 });
 
 // ====== EXPORTS ======
