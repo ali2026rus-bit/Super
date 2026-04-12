@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Troll TG Wallet</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -11,7 +11,7 @@
     <!-- Splash Screen -->
     <div id="splashScreen" class="splash-screen">
         <div class="splash-content">
-            <div class="troll-face">🧌</div>
+            <div class="troll-face">😏</div>
             <h1>TROLL</h1>
             <p>Problem? 😏</p>
         </div>
@@ -25,148 +25,305 @@
                 <div class="avatar" id="userAvatar">🧌</div>
                 <div class="user-details">
                     <h3 id="userName">Troll</h3>
-                    <p id="userIdDisplay">ID: -----</p>
+                    <p id="userIdDisplay">Telegram ID: -----</p>
                 </div>
             </div>
             <div class="header-actions">
+                <button class="icon-btn" id="supportBtn" onclick="openSupport()">
+                    <i class="fa-regular fa-headset"></i>
+                </button>
                 <button class="icon-btn" id="notificationBtn" onclick="showNotifications()">
-                    <i class="far fa-bell"></i>
+                    <i class="fa-regular fa-bell"></i>
                     <span class="badge" id="notificationBadge">0</span>
                 </button>
-                <button class="icon-btn" id="infoBtn" onclick="showInfoModal()">
-                    <i class="far fa-question-circle"></i>
-                </button>
             </div>
         </div>
 
-        <!-- Navigation -->
-        <div class="bottom-nav">
-            <button class="nav-item active" data-tab="wallet" onclick="showWallet()">
-                <i class="fas fa-wallet"></i>
-                <span data-i18n="nav.wallet">Wallet</span>
-            </button>
-            <button class="nav-item" data-tab="airdrop" onclick="showAirdrop()">
-                <i class="fas fa-parachute-box"></i>
-                <span data-i18n="nav.airdrop">Airdrop</span>
-            </button>
-            <button class="nav-item" data-tab="settings" onclick="showSettings()">
-                <i class="fas fa-cog"></i>
-                <span data-i18n="nav.settings">Settings</span>
-            </button>
-        </div>
-
-        <!-- Sections -->
+        <!-- Wallet Section -->
         <div id="walletSection" class="section">
+            <!-- Balance Card -->
             <div class="balance-card">
-                <span class="balance-label" data-i18n="wallet.totalBalance">Total Balance</span>
+                <span class="balance-label">Total Balance</span>
                 <div class="total-balance" id="totalBalance">$0.00</div>
-                <div class="token-balance">🪙 <span id="trollBalance">0</span> TROLL</div>
-            </div>
-            
-            <div class="action-buttons">
-                <button class="action-btn" onclick="showReceiveModal()">
-                    <i class="fas fa-qrcode"></i>
-                    <span>Receive</span>
-                </button>
-                <button class="action-btn" onclick="copyInviteLink()">
-                    <i class="fas fa-share-alt"></i>
-                    <span>Share</span>
-                </button>
+                <div class="token-balances">
+                    <span>🧌 <span id="trollBalance">0</span> TROLL</span>
+                    <span>≈ $<span id="trollUsdValue">0.00</span></span>
+                </div>
+                <div class="action-buttons">
+                    <button class="action-btn" onclick="showDepositModal()">
+                        <i class="fa-regular fa-arrow-down"></i>
+                        <span>Deposit</span>
+                    </button>
+                    <button class="action-btn" onclick="showWithdrawModal()">
+                        <i class="fa-regular fa-arrow-up"></i>
+                        <span>Withdraw</span>
+                    </button>
+                    <button class="action-btn" onclick="showHistory()">
+                        <i class="fa-regular fa-clock"></i>
+                        <span>History</span>
+                    </button>
+                    <button class="action-btn" onclick="showComingSoon('Swap')">
+                        <i class="fa-regular fa-arrow-right-arrow-left"></i>
+                        <span>Swap</span>
+                    </button>
+                </div>
             </div>
 
+            <!-- My Assets -->
             <div class="assets-section">
                 <h4>My Assets</h4>
                 <div id="assetsList" class="assets-list"></div>
             </div>
-            
-            <!-- Sticker Area -->
-            <div id="welcomeSticker" class="welcome-sticker"></div>
+
+            <!-- Top Cryptocurrencies -->
+            <div class="top-crypto-section">
+                <div class="section-header">
+                    <h4>Top Cryptocurrencies</h4>
+                    <button class="refresh-btn" onclick="refreshPrices()">
+                        <i class="fa-regular fa-rotate-right"></i>
+                    </button>
+                </div>
+                <div id="topCryptoList" class="top-crypto-list"></div>
+            </div>
         </div>
 
+        <!-- Airdrop Section -->
         <div id="airdropSection" class="section hidden">
             <div class="airdrop-header">
-                <div class="troll-face-large">🧌</div>
-                <h2>TROLL Airdrop</h2>
-                <p>Invite friends and climb the troll ranks!</p>
+                <div class="troll-face-large">😏</div>
+                <h2>TROLL AIRDROP</h2>
+                <p>Invite friends, earn TROLL, unlock withdrawal!</p>
             </div>
 
             <div class="stats-grid">
                 <div class="stat-card">
-                    <span data-i18n="airdrop.totalInvites">Total Invites</span>
+                    <span>Total Invites</span>
                     <span id="totalInvites">0</span>
                 </div>
                 <div class="stat-card">
-                    <span data-i18n="airdrop.earned">TROLL Earned</span>
+                    <span>TROLL Earned</span>
                     <span id="trollEarned">0</span>
                 </div>
             </div>
 
+            <!-- Withdrawal Lock Status -->
+            <div class="withdrawal-lock-card" id="withdrawalLockCard">
+                <!-- سيتم ملؤه ديناميكياً -->
+            </div>
+
+            <!-- Referral Link -->
             <div class="referral-link-card">
-                <label data-i18n="airdrop.yourLink">Your Invite Link</label>
+                <label>Your Invite Link</label>
                 <div class="link-container">
                     <input type="text" id="inviteLink" readonly>
                     <button class="copy-btn" onclick="copyInviteLink()">
-                        <i class="far fa-copy"></i>
+                        <i class="fa-regular fa-copy"></i>
                     </button>
                 </div>
                 <button class="share-btn" onclick="shareInviteLink()">
-                    <i class="fab fa-telegram"></i> Share on Telegram
+                    <i class="fa-brands fa-telegram"></i> Share on Telegram
                 </button>
             </div>
 
+            <!-- Milestones -->
             <div class="milestones-section">
                 <h4>Troll Ranks</h4>
                 <div id="milestonesList" class="milestones-list"></div>
             </div>
         </div>
 
+        <!-- Settings Section -->
         <div id="settingsSection" class="section hidden">
+            <div class="profile-card">
+                <div class="profile-avatar" id="settingsAvatar">🧌</div>
+                <h3 id="settingsUserName">Troll</h3>
+                <p id="settingsUserId">ID: -----</p>
+                <p id="settingsJoinDate">Joined: --</p>
+            </div>
+
             <div class="settings-list">
-                <div class="settings-item" onclick="toggleLanguage()">
-                    <i class="fas fa-language"></i>
-                    <span data-i18n="settings.language">Language</span>
-                    <span id="currentLanguageFlag">🇬🇧</span>
+                <!-- Premium Unlock -->
+                <div class="settings-item premium-item" onclick="showPremiumModal()">
+                    <div class="settings-item-left">
+                        <i class="fa-regular fa-crown" style="color: gold;"></i>
+                        <div>
+                            <h4>Premium Unlock</h4>
+                            <p>Instant withdrawal + 😏 Avatar</p>
+                        </div>
+                    </div>
+                    <span class="premium-price">5 TON</span>
                 </div>
-                <div class="settings-item" onclick="toggleTheme()">
-                    <i class="fas fa-moon"></i>
-                    <span data-i18n="settings.theme">Theme</span>
-                </div>
+
+                <!-- TON Connect -->
                 <div class="settings-item" onclick="connectTONWallet()">
-                    <i class="fas fa-link"></i>
+                    <i class="fa-regular fa-link"></i>
                     <span>Connect TON Wallet</span>
+                    <span id="tonWalletStatus">Not connected</span>
                 </div>
+
+                <!-- Theme Toggle -->
+                <div class="settings-item" onclick="toggleTheme()">
+                    <i class="fa-regular fa-moon"></i>
+                    <span>Dark Mode</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="themeToggle">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <!-- Notifications -->
                 <div class="settings-item" onclick="showNotifications()">
-                    <i class="fas fa-bell"></i>
-                    <span data-i18n="notifications.title">Notifications</span>
+                    <i class="fa-regular fa-bell"></i>
+                    <span>Notifications</span>
+                </div>
+
+                <!-- Language -->
+                <div class="settings-item" onclick="toggleLanguage()">
+                    <i class="fa-regular fa-language"></i>
+                    <span>Language</span>
+                    <span id="currentLanguage">EN</span>
+                </div>
+
+                <!-- Logout -->
+                <div class="settings-item logout-item" onclick="logout()">
+                    <i class="fa-regular fa-sign-out"></i>
+                    <span>Logout</span>
                 </div>
             </div>
+
             <div class="app-info">
-                <p>Troll TG Wallet v1.0</p>
-                <p>Built on Solana 🧌</p>
+                <p>Troll TG Wallet v2.0</p>
+                <p>Distribution: May 1, 2026</p>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <div class="bottom-nav">
+            <button class="nav-item active" data-tab="wallet" onclick="showWallet()">
+                <i class="fa-regular fa-wallet"></i>
+                <span>Wallet</span>
+            </button>
+            <button class="nav-item" data-tab="airdrop" onclick="showAirdrop()">
+                <i class="fa-regular fa-parachute-box"></i>
+                <span>Airdrop</span>
+            </button>
+            <button class="nav-item" data-tab="settings" onclick="showSettings()">
+                <i class="fa-regular fa-gear"></i>
+                <span>Settings</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Deposit Modal -->
+    <div id="depositModal" class="modal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeModal('depositModal')">&times;</button>
+            <h2>📥 Deposit TROLL</h2>
+            <div class="deposit-address-container">
+                <label>Your deposit address (BSC BEP-20):</label>
+                <div class="address-box">
+                    <code id="depositAddress">Loading...</code>
+                    <button onclick="copyDepositAddress()">
+                        <i class="fa-regular fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="deposit-info">
+                <p><i class="fa-regular fa-circle-info"></i> Minimum deposit: 10,000 TROLL</p>
+                <p><i class="fa-regular fa-clock"></i> Confirmation: 1-5 minutes</p>
+            </div>
+            <div class="input-group">
+                <label>Transaction ID (optional):</label>
+                <input type="text" id="txIdInput" placeholder="0x...">
+            </div>
+            <button class="modal-action-btn" onclick="submitDeposit()">Submit Deposit</button>
+        </div>
+    </div>
+
+    <!-- Withdraw Modal -->
+    <div id="withdrawModal" class="modal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeModal('withdrawModal')">&times;</button>
+            <h2>💸 Withdraw TROLL</h2>
+            <div id="withdrawLockContent">
+                <!-- سيتم ملؤه ديناميكياً -->
             </div>
         </div>
     </div>
 
-    <!-- Info Modal -->
-    <div id="infoModal" class="modal">
+    <!-- Premium Modal -->
+    <div id="premiumModal" class="modal">
+        <div class="modal-content premium-modal">
+            <button class="close-btn" onclick="closeModal('premiumModal')">&times;</button>
+            <div class="premium-icon">😏</div>
+            <h2>Premium Unlock</h2>
+            <p>Get the legendary Troll Face avatar and <strong>INSTANT withdrawal access</strong>!</p>
+            <div class="premium-features">
+                <div class="feature">
+                    <i class="fa-regular fa-check-circle"></i>
+                    <span>Exclusive 😏 Avatar</span>
+                </div>
+                <div class="feature">
+                    <i class="fa-regular fa-check-circle"></i>
+                    <span>Instant Withdrawal</span>
+                </div>
+                <div class="feature">
+                    <i class="fa-regular fa-check-circle"></i>
+                    <span>Skip all missions</span>
+                </div>
+            </div>
+            <div class="premium-price-large">5 TON</div>
+            <button class="premium-buy-btn" onclick="buyPremium()">
+                <i class="fa-brands fa-telegram"></i> Pay with TON
+            </button>
+            <p class="premium-note">Payment processed via Telegram Wallet</p>
+        </div>
+    </div>
+
+    <!-- Admin Panel -->
+    <div id="adminPanel" class="admin-panel hidden">
+        <div class="admin-header">
+            <h2>👑 Admin Panel</h2>
+            <button onclick="closeAdminPanel()">&times;</button>
+        </div>
+        <div class="admin-tabs">
+            <button class="admin-tab active" onclick="showAdminTab('dashboard')">Dashboard</button>
+            <button class="admin-tab" onclick="showAdminTab('users')">Users</button>
+            <button class="admin-tab" onclick="showAdminTab('broadcast')">Broadcast</button>
+        </div>
+        <div id="adminContent" class="admin-content">
+            <!-- سيتم ملؤه ديناميكياً -->
+        </div>
+    </div>
+
+    <!-- History Modal -->
+    <div id="historyModal" class="modal">
         <div class="modal-content">
-            <button class="close-btn" onclick="closeModal('infoModal')">&times;</button>
-            <div class="troll-face-large">🧌</div>
-            <h2>What is TROLL?</h2>
-            <p>The TROLL token on Solana is a meme coin inspired by internet trolling culture, designed for entertainment and community engagement with no intrinsic value.</p>
-            <p>Built on Solana's blockchain, it leverages fast transactions and low fees.</p>
-            <a href="https://t.me/TrollOfficial" target="_blank" class="channel-btn">
-                <i class="fab fa-telegram"></i> Join Troll Army
-            </a>
+            <button class="close-btn" onclick="closeModal('historyModal')">&times;</button>
+            <h2>📋 Transaction History</h2>
+            <div id="historyList" class="history-list"></div>
+        </div>
+    </div>
+
+    <!-- Notifications Modal -->
+    <div id="notificationsModal" class="modal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeModal('notificationsModal')">&times;</button>
+            <h2>🔔 Notifications</h2>
+            <div id="notificationsList" class="notifications-list"></div>
         </div>
     </div>
 
     <!-- Toast -->
     <div id="toast" class="toast hidden">
-        <i class="far fa-info-circle"></i>
+        <i class="fa-regular fa-circle-info"></i>
         <span id="toastMessage"></span>
     </div>
 
+    <!-- Sticker -->
+    <div id="welcomeSticker" class="welcome-sticker"></div>
+
+    <!-- Scripts -->
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <script src="app.js"></script>
