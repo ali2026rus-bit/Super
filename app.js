@@ -1,7 +1,6 @@
 // ============================================================================
-// TROLL ARMY - COMPLETE PROFESSIONAL APP
-// Version: 19.0 Final
-// Features: Telegram Auth + 4 Mystery Missions + Referrals + TON + Admin
+// TROLL ARMY - FINAL COMPLETE VERSION
+// Version: 20.0 - Fixed initData + Guest Registration
 // ============================================================================
 
 // ====== TELEGRAM WEBAPP ======
@@ -48,34 +47,10 @@ const ALL_ASSETS = [
 
 // ====== MYSTERY MISSIONS ======
 const MISSIONS = {
-    mission1: {
-        id: 'solana_wallet',
-        title: 'Mission 1: Connect Solana',
-        desc: 'Add your TROLL Solana wallet',
-        hint: 'Go to Settings → Solana Wallet'
-    },
-    mission2: {
-        id: 'referral_earnings',
-        title: 'Mission 2: Build Wealth',
-        desc: 'Earn 12,500 TROLL from referrals',
-        hint: 'Each referral gives 500 TROLL',
-        required: 12500
-    },
-    mission3: {
-        id: 'new_referrals',
-        title: 'Mission 3: Expand Army',
-        desc: 'Get 12 NEW referrals',
-        hint: 'Only new referrals count',
-        required: 12
-    },
-    mission4: {
-        id: 'holdings',
-        title: 'Mission 4: Prove Holdings',
-        desc: 'Hold 0.025 BNB or 0.25 SOL',
-        hint: 'Deposit to your wallet',
-        requiredBNB: 0.025,
-        requiredSOL: 0.25
-    }
+    mission1: { id: 'solana_wallet', title: 'Mission 1: Connect Solana', desc: 'Add your TROLL Solana wallet', hint: 'Go to Settings → Solana Wallet' },
+    mission2: { id: 'referral_earnings', title: 'Mission 2: Build Wealth', desc: 'Earn 12,500 TROLL from referrals', hint: 'Each referral gives 500 TROLL', required: 12500 },
+    mission3: { id: 'new_referrals', title: 'Mission 3: Expand Army', desc: 'Get 12 NEW referrals', hint: 'Only new referrals count', required: 12 },
+    mission4: { id: 'holdings', title: 'Mission 4: Prove Holdings', desc: 'Hold 0.025 BNB or 0.25 SOL', hint: 'Deposit to your wallet', requiredBNB: 0.025, requiredSOL: 0.25 }
 };
 
 // ====== MILESTONES ======
@@ -100,15 +75,8 @@ function getDefaultMissions() {
 
 // ====== API CALL ======
 async function apiCall(endpoint, method, body) {
-    const options = {
-        method: method,
-        headers: { 'Content-Type': 'application/json' }
-    };
-    
-    if (body) {
-        options.body = JSON.stringify(body);
-    }
-    
+    const options = { method: method, headers: { 'Content-Type': 'application/json' } };
+    if (body) options.body = JSON.stringify(body);
     try {
         const response = await fetch('/api' + endpoint, options);
         const data = await response.json();
@@ -124,15 +92,11 @@ async function loadConfig() {
     try {
         const response = await fetch('/api/config');
         appConfig = await response.json();
-        
         if (appConfig.firebaseConfig && typeof firebase !== 'undefined') {
-            if (!firebase.apps.length) {
-                firebase.initializeApp(appConfig.firebaseConfig);
-            }
+            if (!firebase.apps.length) firebase.initializeApp(appConfig.firebaseConfig);
             db = firebase.firestore();
             console.log('🔥 Firebase ready');
         }
-        
         return true;
     } catch (error) {
         console.error('Config error:', error);
@@ -140,32 +104,44 @@ async function loadConfig() {
     }
 }
 
-// ====== INIT USER (CALLS SERVER) ======
+// ====== INIT USER (FIXED) ======
 async function initUser() {
     console.log('🚀 Initializing user...');
     
-    // Check Telegram
     if (!tg) {
         console.log('❌ Not in Telegram');
-        createGuestUser();
+        await createGuestUser();
         return;
     }
     
     tg.ready();
     tg.expand();
     
-    const initData = tg.initData || '';
+    // ✅ بناء initData من كل المصادر
+    let initData = tg.initData || '';
+    
+    if (!initData && tg.initDataUnsafe) {
+        console.log('📦 Building initData from initDataUnsafe...');
+        const data = {
+            query_id: tg.initDataUnsafe.query_id,
+            user: JSON.stringify(tg.initDataUnsafe.user),
+            auth_date: tg.initDataUnsafe.auth_date,
+            hash: tg.initDataUnsafe.hash
+        };
+        initData = Object.keys(data).filter(k => data[k]).map(k => `${k}=${encodeURIComponent(data[k])}`).join('&');
+    }
+    
+    console.log('📤 initData length:', initData.length);
     
     if (!initData) {
         console.log('❌ No initData');
-        createGuestUser();
+        await createGuestUser();
         return;
     }
     
     console.log('📤 Authenticating with server...');
     
     try {
-        // Call server to authenticate
         const response = await fetch('/api/init-user', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -173,42 +149,38 @@ async function initUser() {
         });
         
         const data = await response.json();
+        console.log('📥 Server response:', data.success ? '✅ Success' : '❌ Failed');
         
         if (data.success) {
             console.log('✅ Authenticated:', data.userId);
-            
             currentUser = data.userData;
             currentUserId = data.userId;
             isGuest = false;
             
-            // Save to localStorage
             localStorage.setItem('troll_user_id', data.userId);
             localStorage.setItem('troll_user_data', JSON.stringify(data.userData));
             
-            // Show app
             hideAllScreens();
             showMainApp();
             updateUI();
             checkAdmin();
-            
         } else {
-            console.log('❌ Auth failed');
-            createGuestUser();
+            console.log('❌ Auth failed:', data.error);
+            await createGuestUser();
         }
-        
     } catch (error) {
         console.error('❌ Server error:', error);
-        createGuestUser();
+        await createGuestUser();
     }
 }
 
-// ====== CREATE GUEST USER ======
-function createGuestUser() {
+// ====== CREATE GUEST USER (FIXED - SAVES TO DB) ======
+async function createGuestUser() {
     console.log('🎭 Creating guest user...');
     
     const guestId = 'guest_' + Date.now();
     
-    currentUser = {
+    const guestData = {
         userId: guestId,
         userName: 'Guest',
         balances: { TROLL: 0, BNB: 0, SOL: 0, ETH: 0, TRON: 0 },
@@ -221,14 +193,28 @@ function createGuestUser() {
         settings: { solanaWallet: null },
         withdrawalMissions: getDefaultMissions(),
         notifications: [],
-        transactions: []
+        transactions: [],
+        isGuest: true
     };
     
+    currentUser = guestData;
     currentUserId = guestId;
     isGuest = true;
     
     localStorage.setItem('troll_user_id', guestId);
-    localStorage.setItem('troll_user_data', JSON.stringify(currentUser));
+    localStorage.setItem('troll_user_data', JSON.stringify(guestData));
+    
+    // ✅ إرسال إلى السيرفر
+    try {
+        await fetch('/api/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: guestId, userData: guestData })
+        });
+        console.log('✅ Guest saved to database');
+    } catch (e) {
+        console.log('⚠️ Guest saved locally only');
+    }
     
     hideAllScreens();
     showMainApp();
@@ -249,7 +235,6 @@ function hideAllScreens() {
 function showMainApp() {
     const main = document.getElementById('mainApp');
     const nav = document.getElementById('bottomNav');
-    
     if (main) main.style.display = 'block';
     if (nav) nav.style.display = 'flex';
 }
@@ -257,7 +242,6 @@ function showMainApp() {
 // ====== CHECK ADMIN ======
 function checkAdmin() {
     const isAdmin = (currentUserId === appConfig.adminId);
-    
     if (isAdmin) {
         const header = document.querySelector('.header-actions');
         if (header && !document.getElementById('adminCrownBtn')) {
@@ -275,13 +259,10 @@ function checkAdmin() {
 function updateUI() {
     if (!currentUser) return;
     
-    // Header
-    const userNameEl = document.getElementById('userName');
-    const userIdEl = document.getElementById('userIdDisplay');
-    const avatarEl = document.getElementById('userAvatar');
+    document.getElementById('userName').textContent = currentUser.userName || 'User';
+    document.getElementById('userIdDisplay').textContent = 'ID: ' + (currentUserId || '').slice(-8);
     
-    if (userNameEl) userNameEl.textContent = currentUser.userName || 'User';
-    if (userIdEl) userIdEl.textContent = 'ID: ' + (currentUserId || '').slice(-8);
+    const avatarEl = document.getElementById('userAvatar');
     if (avatarEl) {
         if (currentUser.premium) {
             avatarEl.innerHTML = getTrollFaceSVG();
@@ -291,31 +272,16 @@ function updateUI() {
         }
     }
     
-    // Balance
     const troll = currentUser.balances?.TROLL || 0;
-    const trollEl = document.getElementById('trollBalance');
-    if (trollEl) trollEl.textContent = troll.toLocaleString();
+    document.getElementById('trollBalance').textContent = troll.toLocaleString();
+    document.getElementById('totalInvites').textContent = currentUser.inviteCount || 0;
+    document.getElementById('trollEarned').textContent = (currentUser.referralEarnings || 0).toLocaleString();
+    document.getElementById('inviteLink').value = getReferralLink();
     
-    // Invites
-    const invitesEl = document.getElementById('totalInvites');
-    const earnedEl = document.getElementById('trollEarned');
-    if (invitesEl) invitesEl.textContent = currentUser.inviteCount || 0;
-    if (earnedEl) earnedEl.textContent = (currentUser.referralEarnings || 0).toLocaleString();
-    
-    // Link
-    const linkEl = document.getElementById('inviteLink');
-    if (linkEl) linkEl.value = getReferralLink();
-    
-    // Settings
     updateSettingsUI();
     
-    // Page specific
-    if (currentPage === 'wallet') {
-        renderAssets();
-    } else if (currentPage === 'airdrop') {
-        renderMissionsUI();
-        renderMilestones();
-    }
+    if (currentPage === 'wallet') renderAssets();
+    else if (currentPage === 'airdrop') { renderMissionsUI(); renderMilestones(); }
 }
 
 // ====== GET TROLL FACE SVG ======
@@ -331,38 +297,25 @@ function getTrollFaceSVG() {
 // ====== UPDATE SETTINGS UI ======
 function updateSettingsUI() {
     const avatarEl = document.getElementById('settingsAvatar');
-    const nameEl = document.getElementById('settingsUserName');
-    const idEl = document.getElementById('settingsUserId');
-    const walletEl = document.getElementById('currentSolanaWallet');
-    const tonEl = document.getElementById('tonWalletStatus');
-    
     if (avatarEl) {
-        if (currentUser.premium) {
-            avatarEl.innerHTML = getTrollFaceSVG();
-        } else {
-            avatarEl.textContent = currentUser.avatar || '🧌';
-        }
+        avatarEl.innerHTML = currentUser.premium ? getTrollFaceSVG() : (currentUser.avatar || '🧌');
     }
-    if (nameEl) nameEl.textContent = currentUser.userName || 'User';
-    if (idEl) idEl.textContent = 'ID: ' + currentUserId;
+    document.getElementById('settingsUserName').textContent = currentUser.userName || 'User';
+    document.getElementById('settingsUserId').textContent = 'ID: ' + currentUserId;
     
-    if (walletEl) {
-        const wallet = currentUser.settings?.solanaWallet;
-        walletEl.textContent = wallet ? wallet.slice(0, 8) + '...' + wallet.slice(-4) : 'Not set';
-    }
+    const wallet = currentUser.settings?.solanaWallet;
+    document.getElementById('currentSolanaWallet').textContent = wallet ? wallet.slice(0, 8) + '...' + wallet.slice(-4) : 'Not set';
     
+    const tonEl = document.getElementById('tonWalletStatus');
     if (tonEl) {
-        tonEl.textContent = tonConnected && tonWalletAddress ? 
-            tonWalletAddress.slice(0, 6) + '...' + tonWalletAddress.slice(-6) : 'Not connected';
+        tonEl.textContent = tonConnected && tonWalletAddress ? tonWalletAddress.slice(0, 6) + '...' + tonWalletAddress.slice(-6) : 'Not connected';
         tonEl.style.color = tonConnected ? '#2ecc71' : '';
     }
 }
 
 // ====== GET REFERRAL LINK ======
 function getReferralLink() {
-    if (!currentUserId || currentUserId.startsWith('guest_')) {
-        return CONFIG.BOT_LINK;
-    }
+    if (!currentUserId || currentUserId.startsWith('guest_')) return CONFIG.BOT_LINK;
     return CONFIG.BOT_LINK + '?startapp=' + currentUserId;
 }
 
@@ -370,29 +323,14 @@ function getReferralLink() {
 function renderAssets() {
     const container = document.getElementById('assetsList');
     if (!container) return;
-    
     let html = '';
-    
     for (const asset of ALL_ASSETS) {
         const balance = currentUser.balances?.[asset.symbol] || 0;
-        const icon = ICONS[asset.symbol] || ICONS.TROLL;
-        
-        html += `
-            <div class="asset-item" onclick="showAssetDetails('${asset.symbol}')">
-                <div class="asset-left">
-                    <img src="${icon}" class="asset-icon-img" alt="${asset.symbol}">
-                    <div class="asset-info">
-                        <h4>${asset.name}</h4>
-                        <p>${asset.symbol}</p>
-                    </div>
-                </div>
-                <div class="asset-right">
-                    <div class="asset-balance">${balance.toLocaleString()} ${asset.symbol}</div>
-                </div>
-            </div>
-        `;
+        html += `<div class="asset-item" onclick="showAssetDetails('${asset.symbol}')">
+            <div class="asset-left"><img src="${ICONS[asset.symbol] || ICONS.TROLL}" class="asset-icon-img"><div class="asset-info"><h4>${asset.name}</h4><p>${asset.symbol}</p></div></div>
+            <div class="asset-right"><div class="asset-balance">${balance.toLocaleString()} ${asset.symbol}</div></div>
+        </div>`;
     }
-    
     container.innerHTML = html;
 }
 
@@ -400,132 +338,44 @@ function renderAssets() {
 function renderMissionsUI() {
     const container = document.getElementById('withdrawalLockCard');
     if (!container) return;
-    
     const m = currentUser.withdrawalMissions;
     
-    // Premium check
     if (currentUser.premium) {
-        container.innerHTML = `
-            <div class="premium-unlocked-card">
-                <div class="premium-icon-large">😏</div>
-                <h3>Premium Unlocked!</h3>
-                <p>Instant withdrawal access!</p>
-            </div>
-        `;
+        container.innerHTML = `<div class="premium-unlocked-card"><div class="premium-icon-large">😏</div><h3>Premium Unlocked!</h3><p>Instant withdrawal access!</p></div>`;
         return;
     }
     
-    let html = `
-        <div class="lock-header">
-            <i class="fa-solid fa-${currentUser.withdrawalUnlocked ? 'unlock' : 'lock'}"></i>
-            <span>${currentUser.withdrawalUnlocked ? '✅ Withdrawal Available!' : '🔒 Withdrawal Locked'}</span>
-        </div>
-        <div class="missions-list-vertical">
-    `;
+    let html = `<div class="lock-header"><i class="fa-solid fa-${currentUser.withdrawalUnlocked ? 'unlock' : 'lock'}"></i><span>${currentUser.withdrawalUnlocked ? '✅ Withdrawal Available!' : '🔒 Withdrawal Locked'}</span></div><div class="missions-list-vertical">`;
     
     // Mission 1
-    html += `
-        <div class="mission-card ${m.mission1.completed ? 'completed' : ''}">
-            <div class="mission-icon">${m.mission1.completed ? '✅' : '1️⃣'}</div>
-            <div class="mission-content">
-                <h4>${MISSIONS.mission1.title}</h4>
-                <p>${currentUser.settings?.solanaWallet ? 'Wallet: ' + currentUser.settings.solanaWallet.slice(0, 8) + '...' : MISSIONS.mission1.desc}</p>
-                ${!m.mission1.completed ? '<button class="mission-action-btn" onclick="showSolanaWalletModal()">Add Wallet</button>' : ''}
-            </div>
-        </div>
-    `;
+    html += `<div class="mission-card ${m.mission1.completed ? 'completed' : ''}"><div class="mission-icon">${m.mission1.completed ? '✅' : '1️⃣'}</div><div class="mission-content"><h4>${MISSIONS.mission1.title}</h4><p>${currentUser.settings?.solanaWallet ? 'Wallet: ' + currentUser.settings.solanaWallet.slice(0, 8) + '...' : MISSIONS.mission1.desc}</p>${!m.mission1.completed ? '<button class="mission-action-btn" onclick="showSolanaWalletModal()">Add Wallet</button>' : ''}</div></div>`;
     
     // Mission 2
     if (m.mission2.revealed) {
         const prog = (m.mission2.currentAmount / 12500) * 100;
-        html += `
-            <div class="mission-card ${m.mission2.completed ? 'completed' : ''}">
-                <div class="mission-icon">${m.mission2.completed ? '✅' : '2️⃣'}</div>
-                <div class="mission-content">
-                    <h4>${MISSIONS.mission2.title}</h4>
-                    <p>${m.mission2.currentAmount.toLocaleString()} / 12,500 TROLL</p>
-                    <div class="progress-bar small"><div class="progress-fill" style="width:${prog}%"></div></div>
-                    <p class="mission-hint">💡 ${MISSIONS.mission2.hint}</p>
-                </div>
-            </div>
-        `;
+        html += `<div class="mission-card ${m.mission2.completed ? 'completed' : ''}"><div class="mission-icon">${m.mission2.completed ? '✅' : '2️⃣'}</div><div class="mission-content"><h4>${MISSIONS.mission2.title}</h4><p>${m.mission2.currentAmount.toLocaleString()} / 12,500 TROLL</p><div class="progress-bar small"><div class="progress-fill" style="width:${prog}%"></div></div><p class="mission-hint">💡 ${MISSIONS.mission2.hint}</p></div></div>`;
     } else {
-        html += `
-            <div class="mission-card mystery">
-                <div class="mission-icon">❓</div>
-                <div class="mission-content">
-                    <h4>Mission 2: ???</h4>
-                    <p>Reveals after Mission 1</p>
-                </div>
-            </div>
-        `;
+        html += `<div class="mission-card mystery"><div class="mission-icon">❓</div><div class="mission-content"><h4>Mission 2: ???</h4><p>Reveals after Mission 1</p></div></div>`;
     }
     
     // Mission 3
     if (m.mission3.revealed) {
         const prog = (m.mission3.currentNewReferrals / 12) * 100;
-        html += `
-            <div class="mission-card ${m.mission3.completed ? 'completed' : ''}">
-                <div class="mission-icon">${m.mission3.completed ? '✅' : '3️⃣'}</div>
-                <div class="mission-content">
-                    <h4>${MISSIONS.mission3.title}</h4>
-                    <p>${m.mission3.currentNewReferrals} / 12 new referrals</p>
-                    <div class="progress-bar small"><div class="progress-fill" style="width:${prog}%"></div></div>
-                    <p class="mission-hint">💡 ${MISSIONS.mission3.hint}</p>
-                </div>
-            </div>
-        `;
+        html += `<div class="mission-card ${m.mission3.completed ? 'completed' : ''}"><div class="mission-icon">${m.mission3.completed ? '✅' : '3️⃣'}</div><div class="mission-content"><h4>${MISSIONS.mission3.title}</h4><p>${m.mission3.currentNewReferrals} / 12 new referrals</p><div class="progress-bar small"><div class="progress-fill" style="width:${prog}%"></div></div><p class="mission-hint">💡 ${MISSIONS.mission3.hint}</p></div></div>`;
     } else {
-        html += `
-            <div class="mission-card mystery">
-                <div class="mission-icon">❓</div>
-                <div class="mission-content">
-                    <h4>Mission 3: ???</h4>
-                    <p>Reveals after Mission 2</p>
-                </div>
-            </div>
-        `;
+        html += `<div class="mission-card mystery"><div class="mission-icon">❓</div><div class="mission-content"><h4>Mission 3: ???</h4><p>Reveals after Mission 2</p></div></div>`;
     }
     
     // Mission 4
     if (m.mission4.revealed) {
         const bnb = currentUser.balances?.BNB || 0;
         const sol = currentUser.balances?.SOL || 0;
-        html += `
-            <div class="mission-card ${m.mission4.completed ? 'completed' : ''}">
-                <div class="mission-icon">${m.mission4.completed ? '✅' : '4️⃣'}</div>
-                <div class="mission-content">
-                    <h4>${MISSIONS.mission4.title}</h4>
-                    <p>BNB: ${bnb.toFixed(4)}/0.025 | SOL: ${sol.toFixed(4)}/0.25</p>
-                    <p class="mission-hint">💡 ${MISSIONS.mission4.hint}</p>
-                </div>
-            </div>
-        `;
+        html += `<div class="mission-card ${m.mission4.completed ? 'completed' : ''}"><div class="mission-icon">${m.mission4.completed ? '✅' : '4️⃣'}</div><div class="mission-content"><h4>${MISSIONS.mission4.title}</h4><p>BNB: ${bnb.toFixed(4)}/0.025 | SOL: ${sol.toFixed(4)}/0.25</p><p class="mission-hint">💡 ${MISSIONS.mission4.hint}</p></div></div>`;
     } else if (m.mission3.completed) {
-        const revealDate = new Date(m.mission4.revealDate);
-        const now = new Date();
-        const daysLeft = Math.max(0, Math.ceil((revealDate - now) / (1000 * 60 * 60 * 24)));
-        
-        html += `
-            <div class="mission-card mystery-timer">
-                <div class="mission-icon">⏳</div>
-                <div class="mission-content">
-                    <h4>Final Mystery Mission</h4>
-                    <p>Reveals in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}</p>
-                    <div class="timer-progress-bar"><div class="timer-fill" style="width:${((20 - daysLeft) / 20) * 100}%"></div></div>
-                </div>
-            </div>
-        `;
+        const daysLeft = Math.max(0, Math.ceil((new Date(m.mission4.revealDate) - new Date()) / (1000 * 60 * 60 * 24)));
+        html += `<div class="mission-card mystery-timer"><div class="mission-icon">⏳</div><div class="mission-content"><h4>Final Mystery Mission</h4><p>Reveals in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}</p><div class="timer-progress-bar"><div class="timer-fill" style="width:${((20 - daysLeft) / 20) * 100}%"></div></div></div></div>`;
     } else {
-        html += `
-            <div class="mission-card mystery">
-                <div class="mission-icon">❓</div>
-                <div class="mission-content">
-                    <h4>Mission 4: ???</h4>
-                    <p>Reveals after Mission 3</p>
-                </div>
-            </div>
-        `;
+        html += `<div class="mission-card mystery"><div class="mission-icon">❓</div><div class="mission-content"><h4>Mission 4: ???</h4><p>Reveals after Mission 3</p></div></div>`;
     }
     
     html += '</div>';
@@ -536,40 +386,20 @@ function renderMissionsUI() {
 function renderMilestones() {
     const container = document.getElementById('milestonesList');
     if (!container) return;
-    
     let html = '';
-    
     for (const m of MILESTONES) {
         const progress = Math.min(((currentUser.inviteCount || 0) / m.referrals) * 100, 100);
         const claimed = currentUser.claimedMilestones?.includes(m.referrals);
         const canClaim = (currentUser.inviteCount >= m.referrals) && !claimed && !m.isSpecial;
-        
-        html += `
-            <div class="milestone-item ${claimed ? 'claimed' : ''}">
-                <div class="milestone-header">
-                    <span>${m.title}</span>
-                    <span>${m.isSpecial ? '🎁 Mystery Box' : m.reward.toLocaleString() + ' TROLL'}</span>
-                </div>
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width:${progress}%"></div>
-                </div>
-                <div class="progress-text">${currentUser.inviteCount || 0}/${m.referrals}</div>
-                ${canClaim ? `<button class="claim-btn" onclick="claimMilestone(${m.referrals})">Claim</button>` : ''}
-                ${claimed ? '<p style="color:#2ecc71;text-align:center;">✓ Claimed</p>' : ''}
-            </div>
-        `;
+        html += `<div class="milestone-item ${claimed ? 'claimed' : ''}"><div class="milestone-header"><span>${m.title}</span><span>${m.isSpecial ? '🎁 Mystery Box' : m.reward.toLocaleString() + ' TROLL'}</span></div><div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div></div><div class="progress-text">${currentUser.inviteCount || 0}/${m.referrals}</div>${canClaim ? `<button class="claim-btn" onclick="claimMilestone(${m.referrals})">Claim</button>` : ''}${claimed ? '<p style="color:#2ecc71;text-align:center;">✓ Claimed</p>' : ''}</div>`;
     }
-    
     container.innerHTML = html;
 }
 
 // ====== SAVE USER DATA ======
 async function saveUserData() {
     localStorage.setItem('troll_user_data', JSON.stringify(currentUser));
-    
-    if (!isGuest) {
-        await apiCall('/users/' + currentUserId, 'PATCH', { updates: currentUser });
-    }
+    if (!isGuest) await apiCall('/users/' + currentUserId, 'PATCH', { updates: currentUser });
 }
 
 // ====== UPDATE MISSIONS PROGRESS ======
@@ -577,15 +407,11 @@ async function updateMissionsProgress() {
     const m = currentUser.withdrawalMissions;
     let changed = false;
     
-    // Mission 1
     if (!m.mission1.completed && currentUser.settings?.solanaWallet) {
         m.mission1.completed = true;
-        m.mission1.walletAddress = currentUser.settings.solanaWallet;
         m.mission2.revealed = true;
         changed = true;
     }
-    
-    // Mission 2
     if (m.mission2.revealed && !m.mission2.completed) {
         m.mission2.currentAmount = currentUser.referralEarnings || 0;
         if (m.mission2.currentAmount >= m.mission2.requiredAmount) {
@@ -595,8 +421,6 @@ async function updateMissionsProgress() {
             changed = true;
         }
     }
-    
-    // Mission 3
     if (m.mission3.revealed && !m.mission3.completed) {
         m.mission3.currentNewReferrals = Math.max(0, (currentUser.inviteCount || 0) - (m.mission3.referralsAtStart || 0));
         if (m.mission3.currentNewReferrals >= m.mission3.requiredReferrals) {
@@ -607,16 +431,10 @@ async function updateMissionsProgress() {
             changed = true;
         }
     }
-    
-    // Mission 4 - Reveal
-    if (m.mission3.completed && !m.mission4.revealed) {
-        if (new Date() >= new Date(m.mission4.revealDate)) {
-            m.mission4.revealed = true;
-            changed = true;
-        }
+    if (m.mission3.completed && !m.mission4.revealed && new Date() >= new Date(m.mission4.revealDate)) {
+        m.mission4.revealed = true;
+        changed = true;
     }
-    
-    // Mission 4 - Complete
     if (m.mission4.revealed && !m.mission4.completed) {
         const bnb = currentUser.balances?.BNB || 0;
         const sol = currentUser.balances?.SOL || 0;
@@ -625,35 +443,24 @@ async function updateMissionsProgress() {
             changed = true;
         }
     }
-    
-    // Unlock
     const allDone = m.mission1.completed && m.mission2.completed && m.mission3.completed && m.mission4.completed;
     if (allDone && !currentUser.withdrawalUnlocked) {
         currentUser.withdrawalUnlocked = true;
         changed = true;
     }
-    
-    if (changed) {
-        await saveUserData();
-    }
+    if (changed) await saveUserData();
 }
 
 // ====== SHOW SOLANA WALLET MODAL ======
 function showSolanaWalletModal() {
     const address = prompt('Enter your Solana wallet address (TROLL token):');
-    
     if (address && address.length > 30) {
         currentUser.settings = currentUser.settings || {};
         currentUser.settings.solanaWallet = address;
-        
         saveUserData();
         updateMissionsProgress();
         updateUI();
-        
-        if (currentPage === 'airdrop') {
-            renderMissionsUI();
-        }
-        
+        if (currentPage === 'airdrop') renderMissionsUI();
         showToast('✅ Wallet saved!', 'success');
     } else if (address) {
         showToast('Invalid address', 'error');
@@ -663,10 +470,7 @@ function showSolanaWalletModal() {
 // ====== COPY INVITE LINK ======
 function copyInviteLink() {
     const link = document.getElementById('inviteLink');
-    if (link) {
-        navigator.clipboard?.writeText(link.value);
-        showToast('🔗 Link copied!');
-    }
+    if (link) { navigator.clipboard?.writeText(link.value); showToast('🔗 Link copied!'); }
 }
 
 // ====== SHARE INVITE LINK ======
@@ -680,24 +484,15 @@ function shareInviteLink() {
 async function claimMilestone(referrals) {
     const milestone = MILESTONES.find(m => m.referrals === referrals);
     if (!milestone || milestone.isSpecial) return;
-    
-    if (!currentUser.claimedMilestones) {
-        currentUser.claimedMilestones = [];
-    }
-    
+    if (!currentUser.claimedMilestones) currentUser.claimedMilestones = [];
     if (currentUser.claimedMilestones.includes(referrals)) return;
-    if (currentUser.inviteCount < referrals) {
-        showToast('Not enough referrals', 'error');
-        return;
-    }
+    if (currentUser.inviteCount < referrals) { showToast('Not enough referrals', 'error'); return; }
     
     currentUser.balances.TROLL += milestone.reward;
     currentUser.claimedMilestones.push(referrals);
-    
     await saveUserData();
     updateUI();
     renderMilestones();
-    
     showToast(`🎉 Claimed ${milestone.reward.toLocaleString()} TROLL!`, 'success');
 }
 
@@ -705,131 +500,66 @@ async function claimMilestone(referrals) {
 function showToast(message, type) {
     const toast = document.getElementById('toast');
     const msgEl = document.getElementById('toastMessage');
-    const icon = toast?.querySelector('i');
-    
     if (!toast || !msgEl) return;
-    
     msgEl.textContent = message;
-    
-    if (icon) {
-        icon.className = type === 'error' ? 'fa-solid fa-circle-exclamation' : 'fa-solid fa-circle-check';
-    }
-    
+    const icon = toast.querySelector('i');
+    if (icon) icon.className = type === 'error' ? 'fa-solid fa-circle-exclamation' : 'fa-solid fa-circle-check';
     toast.classList.remove('hidden');
     setTimeout(() => toast.classList.add('hidden'), 3000);
 }
 
-// ====== CLOSE MODAL ======
-function closeModal(id) {
-    const modal = document.getElementById(id);
-    if (modal) modal.classList.remove('show');
-}
-
-// ====== SHOW DEPOSIT MODAL ======
-function showDepositModal() {
-    const modal = document.getElementById('depositModal');
-    if (modal) modal.classList.add('show');
-}
-
-// ====== SHOW WITHDRAW MODAL ======
+// ====== MODAL FUNCTIONS ======
+function closeModal(id) { document.getElementById(id)?.classList.remove('show'); }
+function showDepositModal() { document.getElementById('depositModal')?.classList.add('show'); }
 function showWithdrawModal() {
-    if (!currentUser.withdrawalUnlocked && !currentUser.premium) {
-        showToast('Complete missions to unlock withdrawal!', 'error');
-        return;
-    }
-    
-    const modal = document.getElementById('withdrawModal');
-    if (modal) modal.classList.add('show');
+    if (!currentUser.withdrawalUnlocked && !currentUser.premium) { showToast('Complete missions to unlock withdrawal!', 'error'); return; }
+    document.getElementById('withdrawModal')?.classList.add('show');
 }
-
-// ====== SHOW HISTORY ======
-function showHistory() {
-    const modal = document.getElementById('historyModal');
-    if (modal) modal.classList.add('show');
-}
-
-// ====== SHOW NOTIFICATIONS ======
-function showNotifications() {
-    const modal = document.getElementById('notificationsModal');
-    if (modal) modal.classList.add('show');
-}
-
-// ====== SHOW ADMIN PANEL ======
-function showAdminPanel() {
-    const panel = document.getElementById('adminPanel');
-    if (panel) panel.classList.remove('hidden');
-}
-
-// ====== CLOSE ADMIN PANEL ======
-function closeAdminPanel() {
-    const panel = document.getElementById('adminPanel');
-    if (panel) panel.classList.add('hidden');
-}
+function showHistory() { document.getElementById('historyModal')?.classList.add('show'); }
+function showNotifications() { document.getElementById('notificationsModal')?.classList.add('show'); }
+function showAdminPanel() { document.getElementById('adminPanel')?.classList.remove('hidden'); }
+function closeAdminPanel() { document.getElementById('adminPanel')?.classList.add('hidden'); }
 
 // ====== NAVIGATION ======
 function showWallet() {
     currentPage = 'wallet';
-    
     document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
     document.getElementById('walletSection')?.classList.remove('hidden');
-    
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.querySelector('[data-tab="wallet"]')?.classList.add('active');
-    
     renderAssets();
 }
-
 function showAirdrop() {
     currentPage = 'airdrop';
-    
     document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
     document.getElementById('airdropSection')?.classList.remove('hidden');
-    
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.querySelector('[data-tab="airdrop"]')?.classList.add('active');
-    
     renderMissionsUI();
     renderMilestones();
 }
-
 function showSettings() {
     currentPage = 'settings';
-    
     document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
     document.getElementById('settingsSection')?.classList.remove('hidden');
-    
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.querySelector('[data-tab="settings"]')?.classList.add('active');
-    
     updateSettingsUI();
 }
 
 // ====== TON CONNECT ======
 async function initTONConnect() {
     if (typeof TON_CONNECT_UI === 'undefined') return;
-    
     try {
-        tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
-            manifestUrl: location.origin + '/tonconnect-manifest.json',
-            buttonRootId: 'tonConnectButton'
-        });
-        
+        tonConnectUI = new TON_CONNECT_UI.TonConnectUI({ manifestUrl: location.origin + '/tonconnect-manifest.json', buttonRootId: 'tonConnectButton' });
         const restored = await tonConnectUI.connectionRestored;
-        if (restored && tonConnectUI.wallet) {
-            tonConnected = true;
-            tonWalletAddress = tonConnectUI.wallet.account.address;
-        }
-    } catch (e) {
-        console.error('TON init error:', e);
-    }
+        if (restored && tonConnectUI.wallet) { tonConnected = true; tonWalletAddress = tonConnectUI.wallet.account.address; }
+    } catch (e) { console.error('TON init error:', e); }
 }
-
 async function connectTONWallet() {
     if (!tonConnectUI) return;
-    
     try {
         await tonConnectUI.openModal();
-        
         const interval = setInterval(() => {
             if (tonConnectUI.wallet) {
                 clearInterval(interval);
@@ -841,121 +571,48 @@ async function connectTONWallet() {
                 showToast('✅ TON Connected!', 'success');
             }
         }, 500);
-        
         setTimeout(() => clearInterval(interval), 30000);
-    } catch (e) {
-        showToast('Connection failed', 'error');
-    }
+    } catch (e) { showToast('Connection failed', 'error'); }
 }
 
 // ====== PREMIUM ======
-function showPremiumModal() {
-    const modal = document.getElementById('premiumModal');
-    if (modal) modal.classList.add('show');
-}
-
+function showPremiumModal() { document.getElementById('premiumModal')?.classList.add('show'); }
 async function buyPremium() {
-    if (!tonConnected) {
-        showToast('Connect TON wallet first', 'error');
-        return;
-    }
-    
+    if (!tonConnected) { showToast('Connect TON wallet first', 'error'); return; }
     showToast('Processing...', 'info');
-    
     try {
-        const tx = {
-            validUntil: Math.floor(Date.now() / 1000) + 300,
-            messages: [{ address: appConfig.ownerWallet, amount: '5000000000' }]
-        };
-        
+        const tx = { validUntil: Math.floor(Date.now() / 1000) + 300, messages: [{ address: appConfig.ownerWallet, amount: '5000000000' }] };
         const result = await tonConnectUI.sendTransaction(tx);
-        
         if (result.boc) {
             currentUser.premium = true;
             currentUser.avatar = '😏';
             currentUser.withdrawalUnlocked = true;
-            
             await saveUserData();
             updateUI();
             closeModal('premiumModal');
             showToast('🎉 Premium Unlocked!', 'success');
         }
-    } catch (e) {
-        showToast('Payment failed', 'error');
-    }
+    } catch (e) { showToast('Payment failed', 'error'); }
 }
 
 // ====== HELPERS ======
-function showAssetDetails(symbol) {
-    const balance = currentUser.balances?.[symbol] || 0;
-    showToast(`${symbol}: ${balance.toLocaleString()}`, 'info');
-}
-
-function copyDepositAddress() {
-    const addr = document.getElementById('depositAddress')?.textContent;
-    if (addr) {
-        navigator.clipboard?.writeText(addr);
-        showToast('Address copied!');
-    }
-}
-
-function submitDeposit() {
-    showToast('Deposit submitted', 'success');
-    closeModal('depositModal');
-}
-
-function submitWithdraw() {
-    showToast('Withdrawal requested', 'success');
-    closeModal('withdrawModal');
-}
-
-function refreshPrices() {
-    showToast('Prices refreshed', 'success');
-}
-
-function toggleLanguage() {
-    showToast('Language changed', 'info');
-}
-
-function toggleTheme() {
-    const theme = document.documentElement.getAttribute('data-theme');
-    const newTheme = theme === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', newTheme);
-    localStorage.setItem('theme', newTheme);
-    showToast('Theme changed', 'info');
-}
-
-function logout() {
-    if (confirm('Are you sure?')) {
-        localStorage.clear();
-        location.reload();
-    }
-}
-
-function openSupport() {
-    window.open('https://t.me/TrollSupport', '_blank');
-}
-
-function showComingSoon(feature) {
-    showToast(feature + ' coming soon!', 'info');
-}
+function showAssetDetails(symbol) { showToast(`${symbol}: ${(currentUser.balances?.[symbol] || 0).toLocaleString()}`, 'info'); }
+function copyDepositAddress() { const addr = document.getElementById('depositAddress')?.textContent; if (addr) { navigator.clipboard?.writeText(addr); showToast('Address copied!'); } }
+function submitDeposit() { showToast('Deposit submitted', 'success'); closeModal('depositModal'); }
+function submitWithdraw() { showToast('Withdrawal requested', 'success'); closeModal('withdrawModal'); }
+function refreshPrices() { showToast('Prices refreshed', 'success'); }
+function toggleLanguage() { showToast('Language changed', 'info'); }
+function toggleTheme() { const theme = document.documentElement.getAttribute('data-theme'); const newTheme = theme === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', newTheme); localStorage.setItem('theme', newTheme); showToast('Theme changed', 'info'); }
+function logout() { if (confirm('Are you sure?')) { localStorage.clear(); location.reload(); } }
+function openSupport() { window.open('https://t.me/TrollSupport', '_blank'); }
+function showComingSoon(feature) { showToast(feature + ' coming soon!', 'info'); }
 
 // ====== INIT ======
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Troll Army Starting...');
-    
-    // Hide splash
-    setTimeout(() => {
-        document.getElementById('splashScreen')?.classList.add('hidden');
-    }, 2000);
-    
-    // Load config
+    console.log('🚀 Troll Army Final Starting...');
+    setTimeout(() => document.getElementById('splashScreen')?.classList.add('hidden'), 2000);
     await loadConfig();
-    
-    // Init TON
     await initTONConnect();
-    
-    // Init user (calls server)
     await initUser();
 });
 
@@ -988,4 +645,4 @@ window.showComingSoon = showComingSoon;
 window.showAssetDetails = showAssetDetails;
 window.showSolanaWalletModal = showSolanaWalletModal;
 
-console.log('✅ Troll Army Ready!');
+console.log('✅ Troll Army Final Ready!');
