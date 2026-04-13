@@ -1,11 +1,13 @@
 // ============================================================================
-// TROLL ARMY - FINAL PROFESSIONAL VERSION
+// TROLL ARMY - FINAL VERSION (STALE REFERENCE FIXED)
+// Fix: Read window.Telegram dynamically every time
 // Logic: Telegram (8s) → Restore (24h) → Guest (last)
-// Features: CoinGecko Live Prices + Mystery Missions + TON + Referrals
 // ============================================================================
 
-// ====== TELEGRAM WEBAPP ======
-const tg = window.Telegram?.WebApp;
+// ====== TELEGRAM HELPER (DYNAMIC - FIXES STALE REFERENCE) ======
+function getTelegram() {
+    return window.Telegram?.WebApp;
+}
 
 // ====== STATE ======
 let currentUser = null;
@@ -26,8 +28,8 @@ const CONFIG = {
     WELCOME_BONUS: 1000,
     REFERRAL_BONUS: 500,
     TROLL_PRICE_FALLBACK: 0.01915,
-    SESSION_TTL: 86400000, // 24 hours
-    PRICES_CACHE_TTL: 300000 // 5 minutes
+    SESSION_TTL: 86400000,
+    PRICES_CACHE_TTL: 300000
 };
 
 // ====== ICONS ======
@@ -186,7 +188,7 @@ function getSavedUser() {
     
     const age = Date.now() - parseInt(ts);
     if (age < CONFIG.SESSION_TTL) {
-        console.log('📦 Session restored:', id, 'age:', Math.round(age / 3600000) + 'h');
+        console.log('📦 Session restored:', id);
         return { id, isRestored: true };
     }
     
@@ -194,10 +196,23 @@ function getSavedUser() {
     return null;
 }
 
-// ====== WAIT FOR TELEGRAM USER ======
+// ====== BUILD INIT DATA ======
+function buildInitData(unsafe) {
+    if (!unsafe) return '';
+    const data = {
+        query_id: unsafe.query_id,
+        user: JSON.stringify(unsafe.user),
+        auth_date: unsafe.auth_date,
+        hash: unsafe.hash
+    };
+    return Object.keys(data).filter(k => data[k]).map(k => `${k}=${encodeURIComponent(data[k])}`).join('&');
+}
+
+// ====== WAIT FOR TELEGRAM USER (FIXED - DYNAMIC) ======
 async function waitForTelegramUser(maxTime = 8000) {
     console.log('⏳ Waiting for Telegram user...');
     
+    const tg = getTelegram();
     if (tg) {
         tg.ready();
         tg.expand();
@@ -209,9 +224,9 @@ async function waitForTelegramUser(maxTime = 8000) {
     while (Date.now() - start < maxTime) {
         attempts++;
         
-        const currentTg = window.Telegram?.WebApp;
+        // ✅ نقرأ Telegram مباشرة كل مرة - هذا هو الفرق!
+        const currentTg = getTelegram();
         
-        // Check initDataUnsafe
         if (currentTg?.initDataUnsafe?.user?.id) {
             const user = currentTg.initDataUnsafe.user;
             console.log(`✅ Telegram user found after ${attempts} attempts:`, user.id);
@@ -224,7 +239,6 @@ async function waitForTelegramUser(maxTime = 8000) {
             };
         }
         
-        // Check initData
         if (currentTg?.initData) {
             try {
                 const params = new URLSearchParams(currentTg.initData);
@@ -252,21 +266,12 @@ async function waitForTelegramUser(maxTime = 8000) {
     return null;
 }
 
-function buildInitData(unsafe) {
-    if (!unsafe) return '';
-    const data = {
-        query_id: unsafe.query_id,
-        user: JSON.stringify(unsafe.user),
-        auth_date: unsafe.auth_date,
-        hash: unsafe.hash
-    };
-    return Object.keys(data).filter(k => data[k]).map(k => `${k}=${encodeURIComponent(data[k])}`).join('&');
-}
-
 // ====== INIT USER - PROPER LOGIC ======
 async function initUser() {
     console.log('🚀 Starting user initialization...');
-    console.log('📱 Telegram WebApp:', !!tg);
+    
+    const tg = getTelegram();
+    console.log('📱 Telegram WebApp exists:', !!tg);
     
     // 1. Try Telegram (wait up to 8 seconds)
     const tgUser = await waitForTelegramUser(8000);
@@ -545,10 +550,8 @@ function renderMissionsUI() {
     const m = currentUser.withdrawalMissions;
     let html = `<div class="lock-header"><i class="fa-solid fa-${currentUser.withdrawalUnlocked ? 'unlock' : 'lock'}"></i><span>${currentUser.withdrawalUnlocked ? '✅ Withdrawal Available!' : '🔒 Withdrawal Locked'}</span></div><div class="missions-list-vertical">`;
     
-    // Mission 1
     html += `<div class="mission-card ${m.mission1.completed ? 'completed' : ''}"><div class="mission-icon">${m.mission1.completed ? '✅' : '1️⃣'}</div><div class="mission-content"><h4>${MISSIONS.mission1.title}</h4><p>${currentUser.settings?.solanaWallet ? 'Wallet: ' + currentUser.settings.solanaWallet.slice(0,8)+'...' : MISSIONS.mission1.desc}</p>${!m.mission1.completed?'<button class="mission-action-btn" onclick="showSolanaWalletModal()">Add Wallet</button>':''}</div></div>`;
     
-    // Mission 2
     if (m.mission2.revealed) {
         const prog = (m.mission2.currentAmount / 12500) * 100;
         html += `<div class="mission-card ${m.mission2.completed ? 'completed' : ''}"><div class="mission-icon">${m.mission2.completed ? '✅' : '2️⃣'}</div><div class="mission-content"><h4>${MISSIONS.mission2.title}</h4><p>${m.mission2.currentAmount.toLocaleString()} / 12,500 TROLL</p><div class="progress-bar small"><div class="progress-fill" style="width:${prog}%"></div></div><p class="mission-hint">💡 ${MISSIONS.mission2.hint}</p></div></div>`;
@@ -556,7 +559,6 @@ function renderMissionsUI() {
         html += `<div class="mission-card mystery"><div class="mission-icon">❓</div><div class="mission-content"><h4>Mission 2: ???</h4><p>Reveals after Mission 1</p></div></div>`;
     }
     
-    // Mission 3
     if (m.mission3.revealed) {
         const prog = (m.mission3.currentNewReferrals / 12) * 100;
         html += `<div class="mission-card ${m.mission3.completed ? 'completed' : ''}"><div class="mission-icon">${m.mission3.completed ? '✅' : '3️⃣'}</div><div class="mission-content"><h4>${MISSIONS.mission3.title}</h4><p>${m.mission3.currentNewReferrals} / 12 new referrals</p><div class="progress-bar small"><div class="progress-fill" style="width:${prog}%"></div></div><p class="mission-hint">💡 ${MISSIONS.mission3.hint}</p></div></div>`;
@@ -564,7 +566,6 @@ function renderMissionsUI() {
         html += `<div class="mission-card mystery"><div class="mission-icon">❓</div><div class="mission-content"><h4>Mission 3: ???</h4><p>Reveals after Mission 2</p></div></div>`;
     }
     
-    // Mission 4
     if (m.mission4.revealed) {
         const bnb = currentUser.balances?.BNB || 0;
         const sol = currentUser.balances?.SOL || 0;
@@ -677,6 +678,7 @@ function copyInviteLink() {
 
 function shareInviteLink() {
     const text = encodeURIComponent(`🧌 Join Troll Army! Get 1000 TROLL bonus!\n\n👉 ${getReferralLink()}`);
+    const tg = getTelegram();
     tg?.openTelegramLink(`https://t.me/share/url?url=&text=${text}`);
 }
 
@@ -810,7 +812,7 @@ function showComingSoon(f) { showToast(f + ' coming soon!', 'info'); }
 
 // ====== INIT ======
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Troll Army - Professional Version');
+    console.log('🚀 Troll Army - Stale Reference FIXED');
     
     setTimeout(() => document.getElementById('splashScreen')?.classList.add('hidden'), 2000);
     
@@ -849,4 +851,4 @@ window.showAssetDetails = showAssetDetails;
 window.showCryptoDetails = showCryptoDetails;
 window.showSolanaWalletModal = showSolanaWalletModal;
 
-console.log('✅ Troll Army Ready! Telegram → Restore → Guest');
+console.log('✅ Troll Army Ready! Stale Reference FIXED');
