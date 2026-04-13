@@ -1,6 +1,6 @@
 // ============================================================================
-// TROLL ARMY - PROFESSIONAL PRODUCTION VERSION
-// Version: 23.0 - Clean, Modular, Production Ready
+// TROLL ARMY - FINAL PRODUCTION VERSION
+// Version: 24.0 - Fixed Referral System + All Features
 // ============================================================================
 
 // ============================================================================
@@ -113,37 +113,12 @@ const MISSIONS = {
 // ============================================================================
 
 const MILESTONES = [
-    {
-        referrals: 10,
-        reward: 5000,
-        title: '🤡 Baby Troll'
-    },
-    {
-        referrals: 25,
-        reward: 12500,
-        title: '😈 Master Troll'
-    },
-    {
-        referrals: 100,
-        reward: 25000,
-        title: '👹 Troll Lord'
-    },
-    {
-        referrals: 250,
-        reward: 50000,
-        title: '🧌 Troll King'
-    },
-    {
-        referrals: 500,
-        reward: 100000,
-        title: '🔥 Troll God'
-    },
-    {
-        referrals: 1000,
-        reward: 0,
-        title: '💀 Grand Master',
-        isSpecial: true
-    }
+    { referrals: 10, reward: 5000, title: '🤡 Baby Troll' },
+    { referrals: 25, reward: 12500, title: '😈 Master Troll' },
+    { referrals: 100, reward: 25000, title: '👹 Troll Lord' },
+    { referrals: 250, reward: 50000, title: '🧌 Troll King' },
+    { referrals: 500, reward: 100000, title: '🔥 Troll God' },
+    { referrals: 1000, reward: 0, title: '💀 Grand Master', isSpecial: true }
 ];
 
 // ============================================================================
@@ -152,31 +127,10 @@ const MILESTONES = [
 
 function getDefaultMissions() {
     return {
-        mission1: {
-            completed: false,
-            revealed: true,
-            walletAddress: null
-        },
-        mission2: {
-            completed: false,
-            revealed: false,
-            currentAmount: 0,
-            requiredAmount: 12500
-        },
-        mission3: {
-            completed: false,
-            revealed: false,
-            referralsAtStart: 0,
-            currentNewReferrals: 0,
-            requiredReferrals: 12
-        },
-        mission4: {
-            completed: false,
-            revealed: false,
-            revealDate: null,
-            requiredBNB: 0.025,
-            requiredSOL: 0.25
-        }
+        mission1: { completed: false, revealed: true, walletAddress: null },
+        mission2: { completed: false, revealed: false, currentAmount: 0, requiredAmount: 12500 },
+        mission3: { completed: false, revealed: false, referralsAtStart: 0, currentNewReferrals: 0, requiredReferrals: 12 },
+        mission4: { completed: false, revealed: false, revealDate: null, requiredBNB: 0.025, requiredSOL: 0.25 }
     };
 }
 
@@ -187,9 +141,7 @@ function getDefaultMissions() {
 async function apiCall(endpoint, method, body) {
     const options = {
         method: method,
-        headers: {
-            'Content-Type': 'application/json'
-        }
+        headers: { 'Content-Type': 'application/json' }
     };
     
     if (body) {
@@ -202,10 +154,7 @@ async function apiCall(endpoint, method, body) {
         return data;
     } catch (error) {
         console.error('API Error:', error);
-        return {
-            success: false,
-            error: error.message
-        };
+        return { success: false, error: error.message };
     }
 }
 
@@ -400,9 +349,23 @@ function buildInitDataFromUnsafe(unsafe) {
         .join('&');
 }
 
+// ✅✅✅ FIXED: Read referral from start_param (Telegram official way)
 function getReferralFromUrl() {
+    // First priority: Telegram start_param (correct way)
+    if (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
+        console.log('🔗 Referral from start_param:', tg.initDataUnsafe.start_param);
+        return tg.initDataUnsafe.start_param;
+    }
+    
+    // Fallback: URL parameters
     const params = new URLSearchParams(window.location.search);
-    return params.get('startapp') || params.get('startapp') || params.get('ref') || null;
+    const ref = params.get('startapp') || params.get('startapp') || params.get('ref') || null;
+    
+    if (ref) {
+        console.log('🔗 Referral from URL:', ref);
+    }
+    
+    return ref;
 }
 
 // ============================================================================
@@ -425,12 +388,8 @@ async function initUser() {
     try {
         const response = await fetch('/api/init-user', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                initData: telegramUser.initData
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ initData: telegramUser.initData })
         });
         
         const data = await response.json();
@@ -446,11 +405,11 @@ async function initUser() {
             localStorage.setItem('troll_user_id', data.userId);
             localStorage.setItem('troll_user_data', JSON.stringify(data.userData));
             
-            // ✅ معالجة الإحالة
+            // ✅ Process referral
             const refCode = getReferralFromUrl();
             
             if (refCode && refCode !== currentUserId) {
-                console.log('🔗 Processing referral from URL:', refCode);
+                console.log('🔗 Processing referral from:', refCode);
                 await processReferral(refCode);
             }
             
@@ -530,22 +489,14 @@ async function createGuestUser() {
     const guestData = {
         userId: guestId,
         userName: 'Guest',
-        balances: {
-            TROLL: 0,
-            BNB: 0,
-            SOL: 0,
-            ETH: 0,
-            TRON: 0
-        },
+        balances: { TROLL: 0, BNB: 0, SOL: 0, ETH: 0, TRON: 0 },
         inviteCount: 0,
         referralEarnings: 0,
         premium: false,
         avatar: '🧌',
         withdrawalUnlocked: false,
         claimedMilestones: [],
-        settings: {
-            solanaWallet: null
-        },
+        settings: { solanaWallet: null },
         withdrawalMissions: getDefaultMissions(),
         notifications: [],
         transactions: [],
@@ -562,13 +513,8 @@ async function createGuestUser() {
     try {
         await fetch('/api/users', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                userId: guestId,
-                userData: guestData
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: guestId, userData: guestData })
         });
         console.log('✅ Guest saved to database');
     } catch (e) {
@@ -590,9 +536,7 @@ function hideAllScreens() {
     
     screens.forEach(function(id) {
         const el = document.getElementById(id);
-        if (el) {
-            el.style.display = 'none';
-        }
+        if (el) el.style.display = 'none';
     });
 }
 
@@ -600,13 +544,8 @@ function showMainApp() {
     const main = document.getElementById('mainApp');
     const nav = document.getElementById('bottomNav');
     
-    if (main) {
-        main.style.display = 'block';
-    }
-    
-    if (nav) {
-        nav.style.display = 'flex';
-    }
+    if (main) main.style.display = 'block';
+    if (nav) nav.style.display = 'flex';
 }
 
 function checkAdmin() {
@@ -631,9 +570,7 @@ function checkAdmin() {
 // ============================================================================
 
 function updateUI() {
-    if (!currentUser) {
-        return;
-    }
+    if (!currentUser) return;
     
     document.getElementById('userName').textContent = currentUser.userName || 'User';
     document.getElementById('userIdDisplay').textContent = 'ID: ' + (currentUserId || '').slice(-8);
@@ -678,18 +615,12 @@ function updateTotalBalance() {
     });
     
     const totalEl = document.getElementById('totalBalance');
-    
-    if (totalEl) {
-        totalEl.textContent = '$' + total.toFixed(2);
-    }
+    if (totalEl) totalEl.textContent = '$' + total.toFixed(2);
     
     const trollBalance = currentUser.balances.TROLL || 0;
     const trollPrice = cryptoPrices['TROLL'] ? cryptoPrices['TROLL'].price : CONFIG.TROLL_PRICE_FALLBACK;
     const usdEl = document.getElementById('trollUsdValue');
-    
-    if (usdEl) {
-        usdEl.textContent = (trollBalance * trollPrice).toFixed(2);
-    }
+    if (usdEl) usdEl.textContent = (trollBalance * trollPrice).toFixed(2);
 }
 
 function getTrollFaceSVG() {
@@ -746,10 +677,7 @@ function getReferralLink() {
 
 function renderAssets() {
     const container = document.getElementById('assetsList');
-    
-    if (!container) {
-        return;
-    }
+    if (!container) return;
     
     let html = '';
     
@@ -779,10 +707,7 @@ function renderAssets() {
 
 function renderTopCryptos() {
     const container = document.getElementById('topCryptoList');
-    
-    if (!container) {
-        return;
-    }
+    if (!container) return;
     
     const topCoins = ALL_ASSETS.filter(function(a) {
         return a.symbol === 'TROLL' || a.symbol === 'BTC' || a.symbol === 'ETH' || a.symbol === 'BNB' || a.symbol === 'SOL';
@@ -817,10 +742,7 @@ function renderTopCryptos() {
 
 function renderMemeCoins() {
     const container = document.getElementById('memeCoinList');
-    
-    if (!container) {
-        return;
-    }
+    if (!container) return;
     
     let html = '';
     
@@ -850,10 +772,7 @@ function renderMemeCoins() {
 
 function renderMissionsUI() {
     const container = document.getElementById('withdrawalLockCard');
-    
-    if (!container) {
-        return;
-    }
+    if (!container) return;
     
     if (currentUser.premium) {
         container.innerHTML = '<div class="premium-unlocked-card"><div class="premium-icon-large">😏</div><h3>Premium Unlocked!</h3><p>Instant withdrawal access!</p></div>';
@@ -885,56 +804,41 @@ function renderMissionsUI() {
         html += '<button class="mission-action-btn" onclick="showSolanaWalletModal()">Add Wallet</button>';
     }
     
-    html += '</div>';
-    html += '</div>';
+    html += '</div></div>';
     
     // Mission 2
     if (m.mission2.revealed) {
         const prog = (m.mission2.currentAmount / 12500) * 100;
-        
         html += '<div class="mission-card ' + (m.mission2.completed ? 'completed' : '') + '">';
         html += '<div class="mission-icon">' + (m.mission2.completed ? '✅' : '2️⃣') + '</div>';
         html += '<div class="mission-content">';
         html += '<h4>' + MISSIONS.mission2.title + '</h4>';
         html += '<p>' + m.mission2.currentAmount.toLocaleString() + ' / 12,500 TROLL</p>';
-        html += '<div class="progress-bar small">';
-        html += '<div class="progress-fill" style="width:' + prog + '%"></div>';
-        html += '</div>';
+        html += '<div class="progress-bar small"><div class="progress-fill" style="width:' + prog + '%"></div></div>';
         html += '<p class="mission-hint">💡 ' + MISSIONS.mission2.hint + '</p>';
-        html += '</div>';
-        html += '</div>';
+        html += '</div></div>';
     } else {
         html += '<div class="mission-card mystery">';
         html += '<div class="mission-icon">❓</div>';
-        html += '<div class="mission-content">';
-        html += '<h4>Mission 2: ???</h4>';
-        html += '<p>Reveals after Mission 1</p>';
-        html += '</div>';
+        html += '<div class="mission-content"><h4>Mission 2: ???</h4><p>Reveals after Mission 1</p></div>';
         html += '</div>';
     }
     
     // Mission 3
     if (m.mission3.revealed) {
         const prog = (m.mission3.currentNewReferrals / 12) * 100;
-        
         html += '<div class="mission-card ' + (m.mission3.completed ? 'completed' : '') + '">';
         html += '<div class="mission-icon">' + (m.mission3.completed ? '✅' : '3️⃣') + '</div>';
         html += '<div class="mission-content">';
         html += '<h4>' + MISSIONS.mission3.title + '</h4>';
         html += '<p>' + m.mission3.currentNewReferrals + ' / 12 new referrals</p>';
-        html += '<div class="progress-bar small">';
-        html += '<div class="progress-fill" style="width:' + prog + '%"></div>';
-        html += '</div>';
+        html += '<div class="progress-bar small"><div class="progress-fill" style="width:' + prog + '%"></div></div>';
         html += '<p class="mission-hint">💡 ' + MISSIONS.mission3.hint + '</p>';
-        html += '</div>';
-        html += '</div>';
+        html += '</div></div>';
     } else {
         html += '<div class="mission-card mystery">';
         html += '<div class="mission-icon">❓</div>';
-        html += '<div class="mission-content">';
-        html += '<h4>Mission 3: ???</h4>';
-        html += '<p>Reveals after Mission 2</p>';
-        html += '</div>';
+        html += '<div class="mission-content"><h4>Mission 3: ???</h4><p>Reveals after Mission 2</p></div>';
         html += '</div>';
     }
     
@@ -942,37 +846,28 @@ function renderMissionsUI() {
     if (m.mission4.revealed) {
         const bnb = currentUser.balances.BNB || 0;
         const sol = currentUser.balances.SOL || 0;
-        
         html += '<div class="mission-card ' + (m.mission4.completed ? 'completed' : '') + '">';
         html += '<div class="mission-icon">' + (m.mission4.completed ? '✅' : '4️⃣') + '</div>';
         html += '<div class="mission-content">';
         html += '<h4>' + MISSIONS.mission4.title + '</h4>';
         html += '<p>BNB: ' + bnb.toFixed(4) + '/0.025 | SOL: ' + sol.toFixed(4) + '/0.25</p>';
         html += '<p class="mission-hint">💡 ' + MISSIONS.mission4.hint + '</p>';
-        html += '</div>';
-        html += '</div>';
+        html += '</div></div>';
     } else if (m.mission3.completed) {
         const revealDate = new Date(m.mission4.revealDate);
         const now = new Date();
         const daysLeft = Math.max(0, Math.ceil((revealDate - now) / (1000 * 60 * 60 * 24)));
-        
         html += '<div class="mission-card mystery-timer">';
         html += '<div class="mission-icon">⏳</div>';
         html += '<div class="mission-content">';
         html += '<h4>Final Mystery Mission</h4>';
         html += '<p>Reveals in ' + daysLeft + ' day' + (daysLeft !== 1 ? 's' : '') + '</p>';
-        html += '<div class="timer-progress-bar">';
-        html += '<div class="timer-fill" style="width:' + ((20 - daysLeft) / 20) * 100 + '%"></div>';
-        html += '</div>';
-        html += '</div>';
-        html += '</div>';
+        html += '<div class="timer-progress-bar"><div class="timer-fill" style="width:' + ((20 - daysLeft) / 20) * 100 + '%"></div></div>';
+        html += '</div></div>';
     } else {
         html += '<div class="mission-card mystery">';
         html += '<div class="mission-icon">❓</div>';
-        html += '<div class="mission-content">';
-        html += '<h4>Mission 4: ???</h4>';
-        html += '<p>Reveals after Mission 3</p>';
-        html += '</div>';
+        html += '<div class="mission-content"><h4>Mission 4: ???</h4><p>Reveals after Mission 3</p></div>';
         html += '</div>';
     }
     
@@ -982,10 +877,7 @@ function renderMissionsUI() {
 
 function renderMilestones() {
     const container = document.getElementById('milestonesList');
-    
-    if (!container) {
-        return;
-    }
+    if (!container) return;
     
     let html = '';
     
@@ -1000,9 +892,7 @@ function renderMilestones() {
         html += '<span>' + m.title + '</span>';
         html += '<span>' + (m.isSpecial ? '🎁 Mystery Box' : m.reward.toLocaleString() + ' TROLL') + '</span>';
         html += '</div>';
-        html += '<div class="progress-bar">';
-        html += '<div class="progress-fill" style="width:' + progress + '%"></div>';
-        html += '</div>';
+        html += '<div class="progress-bar"><div class="progress-fill" style="width:' + progress + '%"></div></div>';
         html += '<div class="progress-text">' + (currentUser.inviteCount || 0) + '/' + m.referrals + '</div>';
         
         if (canClaim) {
@@ -1027,9 +917,7 @@ async function saveUserData() {
     localStorage.setItem('troll_user_data', JSON.stringify(currentUser));
     
     if (!isGuest) {
-        await apiCall('/users/' + currentUserId, 'PATCH', {
-            updates: currentUser
-        });
+        await apiCall('/users/' + currentUserId, 'PATCH', { updates: currentUser });
     }
 }
 
@@ -1049,7 +937,6 @@ async function updateMissionsProgress() {
     
     if (m.mission2.revealed && !m.mission2.completed) {
         m.mission2.currentAmount = currentUser.referralEarnings || 0;
-        
         if (m.mission2.currentAmount >= m.mission2.requiredAmount) {
             m.mission2.completed = true;
             m.mission3.revealed = true;
@@ -1060,14 +947,11 @@ async function updateMissionsProgress() {
     
     if (m.mission3.revealed && !m.mission3.completed) {
         m.mission3.currentNewReferrals = Math.max(0, (currentUser.inviteCount || 0) - (m.mission3.referralsAtStart || 0));
-        
         if (m.mission3.currentNewReferrals >= m.mission3.requiredReferrals) {
             m.mission3.completed = true;
-            
             const revealDate = new Date();
             revealDate.setDate(revealDate.getDate() + 20);
             m.mission4.revealDate = revealDate.toISOString();
-            
             changed = true;
         }
     }
@@ -1082,7 +966,6 @@ async function updateMissionsProgress() {
     if (m.mission4.revealed && !m.mission4.completed) {
         const bnb = currentUser.balances.BNB || 0;
         const sol = currentUser.balances.SOL || 0;
-        
         if (bnb >= m.mission4.requiredBNB || sol >= m.mission4.requiredSOL) {
             m.mission4.completed = true;
             changed = true;
@@ -1110,20 +993,14 @@ function showSolanaWalletModal() {
     const address = prompt('Enter your Solana wallet address (TROLL token):');
     
     if (address && address.length > 30) {
-        if (!currentUser.settings) {
-            currentUser.settings = {};
-        }
-        
+        if (!currentUser.settings) currentUser.settings = {};
         currentUser.settings.solanaWallet = address;
         
         saveUserData();
         updateMissionsProgress();
         updateUI();
         
-        if (currentPage === 'airdrop') {
-            renderMissionsUI();
-        }
-        
+        if (currentPage === 'airdrop') renderMissionsUI();
         showToast('✅ Wallet saved!', 'success');
     } else if (address) {
         showToast('Invalid address', 'error');
@@ -1132,7 +1009,6 @@ function showSolanaWalletModal() {
 
 function copyInviteLink() {
     const link = document.getElementById('inviteLink');
-    
     if (link) {
         navigator.clipboard.writeText(link.value);
         showToast('🔗 Link copied!', 'success');
@@ -1149,22 +1025,12 @@ function shareInviteLink() {
 }
 
 async function claimMilestone(referrals) {
-    const milestone = MILESTONES.find(function(m) {
-        return m.referrals === referrals;
-    });
+    const milestone = MILESTONES.find(function(m) { return m.referrals === referrals; });
     
-    if (!milestone || milestone.isSpecial) {
-        return;
-    }
+    if (!milestone || milestone.isSpecial) return;
     
-    if (!currentUser.claimedMilestones) {
-        currentUser.claimedMilestones = [];
-    }
-    
-    if (currentUser.claimedMilestones.includes(referrals)) {
-        return;
-    }
-    
+    if (!currentUser.claimedMilestones) currentUser.claimedMilestones = [];
+    if (currentUser.claimedMilestones.includes(referrals)) return;
     if (currentUser.inviteCount < referrals) {
         showToast('Not enough referrals', 'error');
         return;
@@ -1184,26 +1050,17 @@ function showToast(message, type) {
     const toast = document.getElementById('toast');
     const msgEl = document.getElementById('toastMessage');
     
-    if (!toast || !msgEl) {
-        return;
-    }
+    if (!toast || !msgEl) return;
     
     msgEl.textContent = message;
     toast.classList.remove('hidden');
     
     const icon = toast.querySelector('i');
-    
     if (icon) {
-        if (type === 'error') {
-            icon.className = 'fa-solid fa-circle-exclamation';
-        } else {
-            icon.className = 'fa-solid fa-circle-check';
-        }
+        icon.className = type === 'error' ? 'fa-solid fa-circle-exclamation' : 'fa-solid fa-circle-check';
     }
     
-    setTimeout(function() {
-        toast.classList.add('hidden');
-    }, 3000);
+    setTimeout(function() { toast.classList.add('hidden'); }, 3000);
 }
 
 // ============================================================================
@@ -1212,24 +1069,15 @@ function showToast(message, type) {
 
 function closeModal(id) {
     const modal = document.getElementById(id);
-    
-    if (modal) {
-        modal.classList.remove('show');
-    }
+    if (modal) modal.classList.remove('show');
 }
 
 function showDepositModal() {
     const modal = document.getElementById('depositModal');
-    
-    if (modal) {
-        modal.classList.add('show');
-    }
+    if (modal) modal.classList.add('show');
     
     const addressEl = document.getElementById('depositAddress');
-    
-    if (addressEl) {
-        addressEl.textContent = '0xbf70420f57342c6Bd4267430D4D3b7E946f09450';
-    }
+    if (addressEl) addressEl.textContent = '0xbf70420f57342c6Bd4267430D4D3b7E946f09450';
 }
 
 function showWithdrawModal() {
@@ -1239,47 +1087,31 @@ function showWithdrawModal() {
     }
     
     const modal = document.getElementById('withdrawModal');
-    
-    if (modal) {
-        modal.classList.add('show');
-    }
+    if (modal) modal.classList.add('show');
 }
 
 function showHistory() {
     const modal = document.getElementById('historyModal');
-    
-    if (modal) {
-        modal.classList.add('show');
-    }
+    if (modal) modal.classList.add('show');
 }
 
 function showNotifications() {
     const modal = document.getElementById('notificationsModal');
-    
-    if (modal) {
-        modal.classList.add('show');
-    }
+    if (modal) modal.classList.add('show');
 }
 
 function showAdminPanel() {
     const panel = document.getElementById('adminPanel');
-    
-    if (panel) {
-        panel.classList.remove('hidden');
-    }
+    if (panel) panel.classList.remove('hidden');
 }
 
 function closeAdminPanel() {
     const panel = document.getElementById('adminPanel');
-    
-    if (panel) {
-        panel.classList.add('hidden');
-    }
+    if (panel) panel.classList.add('hidden');
 }
 
 function copyDepositAddress() {
     const addr = document.getElementById('depositAddress');
-    
     if (addr && addr.textContent) {
         navigator.clipboard.writeText(addr.textContent);
         showToast('Address copied!', 'success');
@@ -1303,25 +1135,15 @@ function submitWithdraw() {
 function showWallet() {
     currentPage = 'wallet';
     
-    document.querySelectorAll('.section').forEach(function(s) {
-        s.classList.add('hidden');
-    });
+    document.querySelectorAll('.section').forEach(function(s) { s.classList.add('hidden'); });
     
     const walletSection = document.getElementById('walletSection');
+    if (walletSection) walletSection.classList.remove('hidden');
     
-    if (walletSection) {
-        walletSection.classList.remove('hidden');
-    }
-    
-    document.querySelectorAll('.nav-item').forEach(function(n) {
-        n.classList.remove('active');
-    });
+    document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
     
     const walletTab = document.querySelector('[data-tab="wallet"]');
-    
-    if (walletTab) {
-        walletTab.classList.add('active');
-    }
+    if (walletTab) walletTab.classList.add('active');
     
     renderAssets();
     renderTopCryptos();
@@ -1332,25 +1154,15 @@ function showWallet() {
 function showAirdrop() {
     currentPage = 'airdrop';
     
-    document.querySelectorAll('.section').forEach(function(s) {
-        s.classList.add('hidden');
-    });
+    document.querySelectorAll('.section').forEach(function(s) { s.classList.add('hidden'); });
     
     const airdropSection = document.getElementById('airdropSection');
+    if (airdropSection) airdropSection.classList.remove('hidden');
     
-    if (airdropSection) {
-        airdropSection.classList.remove('hidden');
-    }
-    
-    document.querySelectorAll('.nav-item').forEach(function(n) {
-        n.classList.remove('active');
-    });
+    document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
     
     const airdropTab = document.querySelector('[data-tab="airdrop"]');
-    
-    if (airdropTab) {
-        airdropTab.classList.add('active');
-    }
+    if (airdropTab) airdropTab.classList.add('active');
     
     renderMissionsUI();
     renderMilestones();
@@ -1359,25 +1171,15 @@ function showAirdrop() {
 function showSettings() {
     currentPage = 'settings';
     
-    document.querySelectorAll('.section').forEach(function(s) {
-        s.classList.add('hidden');
-    });
+    document.querySelectorAll('.section').forEach(function(s) { s.classList.add('hidden'); });
     
     const settingsSection = document.getElementById('settingsSection');
+    if (settingsSection) settingsSection.classList.remove('hidden');
     
-    if (settingsSection) {
-        settingsSection.classList.remove('hidden');
-    }
-    
-    document.querySelectorAll('.nav-item').forEach(function(n) {
-        n.classList.remove('active');
-    });
+    document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
     
     const settingsTab = document.querySelector('[data-tab="settings"]');
-    
-    if (settingsTab) {
-        settingsTab.classList.add('active');
-    }
+    if (settingsTab) settingsTab.classList.add('active');
     
     updateSettingsUI();
 }
@@ -1387,9 +1189,7 @@ function showSettings() {
 // ============================================================================
 
 async function initTONConnect() {
-    if (typeof TON_CONNECT_UI === 'undefined') {
-        return;
-    }
+    if (typeof TON_CONNECT_UI === 'undefined') return;
     
     try {
         tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
@@ -1398,7 +1198,6 @@ async function initTONConnect() {
         });
         
         const restored = await tonConnectUI.connectionRestored;
-        
         if (restored && tonConnectUI.wallet) {
             tonConnected = true;
             tonWalletAddress = tonConnectUI.wallet.account.address;
@@ -1409,9 +1208,7 @@ async function initTONConnect() {
 }
 
 async function connectTONWallet() {
-    if (!tonConnectUI) {
-        return;
-    }
+    if (!tonConnectUI) return;
     
     try {
         await tonConnectUI.openModal();
@@ -1431,9 +1228,7 @@ async function connectTONWallet() {
             }
         }, 500);
         
-        setTimeout(function() {
-            clearInterval(interval);
-        }, 30000);
+        setTimeout(function() { clearInterval(interval); }, 30000);
     } catch (e) {
         showToast('Connection failed', 'error');
     }
@@ -1441,10 +1236,7 @@ async function connectTONWallet() {
 
 function showPremiumModal() {
     const modal = document.getElementById('premiumModal');
-    
-    if (modal) {
-        modal.classList.add('show');
-    }
+    if (modal) modal.classList.add('show');
 }
 
 async function buyPremium() {
@@ -1458,10 +1250,7 @@ async function buyPremium() {
     try {
         const tx = {
             validUntil: Math.floor(Date.now() / 1000) + 300,
-            messages: [{
-                address: appConfig.ownerWallet,
-                amount: '5000000000'
-            }]
+            messages: [{ address: appConfig.ownerWallet, amount: '5000000000' }]
         };
         
         const result = await tonConnectUI.sendTransaction(tx);
@@ -1540,9 +1329,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     setTimeout(function() {
         const splash = document.getElementById('splashScreen');
-        if (splash) {
-            splash.classList.add('hidden');
-        }
+        if (splash) splash.classList.add('hidden');
     }, 2000);
     
     await loadConfig();
@@ -1550,13 +1337,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     await initUser();
     await fetchLivePrices(true);
     
-    setInterval(function() {
-        fetchLivePrices();
-    }, 300000);
-    
-    setInterval(function() {
-        updateMissionsProgress();
-    }, 30000);
+    setInterval(function() { fetchLivePrices(); }, 300000);
+    setInterval(function() { updateMissionsProgress(); }, 30000);
 });
 
 // ============================================================================
@@ -1592,4 +1374,4 @@ window.showAssetDetails = showAssetDetails;
 window.showCryptoDetails = showCryptoDetails;
 window.showSolanaWalletModal = showSolanaWalletModal;
 
-console.log('✅✅✅ Troll Army - Professional Version Ready! ✅✅✅');
+console.log('✅✅✅ Troll Army - REFERRAL SYSTEM FIXED! ✅✅✅');
