@@ -1,6 +1,6 @@
 // ============================================================================
-// TROLL ARMY - FINAL COMPLETE VERSION
-// Version: 20.0 - Fixed initData + Guest Registration
+// TROLL ARMY - FINAL VERSION WITH TELEGRAM WAIT SYSTEM
+// Version: 21.0 - Smooth Telegram User Detection & Registration
 // ============================================================================
 
 // ====== TELEGRAM WEBAPP ======
@@ -104,48 +104,102 @@ async function loadConfig() {
     }
 }
 
-// ====== INIT USER (FIXED) ======
+// ====== WAIT FOR TELEGRAM USER DATA ======
+async function waitForTelegramUserData(maxAttempts = 15, delayMs = 200) {
+    console.log('⏳ Waiting for Telegram user data...');
+    
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        console.log(`🔍 Attempt ${attempt}/${maxAttempts}`);
+        
+        // Check if Telegram WebApp is ready
+        if (tg) {
+            tg.ready();
+            tg.expand();
+            
+            // Try to get user from initDataUnsafe (most reliable)
+            if (tg.initDataUnsafe?.user?.id) {
+                const user = tg.initDataUnsafe.user;
+                console.log(`✅ Found user in initDataUnsafe after ${attempt} attempt(s):`, user.id);
+                return {
+                    id: user.id.toString(),
+                    firstName: user.first_name || 'Troll',
+                    lastName: user.last_name || '',
+                    username: user.username || '',
+                    initData: buildInitDataFromUnsafe(tg.initDataUnsafe)
+                };
+            }
+            
+            // Try to get user from initData
+            if (tg.initData) {
+                try {
+                    const params = new URLSearchParams(tg.initData);
+                    const userJson = params.get('user');
+                    if (userJson) {
+                        const user = JSON.parse(decodeURIComponent(userJson));
+                        if (user?.id) {
+                            console.log(`✅ Found user in initData after ${attempt} attempt(s):`, user.id);
+                            return {
+                                id: user.id.toString(),
+                                firstName: user.first_name || 'Troll',
+                                lastName: user.last_name || '',
+                                username: user.username || '',
+                                initData: tg.initData
+                            };
+                        }
+                    }
+                } catch (e) {
+                    console.warn(`⚠️ Error parsing initData:`, e);
+                }
+            }
+        }
+        
+        // Wait before next attempt
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+    
+    console.log('❌ No Telegram user found after', maxAttempts, 'attempts');
+    return null;
+}
+
+// ====== BUILD INIT DATA FROM UNSAFE ======
+function buildInitDataFromUnsafe(unsafe) {
+    if (!unsafe) return '';
+    
+    const data = {
+        query_id: unsafe.query_id,
+        user: JSON.stringify(unsafe.user),
+        auth_date: unsafe.auth_date,
+        hash: unsafe.hash
+    };
+    
+    return Object.keys(data)
+        .filter(k => data[k] !== undefined && data[k] !== null)
+        .map(k => `${k}=${encodeURIComponent(data[k])}`)
+        .join('&');
+}
+
+// ====== INIT USER - WITH PROPER WAIT ======
 async function initUser() {
     console.log('🚀 Initializing user...');
     
-    if (!tg) {
-        console.log('❌ Not in Telegram');
-        await createGuestUser();
-        return;
-    }
+    // Wait for Telegram user data
+    const telegramUser = await waitForTelegramUserData(15, 200);
     
-    tg.ready();
-    tg.expand();
-    
-    // ✅ بناء initData من كل المصادر
-    let initData = tg.initData || '';
-    
-    if (!initData && tg.initDataUnsafe) {
-        console.log('📦 Building initData from initDataUnsafe...');
-        const data = {
-            query_id: tg.initDataUnsafe.query_id,
-            user: JSON.stringify(tg.initDataUnsafe.user),
-            auth_date: tg.initDataUnsafe.auth_date,
-            hash: tg.initDataUnsafe.hash
-        };
-        initData = Object.keys(data).filter(k => data[k]).map(k => `${k}=${encodeURIComponent(data[k])}`).join('&');
-    }
-    
-    console.log('📤 initData length:', initData.length);
-    
-    if (!initData) {
-        console.log('❌ No initData');
+    if (!telegramUser) {
+        console.log('❌ No Telegram user detected - switching to guest mode');
         await createGuestUser();
         return;
     }
     
     console.log('📤 Authenticating with server...');
+    console.log('📤 User ID:', telegramUser.id);
+    console.log('📤 Name:', telegramUser.firstName);
     
     try {
         const response = await fetch('/api/init-user', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ initData: initData })
+            body: JSON.stringify({ initData: telegramUser.initData })
         });
         
         const data = await response.json();
@@ -153,6 +207,8 @@ async function initUser() {
         
         if (data.success) {
             console.log('✅ Authenticated:', data.userId);
+            console.log('💰 Welcome bonus:', data.userData?.balances?.TROLL);
+            
             currentUser = data.userData;
             currentUserId = data.userId;
             isGuest = false;
@@ -164,6 +220,8 @@ async function initUser() {
             showMainApp();
             updateUI();
             checkAdmin();
+            
+            showToast(`Welcome ${data.userData.userName}! +${data.userData.balances.TROLL} TROLL`, 'success');
         } else {
             console.log('❌ Auth failed:', data.error);
             await createGuestUser();
@@ -174,7 +232,7 @@ async function initUser() {
     }
 }
 
-// ====== CREATE GUEST USER (FIXED - SAVES TO DB) ======
+// ====== CREATE GUEST USER ======
 async function createGuestUser() {
     console.log('🎭 Creating guest user...');
     
@@ -204,7 +262,6 @@ async function createGuestUser() {
     localStorage.setItem('troll_user_id', guestId);
     localStorage.setItem('troll_user_data', JSON.stringify(guestData));
     
-    // ✅ إرسال إلى السيرفر
     try {
         await fetch('/api/users', {
             method: 'POST',
@@ -609,7 +666,7 @@ function showComingSoon(feature) { showToast(feature + ' coming soon!', 'info');
 
 // ====== INIT ======
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Troll Army Final Starting...');
+    console.log('🚀 Troll Army Starting - Waiting for Telegram...');
     setTimeout(() => document.getElementById('splashScreen')?.classList.add('hidden'), 2000);
     await loadConfig();
     await initTONConnect();
@@ -645,4 +702,4 @@ window.showComingSoon = showComingSoon;
 window.showAssetDetails = showAssetDetails;
 window.showSolanaWalletModal = showSolanaWalletModal;
 
-console.log('✅ Troll Army Final Ready!');
+console.log('✅ Troll Army - Ready with Telegram Wait System!');
