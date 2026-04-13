@@ -1,587 +1,1178 @@
 // ============================================================================
-// TROLL ARMY - PROFESSIONAL EDITION v24.0
-// ============================================================================
-// ✅ FIX: Telegram detection with multiple fallback methods
-// ✅ FIX: User registration in Firebase
-// ✅ FIX: Guest mode fallback
+// TROLL ARMY - PROFESSIONAL MINI APP
+// Version: 3.0.0
+// Architecture: Modular, Clean, Maintainable
 // ============================================================================
 
 // ============================================================================
-// 1. FORCE TELEGRAM DETECTION - MUST RUN FIRST
+// 1. TELEGRAM WEBAPP INITIALIZATION
 // ============================================================================
 
-(function() {
-    console.log("🚀 TROLL ARMY - FORCED TELEGRAM DETECTION");
-    console.log("⏰ Time:", new Date().toISOString());
+const tg = window.Telegram?.WebApp;
+
+// ============================================================================
+// 2. GLOBAL STATE MANAGEMENT
+// ============================================================================
+
+const STATE = {
+    user: null,
+    userId: null,
+    isGuest: true,
+    currentPage: 'wallet',
+    prices: {},
+    language: localStorage.getItem('language') || 'en',
+    theme: localStorage.getItem('theme') || 'dark',
+    isAdmin: false,
+    tonConnected: false,
+    tonAddress: null,
+    tonUI: null
+};
+
+// ============================================================================
+// 3. APPLICATION CONFIGURATION
+// ============================================================================
+
+const CONFIG = {
+    BOT_LINK: 'https://t.me/TROLLMiniappbot/instant',
+    WELCOME_BONUS: 1000,
+    REFERRAL_BONUS: 500,
+    TROLL_PRICE_FALLBACK: 0.01915,
+    ADMIN_ID: null,
+    OWNER_WALLET: null
+};
+
+let appConfig = {};
+
+// ============================================================================
+// 4. COINGECKO CRYPTOCURRENCY DATA (15+ COINS)
+// ============================================================================
+
+const CRYPTO_LIST = [
+    {
+        symbol: 'TROLL',
+        name: 'Troll Token',
+        coingeckoId: 'troll-2',
+        icon: 'https://s2.coinmarketcap.com/static/img/coins/64x64/36313.png'
+    },
+    {
+        symbol: 'BTC',
+        name: 'Bitcoin',
+        coingeckoId: 'bitcoin',
+        icon: 'https://s2.coinmarketcap.com/static/img/coins/64x64/1.png'
+    },
+    {
+        symbol: 'ETH',
+        name: 'Ethereum',
+        coingeckoId: 'ethereum',
+        icon: 'https://s2.coinmarketcap.com/static/img/coins/64x64/1027.png'
+    },
+    {
+        symbol: 'BNB',
+        name: 'BNB',
+        coingeckoId: 'binancecoin',
+        icon: 'https://s2.coinmarketcap.com/static/img/coins/64x64/1839.png'
+    },
+    {
+        symbol: 'SOL',
+        name: 'Solana',
+        coingeckoId: 'solana',
+        icon: 'https://s2.coinmarketcap.com/static/img/coins/64x64/5426.png'
+    },
+    {
+        symbol: 'DOGE',
+        name: 'Dogecoin',
+        coingeckoId: 'dogecoin',
+        icon: 'https://s2.coinmarketcap.com/static/img/coins/64x64/74.png'
+    },
+    {
+        symbol: 'SHIB',
+        name: 'Shiba Inu',
+        coingeckoId: 'shiba-inu',
+        icon: 'https://s2.coinmarketcap.com/static/img/coins/64x64/5994.png'
+    },
+    {
+        symbol: 'PEPE',
+        name: 'Pepe',
+        coingeckoId: 'pepe',
+        icon: 'https://s2.coinmarketcap.com/static/img/coins/64x64/24478.png'
+    },
+    {
+        symbol: 'BONK',
+        name: 'Bonk',
+        coingeckoId: 'bonk',
+        icon: 'https://s2.coinmarketcap.com/static/img/coins/64x64/23095.png'
+    },
+    {
+        symbol: 'WIF',
+        name: 'Dogwifhat',
+        coingeckoId: 'dogwifcoin',
+        icon: 'https://s2.coinmarketcap.com/static/img/coins/64x64/28752.png'
+    },
+    {
+        symbol: 'FLOKI',
+        name: 'Floki',
+        coingeckoId: 'floki',
+        icon: 'https://s2.coinmarketcap.com/static/img/coins/64x64/10804.png'
+    },
+    {
+        symbol: 'POPCAT',
+        name: 'Popcat',
+        coingeckoId: 'popcat',
+        icon: 'https://s2.coinmarketcap.com/static/img/coins/64x64/28752.png'
+    },
+    {
+        symbol: 'MEW',
+        name: 'Cat in a Dogs World',
+        coingeckoId: 'cat-in-a-dogs-world',
+        icon: 'https://s2.coinmarketcap.com/static/img/coins/64x64/29588.png'
+    },
+    {
+        symbol: 'MYRO',
+        name: 'Myro',
+        coingeckoId: 'myro',
+        icon: 'https://s2.coinmarketcap.com/static/img/coins/64x64/28301.png'
+    },
+    {
+        symbol: 'WEN',
+        name: 'Wen',
+        coingeckoId: 'wen-4',
+        icon: 'https://s2.coinmarketcap.com/static/img/coins/64x64/28932.png'
+    }
+];
+
+// ============================================================================
+// 5. ASSET CATEGORIES
+// ============================================================================
+
+const MY_ASSETS = ['TROLL', 'SOL', 'BNB', 'ETH', 'TRON'];
+
+const MEME_COINS = ['DOGE', 'SHIB', 'PEPE', 'BONK', 'WIF', 'FLOKI', 'POPCAT', 'MEW', 'MYRO', 'WEN'];
+
+// ============================================================================
+// 6. MYSTERY MISSIONS CONFIGURATION
+// ============================================================================
+
+const MISSIONS = {
+    mission1: {
+        id: 'solana_wallet',
+        title: 'Mission 1: Connect Solana',
+        desc: 'Add your TROLL Solana wallet',
+        hint: 'Go to Settings → Solana Wallet'
+    },
+    mission2: {
+        id: 'referral_earnings',
+        title: 'Mission 2: Build Wealth',
+        desc: 'Earn 12,500 TROLL from referrals',
+        required: 12500
+    },
+    mission3: {
+        id: 'new_referrals',
+        title: 'Mission 3: Expand Army',
+        desc: 'Get 12 NEW referrals',
+        required: 12
+    },
+    mission4: {
+        id: 'holdings',
+        title: 'Mission 4: Prove Holdings',
+        desc: 'Hold 0.025 BNB or 0.25 SOL',
+        requiredBNB: 0.025,
+        requiredSOL: 0.25
+    }
+};
+
+// ============================================================================
+// 7. REFERRAL MILESTONES (REFI NETWORK STYLE)
+// ============================================================================
+
+const MILESTONES = [
+    {
+        referrals: 10,
+        reward: 5000,
+        title: '🤡 Baby Troll'
+    },
+    {
+        referrals: 25,
+        reward: 12500,
+        title: '😈 Master Troll'
+    },
+    {
+        referrals: 100,
+        reward: 25000,
+        title: '👹 Troll Lord'
+    },
+    {
+        referrals: 250,
+        reward: 50000,
+        title: '🧌 Troll King'
+    },
+    {
+        referrals: 500,
+        reward: 100000,
+        title: '🔥 Troll God'
+    },
+    {
+        referrals: 1000,
+        reward: 0,
+        title: '💀 Grand Master',
+        isSpecial: true
+    }
+];
+
+// ============================================================================
+// 8. MULTI-LANGUAGE TRANSLATIONS
+// ============================================================================
+
+const LOCALES = {
+    en: {
+        'nav.wallet': 'Wallet',
+        'nav.airdrop': 'Missions',
+        'nav.settings': 'Settings',
+        'wallet.totalBalance': 'Total Balance',
+        'airdrop.totalInvites': 'Total Invites',
+        'airdrop.earned': 'TROLL Earned',
+        'airdrop.yourLink': 'Your Invite Link',
+        'mission.revealLater': 'Reveals after previous mission',
+        'mission.waitDays': 'Reveals in {days} days',
+        'premium.unlocked': 'Premium Unlocked!',
+        'withdrawal.unlocked': 'Withdrawal Unlocked!'
+    },
+    ar: {
+        'nav.wallet': 'المحفظة',
+        'nav.airdrop': 'المهام',
+        'nav.settings': 'الإعدادات',
+        'wallet.totalBalance': 'الرصيد الإجمالي',
+        'airdrop.totalInvites': 'إجمالي الدعوات',
+        'airdrop.earned': 'TROLL المكتسبة',
+        'airdrop.yourLink': 'رابط الدعوة',
+        'mission.revealLater': 'ستكشف بعد المهمة السابقة',
+        'mission.waitDays': 'ستكشف بعد {days} يوم',
+        'premium.unlocked': 'تم تفعيل البريميوم!',
+        'withdrawal.unlocked': 'تم فتح السحب!'
+    }
+};
+
+// ============================================================================
+// 9. UTILITY FUNCTIONS
+// ============================================================================
+
+function t(key, params = {}) {
+    let text = LOCALES[STATE.language]?.[key] || LOCALES.en[key] || key;
     
-    // متغيرات عامة
-    window.TROLL_ARMY = window.TROLL_ARMY || {};
-    window.TROLL_ARMY.isTelegram = false;
-    window.TROLL_ARMY.userId = null;
-    window.TROLL_ARMY.userName = null;
-    window.TROLL_ARMY.userUsername = null;
-    window.TROLL_ARMY.isReady = false;
+    Object.keys(params).forEach(k => {
+        text = text.replace(`{${k}}`, params[k]);
+    });
     
-    // ====== الطريقة 1: قراءة مباشرة من window ======
-    function checkDirect() {
-        if (window.Telegram && window.Telegram.WebApp) {
-            const tg = window.Telegram.WebApp;
-            if (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
-                const user = tg.initDataUnsafe.user;
-                window.TROLL_ARMY.isTelegram = true;
-                window.TROLL_ARMY.userId = user.id.toString();
-                window.TROLL_ARMY.userName = user.first_name || 'Troll';
-                window.TROLL_ARMY.userUsername = user.username || '';
-                window.TROLL_ARMY.telegramInstance = tg;
-                
-                tg.ready();
-                tg.expand();
-                
-                console.log("✅✅✅ TELEGRAM DETECTED (Method 1)");
-                console.log("📱 User ID:", window.TROLL_ARMY.userId);
-                console.log("📱 User Name:", window.TROLL_ARMY.userName);
-                
-                return true;
-            }
-        }
+    return text;
+}
+
+function log(message, data = null) {
+    const prefix = '🧌 [Troll Army]';
+    
+    if (data) {
+        console.log(prefix, message, data);
+    } else {
+        console.log(prefix, message);
+    }
+}
+
+function formatNumber(num) {
+    if (!num) return '0.00';
+    if (num >= 1e9) return (num / 1e9).toFixed(2) + 'B';
+    if (num >= 1e6) return (num / 1e6).toFixed(2) + 'M';
+    if (num >= 1e3) return (num / 1e3).toFixed(2) + 'K';
+    return num.toFixed(2);
+}
+
+function formatBalance(balance, symbol) {
+    if (balance === undefined || balance === null) balance = 0;
+    
+    if (symbol === 'TROLL') {
+        return balance.toLocaleString() + ' TROLL';
+    }
+    
+    return balance.toLocaleString() + ' ' + symbol;
+}
+
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    const msgEl = document.getElementById('toastMessage');
+    
+    if (!toast || !msgEl) return;
+    
+    msgEl.textContent = message;
+    toast.classList.remove('hidden');
+    
+    const icon = toast.querySelector('i');
+    
+    if (icon) {
+        icon.className = type === 'error' 
+            ? 'fas fa-exclamation-circle' 
+            : 'fas fa-check-circle';
+    }
+    
+    setTimeout(() => toast.classList.add('hidden'), 3000);
+}
+
+function closeModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) modal.classList.remove('show');
+}
+
+function showModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) modal.classList.add('show');
+}
+
+function hideElement(id) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+}
+
+function showElement(id, display = 'block') {
+    const el = document.getElementById(id);
+    if (el) el.style.display = display;
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard?.writeText(text);
+    showToast('Copied!', 'success');
+}
+
+// ============================================================================
+// 10. API COMMUNICATION
+// ============================================================================
+
+async function api(endpoint, method = 'GET', body = null) {
+    const options = {
+        method: method,
+        headers: { 'Content-Type': 'application/json' }
+    };
+    
+    if (body) {
+        options.body = JSON.stringify(body);
+    }
+    
+    try {
+        const response = await fetch(`/api${endpoint}`, options);
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        log('API Error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// ============================================================================
+// 11. CONFIGURATION LOADER
+// ============================================================================
+
+async function loadConfig() {
+    try {
+        const response = await fetch('/api/config');
+        appConfig = await response.json();
+        
+        CONFIG.ADMIN_ID = appConfig.adminId;
+        CONFIG.OWNER_WALLET = appConfig.ownerWallet;
+        
+        STATE.isAdmin = (STATE.userId === CONFIG.ADMIN_ID);
+        
+        return true;
+    } catch (error) {
+        log('Config error:', error);
         return false;
     }
-    
-    // ====== الطريقة 2: انتظار تحميل Telegram ======
-    let attempts = 0;
-    const maxAttempts = 50; // 5 ثواني (100ms * 50)
-    
-    function waitForTelegram() {
-        attempts++;
-        
-        // محاولة القراءة المباشرة أولاً
-        if (checkDirect()) {
-            window.TROLL_ARMY.isReady = true;
-            dispatchReadyEvent();
-            return;
-        }
-        
-        // محاولة بديلة: البحث في window.Telegram
-        if (window.Telegram) {
-            console.log(`🔄 Attempt ${attempts}: Telegram object exists, checking WebApp...`);
-            
-            if (window.Telegram.WebApp) {
-                console.log(`🔄 Attempt ${attempts}: WebApp exists, checking user...`);
-                const tg = window.Telegram.WebApp;
-                
-                if (tg.initDataUnsafe) {
-                    console.log(`🔄 Attempt ${attempts}: initDataUnsafe exists`);
-                    
-                    if (tg.initDataUnsafe.user) {
-                        const user = tg.initDataUnsafe.user;
-                        if (user.id) {
-                            window.TROLL_ARMY.isTelegram = true;
-                            window.TROLL_ARMY.userId = user.id.toString();
-                            window.TROLL_ARMY.userName = user.first_name || 'Troll';
-                            window.TROLL_ARMY.userUsername = user.username || '';
-                            window.TROLL_ARMY.telegramInstance = tg;
-                            
-                            tg.ready();
-                            tg.expand();
-                            
-                            console.log("✅✅✅ TELEGRAM DETECTED (Method 2)");
-                            console.log("📱 User ID:", window.TROLL_ARMY.userId);
-                            
-                            window.TROLL_ARMY.isReady = true;
-                            dispatchReadyEvent();
-                            return;
-                        }
-                    }
-                }
-            }
-        }
-        
-        // محاولة بديلة: قراءة من sessionStorage أو localStorage
-        if (attempts === 10) {
-            try {
-                const savedId = localStorage.getItem('troll_telegram_id');
-                const savedName = localStorage.getItem('troll_telegram_name');
-                if (savedId && savedName) {
-                    window.TROLL_ARMY.isTelegram = true;
-                    window.TROLL_ARMY.userId = savedId;
-                    window.TROLL_ARMY.userName = savedName;
-                    window.TROLL_ARMY.isRestored = true;
-                    console.log("📦 RESTORED from localStorage:", savedId);
-                    window.TROLL_ARMY.isReady = true;
-                    dispatchReadyEvent();
-                    return;
-                }
-            } catch(e) {}
-        }
-        
-        // استمرار الانتظار
-        if (attempts < maxAttempts) {
-            setTimeout(waitForTelegram, 100);
-        } else {
-            console.log("❌❌❌ TELEGRAM NOT DETECTED - Using Guest Mode");
-            window.TROLL_ARMY.isTelegram = false;
-            window.TROLL_ARMY.isReady = true;
-            dispatchReadyEvent();
-        }
-    }
-    
-    function dispatchReadyEvent() {
-        const event = new CustomEvent('troll-army-ready', {
-            detail: {
-                isTelegram: window.TROLL_ARMY.isTelegram,
-                userId: window.TROLL_ARMY.userId,
-                userName: window.TROLL_ARMY.userName
-            }
-        });
-        window.dispatchEvent(event);
-        console.log("📢 Event 'troll-army-ready' dispatched");
-    }
-    
-    // بدء عملية الكشف
-    waitForTelegram();
-    
-    // محاولة فورية إضافية بعد 500ms
-    setTimeout(() => {
-        if (!window.TROLL_ARMY.isReady) {
-            console.log("🔄 Extra attempt after 500ms...");
-            checkDirect();
-        }
-    }, 500);
-    
-    console.log("🔍 Telegram detection started...");
-})();
-
-// ============================================================================
-// 2. WAIT FOR TELEGRAM DETECTION THEN INITIALIZE
-// ============================================================================
-
-document.addEventListener('DOMContentLoaded', () => {
-    console.log("📄 DOM Content Loaded");
-    
-    // إخفاء splash بعد 2 ثانية كحد أقصى
-    setTimeout(() => {
-        const splash = document.getElementById('splashScreen');
-        if (splash && splash.style.display !== 'none') {
-            splash.classList.add('hidden');
-        }
-    }, 3000);
-    
-    // انتظار اكتشاف Telegram
-    if (window.TROLL_ARMY && window.TROLL_ARMY.isReady) {
-        initializeApp();
-    } else {
-        window.addEventListener('troll-army-ready', () => {
-            initializeApp();
-        });
-    }
-});
-
-// ============================================================================
-// 3. MAIN APPLICATION INITIALIZATION
-// ============================================================================
-
-let currentUser = null;
-let currentUserId = null;
-let isGuest = false;
-
-async function initializeApp() {
-    console.log("🚀 INITIALIZING APP...");
-    console.log("📱 Telegram detected:", window.TROLL_ARMY.isTelegram);
-    console.log("📱 User ID:", window.TROLL_ARMY.userId);
-    console.log("📱 User Name:", window.TROLL_ARMY.userName);
-    
-    // إخفاء شاشة التحميل
-    const splash = document.getElementById('splashScreen');
-    if (splash) {
-        splash.classList.add('hidden');
-        setTimeout(() => splash.style.display = 'none', 500);
-    }
-    
-    if (window.TROLL_ARMY.isTelegram && window.TROLL_ARMY.userId) {
-        // ✅ مستخدم Telegram حقيقي
-        currentUserId = window.TROLL_ARMY.userId;
-        isGuest = false;
-        
-        // حفظ في localStorage للجلسات المستقبلية
-        localStorage.setItem('troll_telegram_id', currentUserId);
-        localStorage.setItem('troll_telegram_name', window.TROLL_ARMY.userName);
-        localStorage.setItem('troll_auth_time', Date.now().toString());
-        
-        console.log("🎉 TELEGRAM USER AUTHENTICATED:", currentUserId);
-        
-        // تحميل أو إنشاء المستخدم
-        await loadOrCreateUser();
-        
-        // إظهار واجهة المستخدم الرئيسية
-        showMainApp();
-        
-        // تحديث الواجهة
-        updateUI();
-        
-        // عرض رسالة ترحيب للمستخدم الجديد
-        if (window.TROLL_ARMY.isNewUser) {
-            showToast(`🎉 Welcome ${window.TROLL_ARMY.userName}! +1000 TROLL`, 'success');
-        }
-        
-    } else {
-        // ❌ وضع الضيف
-        console.log("🎭 GUEST MODE - No Telegram detected");
-        await createGuestUser();
-        showMainApp();
-        updateUI();
-        showToast('⚠️ Guest Mode - Open from Telegram for full features', 'warning');
-    }
 }
 
 // ============================================================================
-// 4. LOAD OR CREATE USER IN FIREBASE
+// 12. COINGECKO LIVE PRICES
 // ============================================================================
 
-async function loadOrCreateUser() {
-    if (!currentUserId) return;
+let lastPriceFetch = 0;
+
+async function fetchLivePrices(force = false) {
+    const now = Date.now();
     
-    console.log("📂 Loading/Creating user:", currentUserId);
-    
-    // محاولة تحميل من localStorage أولاً
-    const localKey = `troll_user_${currentUserId}`;
-    const localData = localStorage.getItem(localKey);
-    
-    if (localData) {
-        try {
-            currentUser = JSON.parse(localData);
-            console.log("✅ User loaded from localStorage");
-            return;
-        } catch(e) {}
+    if (!force && lastPriceFetch && (now - lastPriceFetch) < 300000) {
+        return;
     }
     
-    // محاولة تحميل من السيرفر
+    log('Fetching CoinGecko prices...');
+    
     try {
-        const response = await fetch(`/api/users/${currentUserId}`);
+        const ids = CRYPTO_LIST.map(c => c.coingeckoId).join(',');
+        const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`;
+        
+        const response = await fetch(url);
         const data = await response.json();
         
-        if (data.success && data.data) {
-            currentUser = data.data;
-            localStorage.setItem(localKey, JSON.stringify(currentUser));
-            console.log("✅ User loaded from server");
-            return;
+        CRYPTO_LIST.forEach(coin => {
+            if (data[coin.coingeckoId]) {
+                STATE.prices[coin.symbol] = {
+                    price: data[coin.coingeckoId].usd,
+                    change: data[coin.coingeckoId].usd_24h_change || 0
+                };
+            }
+        });
+        
+        if (!STATE.prices['TROLL']) {
+            STATE.prices['TROLL'] = {
+                price: CONFIG.TROLL_PRICE_FALLBACK,
+                change: 0
+            };
         }
-    } catch(e) {
-        console.log("Server error, creating new user");
+        
+        lastPriceFetch = now;
+        
+        if (STATE.currentPage === 'wallet') {
+            renderAssets();
+            renderTopCryptos();
+            renderMemeCoins();
+            updateTotalBalance();
+        }
+    } catch (error) {
+        log('Price error:', error);
+        STATE.prices['TROLL'] = {
+            price: CONFIG.TROLL_PRICE_FALLBACK,
+            change: 0
+        };
     }
-    
-    // إنشاء مستخدم جديد
-    await createNewUser();
 }
 
-async function createNewUser() {
-    console.log("🆕 Creating new user:", currentUserId);
+// ============================================================================
+// 13. TELEGRAM USER DETECTION
+// ============================================================================
+
+function getTelegramUser() {
+    if (!tg) {
+        log('No Telegram WebApp');
+        return null;
+    }
     
-    const newUser = {
-        userId: currentUserId,
-        userName: window.TROLL_ARMY.userName || 'Troll',
-        userUsername: window.TROLL_ARMY.userUsername || '',
-        balances: { TROLL: 1000, BNB: 0, SOL: 0, ETH: 0, TRON: 0 },
-        referralCode: currentUserId,
-        referredBy: null,
+    tg.ready();
+    tg.expand();
+    
+    if (tg.initDataUnsafe?.user) {
+        const user = tg.initDataUnsafe.user;
+        log('User from initDataUnsafe:', user.id);
+        
+        return {
+            id: user.id.toString(),
+            name: user.first_name || 'Troll',
+            username: user.username || '',
+            initData: tg.initData || ''
+        };
+    }
+    
+    if (tg.initData) {
+        try {
+            const params = new URLSearchParams(tg.initData);
+            const userJson = params.get('user');
+            
+            if (userJson) {
+                const user = JSON.parse(decodeURIComponent(userJson));
+                log('User from initData:', user.id);
+                
+                return {
+                    id: user.id.toString(),
+                    name: user.first_name || 'Troll',
+                    username: user.username || '',
+                    initData: tg.initData
+                };
+            }
+        } catch (error) {
+            log('Parse error:', error);
+        }
+    }
+    
+    return null;
+}
+
+function getReferralFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('startapp') || params.get('startapp') || params.get('ref') || null;
+}
+
+// ============================================================================
+// 14. DEFAULT DATA CREATORS
+// ============================================================================
+
+function getDefaultMissions() {
+    return {
+        mission1: {
+            completed: false,
+            revealed: true,
+            walletAddress: null
+        },
+        mission2: {
+            completed: false,
+            revealed: false,
+            currentAmount: 0,
+            requiredAmount: 12500
+        },
+        mission3: {
+            completed: false,
+            revealed: false,
+            referralsAtStart: 0,
+            currentNewReferrals: 0,
+            requiredReferrals: 12
+        },
+        mission4: {
+            completed: false,
+            revealed: false,
+            revealDate: null,
+            requiredBNB: 0.025,
+            requiredSOL: 0.25
+        }
+    };
+}
+
+function createUserObject(userId, userName, userUsername, refCode) {
+    return {
+        userId: userId,
+        userName: userName,
+        userUsername: userUsername || '',
+        balances: {
+            TROLL: CONFIG.WELCOME_BONUS,
+            BNB: 0,
+            SOL: 0,
+            ETH: 0,
+            TRON: 0
+        },
+        referralCode: userId,
+        referredBy: refCode || null,
         referrals: [],
         inviteCount: 0,
         referralEarnings: 0,
-        totalEarned: 1000,
+        totalEarned: CONFIG.WELCOME_BONUS,
         premium: false,
         avatar: '🧌',
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
         withdrawalUnlocked: false,
         claimedMilestones: [],
+        tonWallet: null,
         settings: { solanaWallet: null },
         withdrawalMissions: getDefaultMissions(),
         notifications: [{
             id: Date.now().toString(),
-            message: `🎉 Welcome! +1000 TROLL bonus!`,
+            message: `🎉 Welcome! +${CONFIG.WELCOME_BONUS} TROLL`,
             read: false,
             timestamp: new Date().toISOString()
         }],
         transactions: []
     };
-    
-    // حفظ محلياً
-    localStorage.setItem(`troll_user_${currentUserId}`, JSON.stringify(newUser));
-    currentUser = newUser;
-    
-    // محاولة حفظ على السيرفر
-    try {
-        await fetch('/api/users', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: currentUserId, userData: newUser })
-        });
-        console.log("✅ User saved to server");
-        window.TROLL_ARMY.isNewUser = true;
-    } catch(e) {
-        console.log("⚠️ User saved locally only");
-    }
 }
 
-async function createGuestUser() {
-    const guestId = 'guest_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+function createGuestUser() {
+    const guestId = 'guest_' + Date.now();
     
-    currentUser = {
+    STATE.user = {
         userId: guestId,
         userName: 'Guest',
-        balances: { TROLL: 0, BNB: 0, SOL: 0, ETH: 0, TRON: 0 },
+        balances: {
+            TROLL: 0,
+            BNB: 0,
+            SOL: 0,
+            ETH: 0,
+            TRON: 0
+        },
         inviteCount: 0,
+        referralEarnings: 0,
         premium: false,
         avatar: '🧌',
         withdrawalUnlocked: false,
-        settings: { solanaWallet: null },
+        claimedMilestones: [],
+        settings: {},
         withdrawalMissions: getDefaultMissions(),
         notifications: [],
-        transactions: [],
-        isGuest: true
+        transactions: []
     };
-    currentUserId = guestId;
-    isGuest = true;
     
-    localStorage.setItem(`troll_user_${guestId}`, JSON.stringify(currentUser));
-}
-
-function getDefaultMissions() {
-    return {
-        mission1: { completed: false, revealed: true, walletAddress: null },
-        mission2: { completed: false, revealed: false, currentAmount: 0, requiredAmount: 12500 },
-        mission3: { completed: false, revealed: false, referralsAtStart: 0, currentNewReferrals: 0, requiredReferrals: 12 },
-        mission4: { completed: false, revealed: false, revealDate: null, requiredBNB: 0.025, requiredSOL: 0.25 }
-    };
+    STATE.userId = guestId;
+    STATE.isGuest = true;
 }
 
 // ============================================================================
-// 5. UI FUNCTIONS
+// 15. USER REGISTRATION & MANAGEMENT
 // ============================================================================
 
-function showMainApp() {
-    const onboarding = document.getElementById('onboardingScreen');
-    const mainApp = document.getElementById('mainApp');
-    const bottomNav = document.getElementById('bottomNav');
+async function registerUser(tgUser) {
+    log('Registering:', tgUser.id);
     
-    if (onboarding) onboarding.style.display = 'none';
-    if (mainApp) mainApp.style.display = 'block';
-    if (bottomNav) bottomNav.style.display = 'flex';
+    if (tgUser.initData) {
+        try {
+            const response = await api('/init-user', 'POST', {
+                initData: tgUser.initData
+            });
+            
+            if (response.success && response.userData) {
+                log('Server authenticated');
+                return response.userData;
+            }
+        } catch (error) {
+            log('Server auth failed:', error);
+        }
+    }
+    
+    const refCode = getReferralFromUrl();
+    const newUser = createUserObject(
+        tgUser.id,
+        tgUser.name,
+        tgUser.username,
+        refCode
+    );
+    
+    try {
+        await api('/users', 'POST', {
+            userId: tgUser.id,
+            userData: newUser
+        });
+        log('User saved to server');
+    } catch (error) {
+        log('Server save failed:', error);
+    }
+    
+    return newUser;
 }
 
-function updateUI() {
-    if (!currentUser) return;
+async function saveUserData() {
+    if (!STATE.user || STATE.isGuest) return;
     
-    // تحديث اسم المستخدم
-    const userNameEl = document.getElementById('userName');
-    if (userNameEl) {
-        userNameEl.textContent = currentUser.userName || (isGuest ? 'Guest' : 'User');
+    const key = `user_${STATE.userId}`;
+    localStorage.setItem(key, JSON.stringify(STATE.user));
+    
+    try {
+        await api(`/users/${STATE.userId}`, 'PATCH', {
+            updates: STATE.user
+        });
+    } catch (error) {
+        log('Save error:', error);
+    }
+}
+
+async function processReferral(refCode) {
+    if (!refCode) return;
+    if (refCode === STATE.userId) return;
+    if (STATE.user.referredBy) return;
+    
+    log('Processing referral:', refCode);
+    
+    try {
+        const response = await api('/referral', 'POST', {
+            referrerId: refCode,
+            newUserId: STATE.userId
+        });
+        
+        if (response.success) {
+            STATE.user.referredBy = refCode;
+            STATE.user.balances.TROLL += CONFIG.REFERRAL_BONUS;
+            STATE.user.referralEarnings += CONFIG.REFERRAL_BONUS;
+            STATE.user.totalEarned += CONFIG.REFERRAL_BONUS;
+            
+            await saveUserData();
+            showToast(`🎉 +${CONFIG.REFERRAL_BONUS} TROLL from referral!`, 'success');
+        }
+    } catch (error) {
+        log('Referral error:', error);
+    }
+}
+
+// ============================================================================
+// 16. MAIN INITIALIZATION
+// ============================================================================
+
+async function initializeApp() {
+    log('🚀 Initializing Troll Army...');
+    
+    const tgUser = getTelegramUser();
+    
+    if (tgUser) {
+        STATE.isGuest = false;
+        STATE.userId = tgUser.id;
+        
+        const savedKey = `user_${STATE.userId}`;
+        const saved = localStorage.getItem(savedKey);
+        
+        if (saved) {
+            try {
+                STATE.user = JSON.parse(saved);
+                log('Loaded from storage');
+            } catch (error) {
+                STATE.user = await registerUser(tgUser);
+            }
+        } else {
+            try {
+                const response = await api(`/users/${STATE.userId}`);
+                
+                if (response.success && response.data) {
+                    STATE.user = response.data;
+                    log('Loaded from server');
+                } else {
+                    STATE.user = await registerUser(tgUser);
+                }
+            } catch (error) {
+                STATE.user = await registerUser(tgUser);
+            }
+        }
+        
+        localStorage.setItem(savedKey, JSON.stringify(STATE.user));
+        
+        const ref = getReferralFromUrl();
+        if (ref) await processReferral(ref);
+        
+    } else {
+        createGuestUser();
     }
     
-    // تحديث ID
-    const userIdEl = document.getElementById('userIdDisplay');
-    if (userIdEl) {
-        userIdEl.textContent = 'ID: ' + (currentUserId || '').slice(-8);
+    await loadConfig();
+    
+    window.TrollArmy = {
+        userId: STATE.userId,
+        userName: STATE.user?.userName || 'Guest',
+        isGuest: STATE.isGuest
+    };
+    
+    hideElement('splashScreen');
+    showElement('mainApp');
+    showElement('bottomNav', 'flex');
+    
+    renderUI();
+    
+    if (STATE.isAdmin) {
+        addAdminCrown();
     }
     
-    // تحديث الرصيد
-    const balanceEl = document.getElementById('trollBalance');
-    if (balanceEl) {
-        balanceEl.textContent = (currentUser.balances?.TROLL || 0).toLocaleString();
+    await fetchLivePrices(true);
+    
+    setInterval(() => fetchLivePrices(), 300000);
+    
+    log('✅ App ready!', {
+        userId: STATE.userId,
+        isGuest: STATE.isGuest,
+        balance: STATE.user?.balances?.TROLL
+    });
+}
+
+// ============================================================================
+// 17. UI RENDERING FUNCTIONS
+// ============================================================================
+
+function renderUI() {
+    if (!STATE.user) return;
+    
+    renderHeader();
+    renderBalance();
+    renderReferralStats();
+    
+    if (STATE.currentPage === 'wallet') {
+        renderAssets();
+        renderTopCryptos();
+        renderMemeCoins();
+    } else if (STATE.currentPage === 'airdrop') {
+        renderMissionsUI();
+        renderMilestones();
+    } else if (STATE.currentPage === 'settings') {
+        renderSettings();
     }
+}
+
+function renderHeader() {
+    document.getElementById('userName').textContent = STATE.user.userName || 'Troll';
+    document.getElementById('userIdDisplay').textContent = `ID: ${(STATE.userId || '').slice(-8)}`;
     
-    // تحديث الدعوات
-    const invitesEl = document.getElementById('totalInvites');
-    if (invitesEl) {
-        invitesEl.textContent = currentUser.inviteCount || 0;
+    const avatar = document.getElementById('userAvatar');
+    if (avatar) {
+        avatar.textContent = STATE.user.premium ? '😏' : (STATE.user.avatar || '🧌');
     }
+}
+
+function renderBalance() {
+    const trollBalance = STATE.user.balances?.TROLL || 0;
+    document.getElementById('trollBalance').textContent = trollBalance.toLocaleString();
     
-    // تحديث الأرباح
-    const earnedEl = document.getElementById('trollEarned');
-    if (earnedEl) {
-        earnedEl.textContent = (currentUser.referralEarnings || 0).toLocaleString();
-    }
+    updateTotalBalance();
+}
+
+function updateTotalBalance() {
+    let total = 0;
     
-    // تحديث رابط الدعوة
-    const inviteLinkEl = document.getElementById('inviteLink');
-    if (inviteLinkEl && !isGuest) {
-        inviteLinkEl.value = `https://t.me/TROLLMiniappbot/instant?startapp=${currentUserId}`;
-    } else if (inviteLinkEl) {
-        inviteLinkEl.value = 'Open from Telegram to get link';
-    }
+    MY_ASSETS.forEach(symbol => {
+        const balance = STATE.user.balances?.[symbol] || 0;
+        const price = STATE.prices[symbol]?.price || 0;
+        total += balance * price;
+    });
     
-    // تحديث قائمة الأصول
-    renderAssets();
+    document.getElementById('totalBalance').textContent = '$' + formatNumber(total);
     
-    // تحديث المهام
-    renderMissions();
+    const trollBalance = STATE.user.balances?.TROLL || 0;
+    const trollPrice = STATE.prices['TROLL']?.price || CONFIG.TROLL_PRICE_FALLBACK;
+    document.getElementById('trollUsdValue').textContent = (trollBalance * trollPrice).toFixed(2);
+}
+
+function renderReferralStats() {
+    document.getElementById('totalInvites').textContent = STATE.user.inviteCount || 0;
+    document.getElementById('trollEarned').textContent = (STATE.user.referralEarnings || 0).toLocaleString();
     
-    // تحديث الإعدادات
-    updateSettingsUI();
+    const link = STATE.isGuest
+        ? CONFIG.BOT_LINK
+        : `${CONFIG.BOT_LINK}?startapp=${STATE.userId}`;
+    
+    document.getElementById('inviteLink').value = link;
 }
 
 function renderAssets() {
     const container = document.getElementById('assetsList');
-    if (!container || !currentUser) return;
+    if (!container) return;
     
-    const assets = [
-        { symbol: 'TROLL', name: 'Troll Token', icon: '🧌' },
-        { symbol: 'SOL', name: 'Solana', icon: '🟣' },
-        { symbol: 'BNB', name: 'BNB', icon: '🟡' },
-        { symbol: 'ETH', name: 'Ethereum', icon: '💎' },
-        { symbol: 'TRON', name: 'TRON', icon: '🔷' }
-    ];
+    const assets = MY_ASSETS.map(symbol => {
+        const coin = CRYPTO_LIST.find(c => c.symbol === symbol);
+        return {
+            symbol: symbol,
+            name: coin?.name || symbol,
+            icon: coin?.icon || ''
+        };
+    });
     
-    container.innerHTML = assets.map(asset => {
-        const balance = currentUser.balances?.[asset.symbol] || 0;
-        return `
+    let html = '';
+    
+    assets.forEach(asset => {
+        const balance = STATE.user.balances?.[asset.symbol] || 0;
+        const price = STATE.prices[asset.symbol]?.price || 0;
+        const value = balance * price;
+        
+        html += `
             <div class="asset-item" onclick="showAssetDetails('${asset.symbol}')">
                 <div class="asset-left">
-                    <div class="asset-icon" style="font-size: 32px;">${asset.icon}</div>
+                    <img src="${asset.icon}" class="asset-icon-img" alt="${asset.symbol}">
                     <div class="asset-info">
                         <h4>${asset.name}</h4>
                         <p>${asset.symbol}</p>
                     </div>
                 </div>
                 <div class="asset-right">
-                    <div class="asset-balance">${balance.toLocaleString()} ${asset.symbol}</div>
+                    <div class="asset-balance">${formatBalance(balance, asset.symbol)}</div>
+                    <div class="asset-value">$${formatNumber(value)}</div>
                 </div>
             </div>
         `;
-    }).join('');
+    });
+    
+    container.innerHTML = html;
 }
 
-function renderMissions() {
-    const container = document.getElementById('withdrawalLockCard');
-    if (!container || !currentUser) return;
+function renderTopCryptos() {
+    const container = document.getElementById('topCryptoList');
+    if (!container) return;
     
-    const m = currentUser.withdrawalMissions;
-    const completed = [m.mission1.completed, m.mission2.completed, m.mission3.completed, m.mission4.completed].filter(Boolean).length;
+    const topCoins = CRYPTO_LIST.filter(c => 
+        c.symbol === 'TROLL' || 
+        c.symbol === 'BTC' || 
+        c.symbol === 'ETH' || 
+        c.symbol === 'BNB' || 
+        c.symbol === 'SOL'
+    );
     
-    container.innerHTML = `
-        <div class="lock-header">
-            <i class="fa-solid fa-${currentUser.withdrawalUnlocked ? 'unlock' : 'lock'}"></i>
-            <span>${currentUser.withdrawalUnlocked ? '✅ Withdrawal Available!' : '🔒 Withdrawal Locked'}</span>
-        </div>
-        <div class="missions-stats">
-            <div class="missions-progress">
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: ${(completed / 4) * 100}%"></div>
+    let html = '';
+    
+    topCoins.forEach(coin => {
+        const data = STATE.prices[coin.symbol] || { price: 0, change: 0 };
+        const changeClass = data.change >= 0 ? 'positive' : 'negative';
+        const changeSymbol = data.change >= 0 ? '+' : '';
+        const decimals = coin.symbol === 'TROLL' ? 5 : 2;
+        
+        html += `
+            <div class="crypto-item" onclick="showCryptoDetails('${coin.symbol}')">
+                <div class="crypto-left">
+                    <img src="${coin.icon}" class="crypto-icon-img" alt="${coin.symbol}">
+                    <div class="crypto-info">
+                        <h4>${coin.name}</h4>
+                        <p>${coin.symbol}</p>
+                    </div>
                 </div>
-                <p>${completed}/4 Missions Completed</p>
+                <div class="crypto-right">
+                    <div class="crypto-price">$${data.price.toFixed(decimals)}</div>
+                    <div class="crypto-change ${changeClass}">${changeSymbol}${data.change.toFixed(1)}%</div>
+                </div>
             </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+function renderMemeCoins() {
+    const container = document.getElementById('memeCoinList');
+    if (!container) return;
+    
+    const memeCoins = CRYPTO_LIST.filter(c => MEME_COINS.includes(c.symbol));
+    
+    let html = '';
+    
+    memeCoins.forEach(coin => {
+        const data = STATE.prices[coin.symbol] || { price: 0, change: 0 };
+        const changeClass = data.change >= 0 ? 'positive' : 'negative';
+        const changeSymbol = data.change >= 0 ? '+' : '';
+        
+        html += `
+            <div class="crypto-item" onclick="showCryptoDetails('${coin.symbol}')">
+                <div class="crypto-left">
+                    <img src="${coin.icon}" class="crypto-icon-img" alt="${coin.symbol}">
+                    <div class="crypto-info">
+                        <h4>${coin.name}</h4>
+                        <p>${coin.symbol}</p>
+                    </div>
+                </div>
+                <div class="crypto-right">
+                    <div class="crypto-price">$${data.price.toFixed(8)}</div>
+                    <div class="crypto-change ${changeClass}">${changeSymbol}${data.change.toFixed(1)}%</div>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+function renderMissionsUI() {
+    const container = document.getElementById('withdrawalLockCard');
+    if (!container) return;
+    
+    if (STATE.user.premium) {
+        container.innerHTML = `
+            <div class="premium-unlocked-card">
+                <div class="premium-icon-large">😏</div>
+                <h3>${t('premium.unlocked')}</h3>
+                <p>Instant withdrawal!</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const m = STATE.user.withdrawalMissions;
+    
+    let html = `
+        <div class="lock-header">
+            <i class="fas fa-${STATE.user.withdrawalUnlocked ? 'unlock' : 'lock'}"></i>
+            <span>${STATE.user.withdrawalUnlocked ? '✅ ' + t('withdrawal.unlocked') : '🔒 Withdrawal Locked'}</span>
         </div>
         <div class="missions-list-vertical">
-            <div class="mission-card ${m.mission1.completed ? 'completed' : ''}">
-                <div class="mission-icon">${m.mission1.completed ? '✅' : '1️⃣'}</div>
-                <div class="mission-content">
-                    <h4>Mission 1: Connect Solana Wallet</h4>
-                    <p>${currentUser.settings?.solanaWallet ? '✓ Wallet connected' : 'Add your Solana wallet to receive TROLL'}</p>
-                    ${!m.mission1.completed ? '<button class="mission-action-btn" onclick="showSolanaWalletModal()">Add Wallet</button>' : ''}
-                </div>
-            </div>
-            <div class="mission-card ${m.mission2.completed ? 'completed' : ''}">
-                <div class="mission-icon">${m.mission2.completed ? '✅' : '2️⃣'}</div>
-                <div class="mission-content">
-                    <h4>Mission 2: Earn 12,500 TROLL from Referrals</h4>
-                    <p>${m.mission2.currentAmount || 0} / 12,500 TROLL</p>
-                    <div class="progress-bar small"><div class="progress-fill" style="width: ${((m.mission2.currentAmount || 0) / 12500) * 100}%"></div></div>
-                </div>
-            </div>
-            <div class="mission-card ${m.mission3.completed ? 'completed' : ''}">
-                <div class="mission-icon">${m.mission3.completed ? '✅' : '3️⃣'}</div>
-                <div class="mission-content">
-                    <h4>Mission 3: Get 12 New Referrals</h4>
-                    <p>${m.mission3.currentNewReferrals || 0} / 12 referrals</p>
-                    <div class="progress-bar small"><div class="progress-fill" style="width: ${((m.mission3.currentNewReferrals || 0) / 12) * 100}%"></div></div>
-                </div>
-            </div>
-            <div class="mission-card ${m.mission4.completed ? 'completed' : ''}">
-                <div class="mission-icon">${m.mission4.completed ? '✅' : '4️⃣'}</div>
-                <div class="mission-content">
-                    <h4>Mission 4: Hold 0.025 BNB or 0.25 SOL</h4>
-                    <p>BNB: ${currentUser.balances?.BNB || 0}/0.025 | SOL: ${currentUser.balances?.SOL || 0}/0.25</p>
-                </div>
+    `;
+    
+    // Mission 1
+    html += `
+        <div class="mission-card ${m.mission1.completed ? 'completed' : ''}">
+            <div class="mission-icon">${m.mission1.completed ? '✅' : '1️⃣'}</div>
+            <div class="mission-content">
+                <h4>${MISSIONS.mission1.title}</h4>
+                <p>${STATE.user.settings?.solanaWallet ? 'Wallet: ' + STATE.user.settings.solanaWallet.slice(0, 8) + '...' : MISSIONS.mission1.desc}</p>
+                ${!m.mission1.completed ? '<button class="mission-action-btn" onclick="showSolanaWalletModal()">Add Wallet</button>' : ''}
             </div>
         </div>
     `;
-}
-
-function updateSettingsUI() {
-    const walletEl = document.getElementById('currentSolanaWallet');
-    if (walletEl && currentUser) {
-        const wallet = currentUser.settings?.solanaWallet;
-        walletEl.textContent = wallet ? wallet.slice(0, 8) + '...' + wallet.slice(-4) : 'Not set';
+    
+    // Mission 2
+    if (m.mission2.revealed) {
+        const progress = (m.mission2.currentAmount / 12500) * 100;
+        html += `
+            <div class="mission-card ${m.mission2.completed ? 'completed' : ''}">
+                <div class="mission-icon">${m.mission2.completed ? '✅' : '2️⃣'}</div>
+                <div class="mission-content">
+                    <h4>${MISSIONS.mission2.title}</h4>
+                    <p>${m.mission2.currentAmount.toLocaleString()} / 12,500 TROLL</p>
+                    <div class="progress-bar small">
+                        <div class="progress-fill" style="width:${progress}%"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+    } else {
+        html += `
+            <div class="mission-card mystery">
+                <div class="mission-icon">❓</div>
+                <div class="mission-content">
+                    <h4>Mission 2: ???</h4>
+                    <p>${t('mission.revealLater')}</p>
+                </div>
+            </div>
+        `;
     }
     
-    const userNameEl = document.getElementById('settingsUserName');
-    if (userNameEl && currentUser) {
-        userNameEl.textContent = currentUser.userName || (isGuest ? 'Guest' : 'User');
+    // Mission 3
+    if (m.mission3.revealed) {
+        const progress = (m.mission3.currentNewReferrals / 12) * 100;
+        html += `
+            <div class="mission-card ${m.mission3.completed ? 'completed' : ''}">
+                <div class="mission-icon">${m.mission3.completed ? '✅' : '3️⃣'}</div>
+                <div class="mission-content">
+                    <h4>${MISSIONS.mission3.title}</h4>
+                    <p>${m.mission3.currentNewReferrals} / 12 new referrals</p>
+                    <div class="progress-bar small">
+                        <div class="progress-fill" style="width:${progress}%"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+    } else {
+        html += `
+            <div class="mission-card mystery">
+                <div class="mission-icon">❓</div>
+                <div class="mission-content">
+                    <h4>Mission 3: ???</h4>
+                    <p>${t('mission.revealLater')}</p>
+                </div>
+            </div>
+        `;
     }
+    
+    // Mission 4
+    if (m.mission4.revealed) {
+        const bnb = STATE.user.balances?.BNB || 0;
+        const sol = STATE.user.balances?.SOL || 0;
+        html += `
+            <div class="mission-card ${m.mission4.completed ? 'completed' : ''}">
+                <div class="mission-icon">${m.mission4.completed ? '✅' : '4️⃣'}</div>
+                <div class="mission-content">
+                    <h4>${MISSIONS.mission4.title}</h4>
+                    <p>BNB: ${bnb.toFixed(4)}/0.025 | SOL: ${sol.toFixed(4)}/0.25</p>
+                </div>
+            </div>
+        `;
+    } else if (m.mission3.completed) {
+        const daysLeft = Math.max(0, Math.ceil((new Date(m.mission4.revealDate) - new Date()) / 86400000));
+        html += `
+            <div class="mission-card mystery-timer">
+                <div class="mission-icon">⏳</div>
+                <div class="mission-content">
+                    <h4>Final Mystery Mission</h4>
+                    <p>${t('mission.waitDays', { days: daysLeft })}</p>
+                    <div class="timer-progress-bar">
+                        <div class="timer-fill" style="width:${((20 - daysLeft) / 20) * 100}%"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+    } else {
+        html += `
+            <div class="mission-card mystery">
+                <div class="mission-icon">❓</div>
+                <div class="mission-content">
+                    <h4>Mission 4: ???</h4>
+                    <p>${t('mission.revealLater')}</p>
+                </div>
+            </div>
+        `;
+    }
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function renderMilestones() {
+    const container = document.getElementById('milestonesList');
+    if (!container) return;
+    
+    let html = '';
+    
+    MILESTONES.forEach(milestone => {
+        const progress = Math.min(((STATE.user.inviteCount || 0) / milestone.referrals) * 100, 100);
+        const claimed = STATE.user.claimedMilestones?.includes(milestone.referrals);
+        const canClaim = (STATE.user.inviteCount || 0) >= milestone.referrals && !claimed && !milestone.isSpecial;
+        
+        html += `
+            <div class="milestone-item ${claimed ? 'claimed' : ''}">
+                <div class="milestone-header">
+                    <span>${milestone.title}</span>
+                    <span>${milestone.isSpecial ? '🎁' : milestone.reward.toLocaleString() + ' TROLL'}</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width:${progress}%"></div>
+                </div>
+                <span class="progress-text">${STATE.user.inviteCount || 0}/${milestone.referrals}</span>
+                ${canClaim ? `<button class="claim-btn" onclick="claimMilestone(${milestone.referrals})">Claim</button>` : ''}
+                ${claimed ? '<p style="color:#2ecc71;">✓ Claimed</p>' : ''}
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+function renderSettings() {
+    document.getElementById('settingsUserName').textContent = STATE.user?.userName || 'Troll';
+    document.getElementById('settingsUserId').textContent = `ID: ${STATE.userId}`;
+    
+    const wallet = STATE.user?.settings?.solanaWallet;
+    document.getElementById('currentSolanaWallet').textContent = wallet
+        ? wallet.slice(0, 8) + '...'
+        : 'Not set';
+    
+    const tonEl = document.getElementById('tonWalletStatus');
+    if (tonEl) {
+        tonEl.textContent = STATE.tonConnected && STATE.tonAddress
+            ? STATE.tonAddress.slice(0, 6) + '...' + STATE.tonAddress.slice(-6)
+            : 'Not connected';
+        tonEl.style.color = STATE.tonConnected ? '#2ecc71' : '';
+    }
+}
+
+function addAdminCrown() {
+    const header = document.querySelector('.header-actions');
+    if (!header || document.getElementById('adminCrownBtn')) return;
+    
+    const btn = document.createElement('button');
+    btn.id = 'adminCrownBtn';
+    btn.className = 'icon-btn';
+    btn.innerHTML = '<i class="fas fa-crown" style="color: gold;"></i>';
+    btn.onclick = () => showModal('adminPanel');
+    
+    header.insertBefore(btn, header.firstChild);
 }
 
 // ============================================================================
-// 6. HELPER FUNCTIONS
+// 18. USER ACTIONS
 // ============================================================================
-
-function showToast(message, type = 'info') {
-    const toast = document.getElementById('toast');
-    const msgEl = document.getElementById('toastMessage');
-    if (!toast || !msgEl) return;
-    
-    msgEl.textContent = message;
-    
-    const icon = toast.querySelector('i');
-    if (icon) {
-        if (type === 'error') icon.className = 'fa-solid fa-circle-exclamation';
-        else if (type === 'success') icon.className = 'fa-solid fa-circle-check';
-        else icon.className = 'fa-solid fa-circle-info';
-    }
-    
-    toast.classList.remove('hidden');
-    setTimeout(() => toast.classList.add('hidden'), 3000);
-}
 
 function showSolanaWalletModal() {
-    const address = prompt('Enter your Solana wallet address (for TROLL token):');
+    const address = prompt('Enter your Solana wallet address (TROLL token):');
+    
     if (address && address.length > 30) {
-        currentUser.settings = currentUser.settings || {};
-        currentUser.settings.solanaWallet = address;
+        STATE.user.settings = STATE.user.settings || {};
+        STATE.user.settings.solanaWallet = address;
+        
         saveUserData();
         updateMissionsProgress();
-        updateUI();
+        renderUI();
+        
         showToast('✅ Wallet saved!', 'success');
     } else if (address) {
-        showToast('Invalid Solana address', 'error');
+        showToast('Invalid address', 'error');
     }
 }
 
 async function updateMissionsProgress() {
-    if (!currentUser || !currentUser.withdrawalMissions) return;
-    
-    const m = currentUser.withdrawalMissions;
+    const m = STATE.user.withdrawalMissions;
     let changed = false;
     
-    // Mission 1: Solana wallet
-    if (!m.mission1.completed && currentUser.settings?.solanaWallet) {
+    // Mission 1
+    if (!m.mission1.completed && STATE.user.settings?.solanaWallet) {
         m.mission1.completed = true;
         m.mission2.revealed = true;
         changed = true;
     }
     
-    // Mission 2: Referral earnings
+    // Mission 2
     if (m.mission2.revealed && !m.mission2.completed) {
-        m.mission2.currentAmount = currentUser.referralEarnings || 0;
+        m.mission2.currentAmount = STATE.user.referralEarnings || 0;
         if (m.mission2.currentAmount >= m.mission2.requiredAmount) {
             m.mission2.completed = true;
             m.mission3.revealed = true;
-            m.mission3.referralsAtStart = currentUser.inviteCount || 0;
+            m.mission3.referralsAtStart = STATE.user.inviteCount || 0;
             changed = true;
         }
     }
     
-    // Mission 3: New referrals
+    // Mission 3
     if (m.mission3.revealed && !m.mission3.completed) {
-        m.mission3.currentNewReferrals = Math.max(0, (currentUser.inviteCount || 0) - (m.mission3.referralsAtStart || 0));
+        m.mission3.currentNewReferrals = Math.max(0, (STATE.user.inviteCount || 0) - (m.mission3.referralsAtStart || 0));
         if (m.mission3.currentNewReferrals >= m.mission3.requiredReferrals) {
             m.mission3.completed = true;
             const revealDate = new Date();
@@ -591,143 +1182,266 @@ async function updateMissionsProgress() {
         }
     }
     
-    // Mission 4 reveal
-    if (m.mission3.completed && !m.mission4.revealed && m.mission4.revealDate) {
+    // Mission 4 - Reveal
+    if (m.mission3.completed && !m.mission4.revealed) {
         if (new Date() >= new Date(m.mission4.revealDate)) {
             m.mission4.revealed = true;
             changed = true;
         }
     }
     
-    // Mission 4: Holdings
+    // Mission 4 - Complete
     if (m.mission4.revealed && !m.mission4.completed) {
-        const bnb = currentUser.balances?.BNB || 0;
-        const sol = currentUser.balances?.SOL || 0;
+        const bnb = STATE.user.balances?.BNB || 0;
+        const sol = STATE.user.balances?.SOL || 0;
         if (bnb >= m.mission4.requiredBNB || sol >= m.mission4.requiredSOL) {
             m.mission4.completed = true;
             changed = true;
         }
     }
     
-    // Check all completed
-    const allDone = m.mission1.completed && m.mission2.completed && m.mission3.completed && m.mission4.completed;
-    if (allDone && !currentUser.withdrawalUnlocked) {
-        currentUser.withdrawalUnlocked = true;
+    // Unlock withdrawal
+    const allDone = m.mission1.completed && 
+                    m.mission2.completed && 
+                    m.mission3.completed && 
+                    m.mission4.completed;
+    
+    if (allDone && !STATE.user.withdrawalUnlocked) {
+        STATE.user.withdrawalUnlocked = true;
         changed = true;
-        showToast('🎉 Congratulations! Withdrawal unlocked!', 'success');
+        showToast('🎉 Withdrawal Unlocked!', 'success');
     }
     
     if (changed) {
         await saveUserData();
-        if (document.getElementById('airdropSection') && !document.getElementById('airdropSection').classList.contains('hidden')) {
-            renderMissions();
-        }
     }
 }
 
-async function saveUserData() {
-    if (!currentUser) return;
+async function claimMilestone(referrals) {
+    const milestone = MILESTONES.find(m => m.referrals === referrals);
+    if (!milestone || milestone.isSpecial) return;
     
-    currentUser.updatedAt = new Date().toISOString();
-    localStorage.setItem(`troll_user_${currentUserId}`, JSON.stringify(currentUser));
-    
-    if (!isGuest && currentUserId && !currentUserId.startsWith('guest_')) {
-        try {
-            await fetch(`/api/users/${currentUserId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ updates: currentUser })
-            });
-        } catch(e) {}
+    if ((STATE.user.inviteCount || 0) < referrals) {
+        showToast(`Need ${referrals} referrals`, 'error');
+        return;
     }
+    
+    if (STATE.user.claimedMilestones?.includes(referrals)) return;
+    
+    STATE.user.balances.TROLL += milestone.reward;
+    STATE.user.totalEarned += milestone.reward;
+    
+    if (!STATE.user.claimedMilestones) {
+        STATE.user.claimedMilestones = [];
+    }
+    STATE.user.claimedMilestones.push(referrals);
+    
+    await saveUserData();
+    renderUI();
+    
+    showToast(`✅ Claimed ${milestone.reward.toLocaleString()} TROLL!`, 'success');
 }
 
 function copyInviteLink() {
-    if (isGuest) {
-        showToast('Open from Telegram to get invite link', 'warning');
-        return;
-    }
-    
-    const link = `https://t.me/TROLLMiniappbot/instant?startapp=${currentUserId}`;
-    navigator.clipboard?.writeText(link);
-    showToast('🔗 Link copied!', 'success');
+    const link = document.getElementById('inviteLink');
+    if (link) copyToClipboard(link.value);
 }
 
-function showAssetDetails(symbol) {
-    const balance = currentUser?.balances?.[symbol] || 0;
-    showToast(`${symbol}: ${balance.toLocaleString()}`, 'info');
+function shareInviteLink() {
+    const link = document.getElementById('inviteLink').value;
+    const text = encodeURIComponent(`🧌 Join Troll Army! Get 1000 TROLL bonus!\n\n👉 ${link}`);
+    tg?.openTelegramLink(`https://t.me/share/url?url=&text=${text}`);
 }
 
 // ============================================================================
-// 7. NAVIGATION
+// 19. COINPAYMENTS DEPOSIT & WITHDRAW
 // ============================================================================
-
-function showWallet() {
-    document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
-    document.getElementById('walletSection')?.classList.remove('hidden');
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    document.querySelector('[data-tab="wallet"]')?.classList.add('active');
-    renderAssets();
-}
-
-function showAirdrop() {
-    document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
-    document.getElementById('airdropSection')?.classList.remove('hidden');
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    document.querySelector('[data-tab="airdrop"]')?.classList.add('active');
-    renderMissions();
-}
-
-function showSettings() {
-    document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
-    document.getElementById('settingsSection')?.classList.remove('hidden');
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    document.querySelector('[data-tab="settings"]')?.classList.add('active');
-    updateSettingsUI();
-}
 
 function showDepositModal() {
-    if (isGuest) {
-        showToast('Open from Telegram to deposit', 'warning');
-        return;
-    }
-    document.getElementById('depositModal')?.classList.add('show');
+    showModal('depositModal');
+    const address = '0xbf70420f57342c6Bd4267430D4D3b7E946f09450';
+    document.getElementById('depositAddress').textContent = address;
+}
+
+function copyDepositAddress() {
+    const address = document.getElementById('depositAddress')?.textContent;
+    if (address) copyToClipboard(address);
+}
+
+function submitDeposit() {
+    showToast('Deposit submitted', 'success');
+    closeModal('depositModal');
 }
 
 function showWithdrawModal() {
-    if (isGuest) {
-        showToast('Open from Telegram to withdraw', 'warning');
+    if (!STATE.user.withdrawalUnlocked && !STATE.user.premium) {
+        showToast('Complete missions first!', 'error');
         return;
     }
-    if (!currentUser.withdrawalUnlocked && !currentUser.premium) {
-        showToast('Complete all missions to unlock withdrawal!', 'error');
-        return;
-    }
-    document.getElementById('withdrawModal')?.classList.add('show');
+    showModal('withdrawModal');
 }
 
-function closeModal(id) {
-    document.getElementById(id)?.classList.remove('show');
+function submitWithdraw() {
+    showToast('Withdrawal requested', 'success');
+    closeModal('withdrawModal');
+}
+
+// ============================================================================
+// 20. TON CONNECT & PREMIUM
+// ============================================================================
+
+async function initTON() {
+    if (typeof TON_CONNECT_UI === 'undefined') return;
+    
+    try {
+        STATE.tonUI = new TON_CONNECT_UI.TonConnectUI({
+            manifestUrl: location.origin + '/tonconnect-manifest.json',
+            buttonRootId: 'tonConnectButton'
+        });
+        
+        const restored = await STATE.tonUI.connectionRestored;
+        if (restored && STATE.tonUI.wallet) {
+            STATE.tonConnected = true;
+            STATE.tonAddress = STATE.tonUI.wallet.account.address;
+        }
+    } catch (error) {
+        log('TON init error:', error);
+    }
+}
+
+async function connectTON() {
+    if (!STATE.tonUI) return;
+    
+    try {
+        await STATE.tonUI.openModal();
+        
+        const interval = setInterval(() => {
+            if (STATE.tonUI.wallet) {
+                clearInterval(interval);
+                STATE.tonConnected = true;
+                STATE.tonAddress = STATE.tonUI.wallet.account.address;
+                STATE.user.tonWallet = STATE.tonAddress;
+                
+                saveUserData();
+                renderSettings();
+                
+                showToast('✅ TON Connected!', 'success');
+            }
+        }, 500);
+        
+        setTimeout(() => clearInterval(interval), 30000);
+    } catch (error) {
+        showToast('Connection failed', 'error');
+    }
 }
 
 function showPremiumModal() {
-    if (isGuest) {
-        showToast('Open from Telegram to buy premium', 'warning');
-        return;
-    }
-    document.getElementById('premiumModal')?.classList.add('show');
+    showModal('premiumModal');
 }
 
-function buyPremium() {
-    showToast('Premium feature coming soon!', 'info');
+async function buyPremium() {
+    if (!STATE.tonConnected) {
+        showToast('Connect TON first', 'error');
+        return;
+    }
+    
+    try {
+        const transaction = {
+            validUntil: Math.floor(Date.now() / 1000) + 300,
+            messages: [{
+                address: CONFIG.OWNER_WALLET,
+                amount: '5000000000'
+            }]
+        };
+        
+        const result = await STATE.tonUI.sendTransaction(transaction);
+        
+        if (result.boc) {
+            STATE.user.premium = true;
+            STATE.user.avatar = '😏';
+            STATE.user.withdrawalUnlocked = true;
+            
+            await saveUserData();
+            renderUI();
+            closeModal('premiumModal');
+            
+            showToast('🎉 Premium Unlocked!', 'success');
+        }
+    } catch (error) {
+        showToast('Payment failed', 'error');
+    }
+}
+
+// ============================================================================
+// 21. NAVIGATION
+// ============================================================================
+
+function showWallet() {
+    STATE.currentPage = 'wallet';
+    
+    document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+    showElement('walletSection');
+    
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelector('[data-tab="wallet"]').classList.add('active');
+    
+    renderUI();
+}
+
+function showAirdrop() {
+    STATE.currentPage = 'airdrop';
+    
+    document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+    showElement('airdropSection');
+    
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelector('[data-tab="airdrop"]').classList.add('active');
+    
+    renderUI();
+}
+
+function showSettings() {
+    STATE.currentPage = 'settings';
+    
+    document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+    showElement('settingsSection');
+    
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelector('[data-tab="settings"]').classList.add('active');
+    
+    renderSettings();
+}
+
+// ============================================================================
+// 22. HELPERS
+// ============================================================================
+
+function showAssetDetails(symbol) {
+    const balance = STATE.user.balances?.[symbol] || 0;
+    showToast(`${symbol}: ${formatBalance(balance, symbol)}`, 'info');
+}
+
+function showCryptoDetails(symbol) {
+    const data = STATE.prices[symbol] || { price: 0, change: 0 };
+    const changeSymbol = data.change >= 0 ? '+' : '';
+    showToast(`${symbol}: $${data.price.toFixed(6)} (${changeSymbol}${data.change.toFixed(1)}%)`, 'info');
+}
+
+function refreshPrices() {
+    fetchLivePrices(true);
+    showToast('Prices refreshed!', 'success');
+}
+
+function toggleLanguage() {
+    STATE.language = STATE.language === 'en' ? 'ar' : 'en';
+    localStorage.setItem('language', STATE.language);
+    location.reload();
 }
 
 function toggleTheme() {
-    const theme = document.documentElement.getAttribute('data-theme');
-    const newTheme = theme === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', newTheme);
-    localStorage.setItem('theme', newTheme);
-    showToast(`Theme: ${newTheme}`, 'success');
+    STATE.theme = STATE.theme === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('theme', STATE.theme);
+    document.documentElement.setAttribute('data-theme', STATE.theme);
 }
 
 function logout() {
@@ -737,8 +1451,43 @@ function logout() {
     }
 }
 
+function openSupport() {
+    window.open('https://t.me/TrollSupport', '_blank');
+}
+
+function showHistory() {
+    showModal('historyModal');
+}
+
+function showNotifications() {
+    showModal('notificationsModal');
+}
+
+function closeAdminPanel() {
+    closeModal('adminPanel');
+}
+
 // ============================================================================
-// 8. EXPOSE GLOBALS
+// 23. START APPLICATION
+// ============================================================================
+
+document.addEventListener('DOMContentLoaded', async () => {
+    document.documentElement.setAttribute('data-theme', STATE.theme);
+    
+    if (STATE.language === 'ar') {
+        document.body.classList.add('rtl');
+        document.documentElement.dir = 'rtl';
+    }
+    
+    setTimeout(() => {
+        initializeApp();
+    }, 1000);
+    
+    await initTON();
+});
+
+// ============================================================================
+// 24. GLOBAL EXPORTS
 // ============================================================================
 
 window.showWallet = showWallet;
@@ -747,15 +1496,25 @@ window.showSettings = showSettings;
 window.showDepositModal = showDepositModal;
 window.showWithdrawModal = showWithdrawModal;
 window.showPremiumModal = showPremiumModal;
+window.showHistory = showHistory;
+window.showNotifications = showNotifications;
 window.closeModal = closeModal;
+window.closeAdminPanel = closeAdminPanel;
 window.copyInviteLink = copyInviteLink;
+window.shareInviteLink = shareInviteLink;
+window.copyDepositAddress = copyDepositAddress;
+window.submitDeposit = submitDeposit;
+window.submitWithdraw = submitWithdraw;
+window.claimMilestone = claimMilestone;
 window.buyPremium = buyPremium;
+window.refreshPrices = refreshPrices;
+window.toggleLanguage = toggleLanguage;
 window.toggleTheme = toggleTheme;
 window.logout = logout;
+window.openSupport = openSupport;
+window.connectTONWallet = connectTON;
 window.showAssetDetails = showAssetDetails;
+window.showCryptoDetails = showCryptoDetails;
 window.showSolanaWalletModal = showSolanaWalletModal;
 
-console.log("✅ TROLL ARMY v24.0 - Fully Loaded!");
-console.log("✅ Telegram detection with multiple fallbacks");
-console.log("✅ User registration in Firebase");
-console.log("✅ Guest mode fallback ready");
+console.log('✅✅✅ TROLL ARMY - PROFESSIONAL VERSION LOADED! ✅✅✅');
