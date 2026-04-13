@@ -1,12 +1,14 @@
 // ============================================================================
-// TROLL ARMY - FINAL VERSION (STALE REFERENCE FIXED)
-// Fix: Read window.Telegram dynamically every time
-// Logic: Telegram (8s) → Restore (24h) → Guest (last)
+// TROLL ARMY - FINAL FIXED VERSION
+// Proper Telegram Detection + Diagnostics
 // ============================================================================
 
-// ====== TELEGRAM HELPER (DYNAMIC - FIXES STALE REFERENCE) ======
+// ====== TELEGRAM HELPER (IMPROVED) ======
 function getTelegram() {
-    return window.Telegram?.WebApp;
+    if (typeof window === 'undefined') return null;
+    if (!window.Telegram) return null;
+    if (!window.Telegram.WebApp) return null;
+    return window.Telegram.WebApp;
 }
 
 // ====== STATE ======
@@ -208,15 +210,50 @@ function buildInitData(unsafe) {
     return Object.keys(data).filter(k => data[k]).map(k => `${k}=${encodeURIComponent(data[k])}`).join('&');
 }
 
-// ====== WAIT FOR TELEGRAM USER (FIXED - DYNAMIC) ======
-async function waitForTelegramUser(maxTime = 8000) {
-    console.log('⏳ Waiting for Telegram user...');
+// ====== TELEGRAM DIAGNOSTICS ======
+function runTelegramDiagnostics() {
+    console.log('=== TELEGRAM DIAGNOSTICS ===');
+    console.log('window.Telegram exists:', !!window.Telegram);
+    console.log('WebApp exists:', !!window.Telegram?.WebApp);
     
     const tg = getTelegram();
+    console.log('getTelegram() result:', !!tg);
+    
     if (tg) {
-        tg.ready();
-        tg.expand();
+        console.log('initData exists:', !!tg.initData);
+        console.log('initData length:', tg.initData?.length || 0);
+        console.log('initDataUnsafe exists:', !!tg.initDataUnsafe);
+        console.log('initDataUnsafe.user exists:', !!tg.initDataUnsafe?.user);
+        
+        if (tg.initDataUnsafe?.user) {
+            console.log('User ID:', tg.initDataUnsafe.user.id);
+            console.log('User first_name:', tg.initDataUnsafe.user.first_name);
+        }
     }
+    
+    console.log('User Agent:', navigator.userAgent);
+    console.log('===========================');
+}
+
+// ====== WAIT FOR TELEGRAM USER (FIXED) ======
+async function waitForTelegramUser(maxTime = 10000) {
+    console.log('⏳ Waiting for Telegram user...');
+    
+    // First check: Are we inside Telegram at all?
+    const initialTg = getTelegram();
+    if (!initialTg) {
+        console.log('❌ Not running inside Telegram WebApp');
+        return null;
+    }
+    
+    // Check if initData exists but is empty (opened from external browser)
+    if (!initialTg.initData || initialTg.initData === '') {
+        console.log('❌ No initData - likely opened from external browser');
+        return null;
+    }
+    
+    initialTg.ready();
+    initialTg.expand();
     
     const start = Date.now();
     let attempts = 0;
@@ -224,9 +261,9 @@ async function waitForTelegramUser(maxTime = 8000) {
     while (Date.now() - start < maxTime) {
         attempts++;
         
-        // ✅ نقرأ Telegram مباشرة كل مرة - هذا هو الفرق!
         const currentTg = getTelegram();
         
+        // Check initDataUnsafe.user first (most reliable)
         if (currentTg?.initDataUnsafe?.user?.id) {
             const user = currentTg.initDataUnsafe.user;
             console.log(`✅ Telegram user found after ${attempts} attempts:`, user.id);
@@ -239,11 +276,12 @@ async function waitForTelegramUser(maxTime = 8000) {
             };
         }
         
+        // Check initData string
         if (currentTg?.initData) {
             try {
                 const params = new URLSearchParams(currentTg.initData);
                 const userJson = params.get('user');
-                if (userJson) {
+                if (userJson && userJson !== 'undefined' && userJson !== '{}') {
                     const user = JSON.parse(decodeURIComponent(userJson));
                     if (user?.id) {
                         console.log(`✅ Telegram user found via initData:`, user.id);
@@ -256,10 +294,12 @@ async function waitForTelegramUser(maxTime = 8000) {
                         };
                     }
                 }
-            } catch (e) {}
+            } catch (e) {
+                console.log('⚠️ Error parsing initData:', e.message);
+            }
         }
         
-        await new Promise(r => setTimeout(r, 300));
+        await new Promise(r => setTimeout(r, 200));
     }
     
     console.log('❌ No Telegram user after', attempts, 'attempts');
@@ -270,14 +310,14 @@ async function waitForTelegramUser(maxTime = 8000) {
 async function initUser() {
     console.log('🚀 Starting user initialization...');
     
-    const tg = getTelegram();
-    console.log('📱 Telegram WebApp exists:', !!tg);
+    // Run diagnostics first
+    runTelegramDiagnostics();
     
-    // 1. Try Telegram (wait up to 8 seconds)
-    const tgUser = await waitForTelegramUser(8000);
+    // 1. Try Telegram (wait up to 10 seconds)
+    const tgUser = await waitForTelegramUser(10000);
     
     if (tgUser) {
-        console.log('✅ Authenticating with server...');
+        console.log('✅ Found Telegram user, authenticating with server...');
         
         try {
             const res = await fetch('/api/init-user', {
@@ -287,6 +327,7 @@ async function initUser() {
             });
             
             const data = await res.json();
+            console.log('📥 Server response:', data);
             
             if (data.success) {
                 currentUser = data.userData;
@@ -299,16 +340,18 @@ async function initUser() {
                 finishInit();
                 showToast(`Welcome ${data.userData.userName}!`, 'success');
                 return;
+            } else {
+                console.error('❌ Server auth failed:', data.error);
             }
         } catch (e) {
-            console.error('Server auth error:', e);
+            console.error('❌ Server auth error:', e);
         }
     }
     
     // 2. Try Session Restore
     const saved = getSavedUser();
     if (saved) {
-        console.log('🔄 Restoring session...');
+        console.log('🔄 Trying session restore for:', saved.id);
         
         try {
             const res = await apiCall(`/users/${saved.id}`, 'GET');
@@ -812,7 +855,7 @@ function showComingSoon(f) { showToast(f + ' coming soon!', 'info'); }
 
 // ====== INIT ======
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Troll Army - Stale Reference FIXED');
+    console.log('🚀 Troll Army - Diagnostics Enhanced');
     
     setTimeout(() => document.getElementById('splashScreen')?.classList.add('hidden'), 2000);
     
@@ -851,4 +894,4 @@ window.showAssetDetails = showAssetDetails;
 window.showCryptoDetails = showCryptoDetails;
 window.showSolanaWalletModal = showSolanaWalletModal;
 
-console.log('✅ Troll Army Ready! Stale Reference FIXED');
+console.log('✅ Troll Army Ready with Enhanced Diagnostics!');
