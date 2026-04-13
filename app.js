@@ -1,6 +1,6 @@
 // ============================================================================
-// TROLL ARMY - FINAL PRODUCTION VERSION
-// Version: 24.0 - Fixed Referral System + All Features
+// TROLL ARMY - LEGENDARY VERSION 25.0
+// All Features + Enhancements + RTL + Notifications + Admin Panel
 // ============================================================================
 
 // ============================================================================
@@ -23,6 +23,9 @@ let tonConnected = false;
 let tonWalletAddress = null;
 let appConfig = {};
 let cryptoPrices = {};
+let currentLanguage = localStorage.getItem('language') || 'en';
+let currentTheme = localStorage.getItem('theme') || 'dark';
+let unreadNotifications = 0;
 
 // ============================================================================
 // SECTION 3: CONFIGURATION
@@ -135,19 +138,125 @@ function getDefaultMissions() {
 }
 
 // ============================================================================
-// SECTION 9: API CALL
+// SECTION 9: TRANSLATIONS (i18n)
+// ============================================================================
+
+const translations = {
+    en: {
+        'nav.vault': 'Vault',
+        'nav.quests': 'Quests',
+        'nav.arsenal': 'Arsenal',
+        'wallet.totalBalance': 'Total Balance',
+        'wallet.myAssets': 'My Assets',
+        'wallet.topCryptos': 'Top Cryptocurrencies',
+        'wallet.memeCoins': 'Meme Coins',
+        'airdrop.missions': 'Mystery Missions',
+        'airdrop.totalInvites': 'Total Invites',
+        'airdrop.earned': 'TROLL Earned',
+        'airdrop.yourLink': 'Your Invite Link',
+        'airdrop.milestones': 'Troll Ranks',
+        'mission.revealLater': 'Reveals after previous mission',
+        'mission.waitDays': 'Reveals in {days} days',
+        'premium.unlocked': 'Premium Unlocked!',
+        'withdrawal.unlocked': 'Withdrawal Unlocked!',
+        'deposit.title': 'Deposit TROLL',
+        'deposit.address': 'Your Deposit Address',
+        'deposit.network': 'Network',
+        'deposit.minAmount': 'Minimum Deposit',
+        'deposit.warning': 'Only send TROLL tokens to this address. Other tokens will be lost.',
+        'withdraw.title': 'Withdraw TROLL',
+        'withdraw.amount': 'Amount',
+        'withdraw.address': 'Solana Wallet Address',
+        'withdraw.fee': 'Network Fee',
+        'withdraw.receive': 'You will receive',
+        'history.title': 'Transaction History',
+        'history.all': 'All',
+        'history.deposits': 'Deposits',
+        'history.withdrawals': 'Withdrawals',
+        'history.referrals': 'Referrals',
+        'notifications.title': 'Notifications',
+        'notifications.clearRead': 'Clear Read',
+        'notifications.clearAll': 'Clear All',
+        'settings.language': 'Language',
+        'settings.theme': 'Theme',
+        'settings.logout': 'Logout',
+        'admin.panel': 'Admin Panel',
+        'admin.search': 'Search by User ID or Wallet Address',
+        'admin.addBalance': 'Add Balance',
+        'admin.removeBalance': 'Remove Balance',
+        'admin.broadcast': 'Broadcast',
+        'admin.broadcastTarget': 'Send to',
+        'admin.targetAll': 'All Users',
+        'admin.targetBot': 'Bot Only',
+        'admin.targetApp': 'App Only',
+        'admin.sent': 'Sent',
+        'admin.failed': 'Failed'
+    },
+    ar: {
+        'nav.vault': 'الخزينة',
+        'nav.quests': 'المهام',
+        'nav.arsenal': 'الترسانة',
+        'wallet.totalBalance': 'الرصيد الإجمالي',
+        'wallet.myAssets': 'أصولي',
+        'wallet.topCryptos': 'أفضل العملات',
+        'wallet.memeCoins': 'عملات الميم',
+        'airdrop.missions': 'المهام الغامضة',
+        'airdrop.totalInvites': 'إجمالي الدعوات',
+        'airdrop.earned': 'TROLL المكتسبة',
+        'airdrop.yourLink': 'رابط الدعوة',
+        'airdrop.milestones': 'مراتب الجيش',
+        'mission.revealLater': 'ستكشف بعد المهمة السابقة',
+        'mission.waitDays': 'ستكشف بعد {days} يوم',
+        'premium.unlocked': 'تم تفعيل البريميوم!',
+        'withdrawal.unlocked': 'تم فتح السحب!',
+        'deposit.title': 'إيداع TROLL',
+        'deposit.address': 'عنوان الإيداع',
+        'deposit.network': 'الشبكة',
+        'deposit.minAmount': 'الحد الأدنى',
+        'deposit.warning': 'أرسل فقط عملات TROLL إلى هذا العنوان. العملات الأخرى ستفقد.',
+        'withdraw.title': 'سحب TROLL',
+        'withdraw.amount': 'المبلغ',
+        'withdraw.address': 'عنوان محفظة Solana',
+        'withdraw.fee': 'رسوم الشبكة',
+        'withdraw.receive': 'سوف تستلم',
+        'history.title': 'سجل المعاملات',
+        'history.all': 'الكل',
+        'history.deposits': 'إيداعات',
+        'history.withdrawals': 'سحوبات',
+        'history.referrals': 'إحالات',
+        'notifications.title': 'الإشعارات',
+        'notifications.clearRead': 'حذف المقروء',
+        'notifications.clearAll': 'حذف الكل',
+        'settings.language': 'اللغة',
+        'settings.theme': 'المظهر',
+        'settings.logout': 'تسجيل الخروج',
+        'admin.panel': 'لوحة المشرف',
+        'admin.search': 'بحث بمعرف المستخدم أو عنوان المحفظة',
+        'admin.addBalance': 'إضافة رصيد',
+        'admin.removeBalance': 'خصم رصيد',
+        'admin.broadcast': 'بث رسالة',
+        'admin.broadcastTarget': 'إرسال إلى',
+        'admin.targetAll': 'جميع المستخدمين',
+        'admin.targetBot': 'البوت فقط',
+        'admin.targetApp': 'التطبيق فقط',
+        'admin.sent': 'تم الإرسال',
+        'admin.failed': 'فشل'
+    }
+};
+
+function t(key, params = {}) {
+    let text = translations[currentLanguage]?.[key] || translations.en[key] || key;
+    Object.keys(params).forEach(k => { text = text.replace(`{${k}}`, params[k]); });
+    return text;
+}
+
+// ============================================================================
+// SECTION 10: API CALL
 // ============================================================================
 
 async function apiCall(endpoint, method, body) {
-    const options = {
-        method: method,
-        headers: { 'Content-Type': 'application/json' }
-    };
-    
-    if (body) {
-        options.body = JSON.stringify(body);
-    }
-    
+    const options = { method: method, headers: { 'Content-Type': 'application/json' } };
+    if (body) options.body = JSON.stringify(body);
     try {
         const response = await fetch('/api' + endpoint, options);
         const data = await response.json();
@@ -159,22 +268,18 @@ async function apiCall(endpoint, method, body) {
 }
 
 // ============================================================================
-// SECTION 10: LOAD CONFIG
+// SECTION 11: LOAD CONFIG
 // ============================================================================
 
 async function loadConfig() {
     try {
         const response = await fetch('/api/config');
         appConfig = await response.json();
-        
         if (appConfig.firebaseConfig && typeof firebase !== 'undefined') {
-            if (!firebase.apps.length) {
-                firebase.initializeApp(appConfig.firebaseConfig);
-            }
+            if (!firebase.apps.length) firebase.initializeApp(appConfig.firebaseConfig);
             db = firebase.firestore();
             console.log('🔥 Firebase ready');
         }
-        
         return true;
     } catch (error) {
         console.error('Config error:', error);
@@ -183,23 +288,20 @@ async function loadConfig() {
 }
 
 // ============================================================================
-// SECTION 11: COINGECKO LIVE PRICES
+// SECTION 12: COINGECKO LIVE PRICES
 // ============================================================================
 
 let lastPriceFetch = 0;
 
 async function fetchLivePrices(force = false) {
     const now = Date.now();
-    
-    if (!force && lastPriceFetch && (now - lastPriceFetch) < 300000) {
-        return;
-    }
+    if (!force && lastPriceFetch && (now - lastPriceFetch) < 300000) return;
     
     console.log('🔄 Fetching CoinGecko prices...');
     
     try {
         const allCoins = [...ALL_ASSETS, ...MEME_COINS];
-        const ids = allCoins.map(function(c) {
+        const ids = allCoins.map(c => {
             if (c.symbol === 'TROLL') return 'troll-2';
             if (c.symbol === 'BTC') return 'bitcoin';
             if (c.symbol === 'ETH') return 'ethereum';
@@ -211,17 +313,14 @@ async function fetchLivePrices(force = false) {
             if (c.symbol === 'BONK') return 'bonk';
             if (c.symbol === 'WIF') return 'dogwifcoin';
             return '';
-        }).filter(function(id) {
-            return id !== '';
-        }).join(',');
+        }).filter(id => id).join(',');
         
-        const url = 'https://api.coingecko.com/api/v3/simple/price?ids=' + ids + '&vs_currencies=usd&include_24hr_change=true';
+        const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`;
         const res = await fetch(url);
         const data = await res.json();
         
-        allCoins.forEach(function(coin) {
+        allCoins.forEach(coin => {
             let coingeckoId = '';
-            
             if (coin.symbol === 'TROLL') coingeckoId = 'troll-2';
             else if (coin.symbol === 'BTC') coingeckoId = 'bitcoin';
             else if (coin.symbol === 'ETH') coingeckoId = 'ethereum';
@@ -242,10 +341,7 @@ async function fetchLivePrices(force = false) {
         });
         
         if (!cryptoPrices['TROLL']) {
-            cryptoPrices['TROLL'] = {
-                price: CONFIG.TROLL_PRICE_FALLBACK,
-                change: 0
-            };
+            cryptoPrices['TROLL'] = { price: CONFIG.TROLL_PRICE_FALLBACK, change: 0 };
         }
         
         lastPriceFetch = now;
@@ -258,15 +354,12 @@ async function fetchLivePrices(force = false) {
         }
     } catch (error) {
         console.error('Price error:', error);
-        cryptoPrices['TROLL'] = {
-            price: CONFIG.TROLL_PRICE_FALLBACK,
-            change: 0
-        };
+        cryptoPrices['TROLL'] = { price: CONFIG.TROLL_PRICE_FALLBACK, change: 0 };
     }
 }
 
 // ============================================================================
-// SECTION 12: TELEGRAM USER DETECTION
+// SECTION 13: TELEGRAM USER DETECTION
 // ============================================================================
 
 async function waitForTelegramUserData(maxAttempts = 15, delayMs = 200) {
@@ -282,7 +375,6 @@ async function waitForTelegramUserData(maxAttempts = 15, delayMs = 200) {
             if (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
                 const user = tg.initDataUnsafe.user;
                 console.log('✅ Found user in initDataUnsafe after ' + attempt + ' attempt(s):', user.id);
-                
                 return {
                     id: user.id.toString(),
                     firstName: user.first_name || 'Troll',
@@ -296,13 +388,10 @@ async function waitForTelegramUserData(maxAttempts = 15, delayMs = 200) {
                 try {
                     const params = new URLSearchParams(tg.initData);
                     const userJson = params.get('user');
-                    
                     if (userJson) {
                         const user = JSON.parse(decodeURIComponent(userJson));
-                        
                         if (user && user.id) {
                             console.log('✅ Found user in initData after ' + attempt + ' attempt(s):', user.id);
-                            
                             return {
                                 id: user.id.toString(),
                                 firstName: user.first_name || 'Troll',
@@ -312,15 +401,11 @@ async function waitForTelegramUserData(maxAttempts = 15, delayMs = 200) {
                             };
                         }
                     }
-                } catch (e) {
-                    console.warn('⚠️ Error parsing initData:', e);
-                }
+                } catch (e) { console.warn('⚠️ Error parsing initData:', e); }
             }
         }
         
-        await new Promise(function(resolve) {
-            setTimeout(resolve, delayMs);
-        });
+        await new Promise(resolve => setTimeout(resolve, delayMs));
     }
     
     console.log('❌ No Telegram user found after', maxAttempts, 'attempts');
@@ -328,48 +413,24 @@ async function waitForTelegramUserData(maxAttempts = 15, delayMs = 200) {
 }
 
 function buildInitDataFromUnsafe(unsafe) {
-    if (!unsafe) {
-        return '';
-    }
-    
-    const data = {
-        query_id: unsafe.query_id,
-        user: JSON.stringify(unsafe.user),
-        auth_date: unsafe.auth_date,
-        hash: unsafe.hash
-    };
-    
-    return Object.keys(data)
-        .filter(function(k) {
-            return data[k] !== undefined && data[k] !== null;
-        })
-        .map(function(k) {
-            return k + '=' + encodeURIComponent(data[k]);
-        })
-        .join('&');
+    if (!unsafe) return '';
+    const data = { query_id: unsafe.query_id, user: JSON.stringify(unsafe.user), auth_date: unsafe.auth_date, hash: unsafe.hash };
+    return Object.keys(data).filter(k => data[k] !== undefined && data[k] !== null).map(k => `${k}=${encodeURIComponent(data[k])}`).join('&');
 }
 
-// ✅✅✅ FIXED: Read referral from start_param (Telegram official way)
 function getReferralFromUrl() {
-    // First priority: Telegram start_param (correct way)
     if (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
         console.log('🔗 Referral from start_param:', tg.initDataUnsafe.start_param);
         return tg.initDataUnsafe.start_param;
     }
-    
-    // Fallback: URL parameters
     const params = new URLSearchParams(window.location.search);
     const ref = params.get('startapp') || params.get('startapp') || params.get('ref') || null;
-    
-    if (ref) {
-        console.log('🔗 Referral from URL:', ref);
-    }
-    
+    if (ref) console.log('🔗 Referral from URL:', ref);
     return ref;
 }
 
 // ============================================================================
-// SECTION 13: USER INITIALIZATION
+// SECTION 14: USER INITIALIZATION
 // ============================================================================
 
 async function initUser() {
@@ -405,9 +466,7 @@ async function initUser() {
             localStorage.setItem('troll_user_id', data.userId);
             localStorage.setItem('troll_user_data', JSON.stringify(data.userData));
             
-            // ✅ Process referral
             const refCode = getReferralFromUrl();
-            
             if (refCode && refCode !== currentUserId) {
                 console.log('🔗 Processing referral from:', refCode);
                 await processReferral(refCode);
@@ -417,6 +476,8 @@ async function initUser() {
             showMainApp();
             updateUI();
             checkAdmin();
+            loadBroadcasts();
+            updateNotificationBadge();
             
             showToast('Welcome ' + data.userData.userName + '! +' + data.userData.balances.TROLL + ' TROLL', 'success');
         } else {
@@ -430,34 +491,16 @@ async function initUser() {
 }
 
 // ============================================================================
-// SECTION 14: REFERRAL PROCESSING
+// SECTION 15: REFERRAL PROCESSING
 // ============================================================================
 
 async function processReferral(refCode) {
-    if (!refCode) {
-        console.log('❌ No referral code');
-        return;
-    }
-    
-    if (refCode === currentUserId) {
-        console.log('❌ Cannot refer yourself');
-        return;
-    }
-    
-    if (currentUser.referredBy) {
-        console.log('❌ Already referred by:', currentUser.referredBy);
-        return;
-    }
+    if (!refCode || refCode === currentUserId || currentUser.referredBy) return;
     
     console.log('🔗 Processing referral:', refCode, '→', currentUserId);
     
     try {
-        const response = await apiCall('/referral', 'POST', {
-            referrerId: refCode,
-            newUserId: currentUserId
-        });
-        
-        console.log('📥 Referral API response:', response);
+        const response = await apiCall('/referral', 'POST', { referrerId: refCode, newUserId: currentUserId });
         
         if (response.success) {
             currentUser.referredBy = refCode;
@@ -467,10 +510,14 @@ async function processReferral(refCode) {
             
             await saveUserData();
             
+            addNotification({
+                type: 'referral',
+                title: 'New Referral!',
+                message: `+${CONFIG.REFERRAL_BONUS} TROLL from referral!`
+            });
+            
             showToast('🎉 +' + CONFIG.REFERRAL_BONUS + ' TROLL from referral!', 'success');
             console.log('✅ Referral processed successfully');
-        } else {
-            console.error('❌ Referral API failed:', response.error);
         }
     } catch (error) {
         console.error('❌ Referral error:', error);
@@ -478,7 +525,7 @@ async function processReferral(refCode) {
 }
 
 // ============================================================================
-// SECTION 15: GUEST USER
+// SECTION 16: GUEST USER
 // ============================================================================
 
 async function createGuestUser() {
@@ -528,32 +575,25 @@ async function createGuestUser() {
 }
 
 // ============================================================================
-// SECTION 16: UI HELPERS
+// SECTION 17: UI HELPERS
 // ============================================================================
 
 function hideAllScreens() {
     const screens = ['onboardingScreen', 'guestOnboardingScreen', 'splashScreen'];
-    
-    screens.forEach(function(id) {
-        const el = document.getElementById(id);
-        if (el) el.style.display = 'none';
-    });
+    screens.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
 }
 
 function showMainApp() {
     const main = document.getElementById('mainApp');
     const nav = document.getElementById('bottomNav');
-    
     if (main) main.style.display = 'block';
     if (nav) nav.style.display = 'flex';
 }
 
 function checkAdmin() {
     const isAdmin = (currentUserId === appConfig.adminId);
-    
     if (isAdmin) {
         const header = document.querySelector('.header-actions');
-        
         if (header && !document.getElementById('adminCrownBtn')) {
             const btn = document.createElement('button');
             btn.id = 'adminCrownBtn';
@@ -566,7 +606,7 @@ function checkAdmin() {
 }
 
 // ============================================================================
-// SECTION 17: MAIN UI UPDATE
+// SECTION 18: MAIN UI UPDATE
 // ============================================================================
 
 function updateUI() {
@@ -576,7 +616,6 @@ function updateUI() {
     document.getElementById('userIdDisplay').textContent = 'ID: ' + (currentUserId || '').slice(-8);
     
     const avatarEl = document.getElementById('userAvatar');
-    
     if (avatarEl) {
         if (currentUser.premium) {
             avatarEl.innerHTML = getTrollFaceSVG();
@@ -607,8 +646,7 @@ function updateUI() {
 
 function updateTotalBalance() {
     let total = 0;
-    
-    ALL_ASSETS.forEach(function(asset) {
+    ALL_ASSETS.forEach(asset => {
         const balance = currentUser.balances[asset.symbol] || 0;
         const price = cryptoPrices[asset.symbol] ? cryptoPrices[asset.symbol].price : 0;
         total += balance * price;
@@ -635,13 +673,9 @@ function getTrollFaceSVG() {
 
 function updateSettingsUI() {
     const avatarEl = document.getElementById('settingsAvatar');
-    
     if (avatarEl) {
-        if (currentUser.premium) {
-            avatarEl.innerHTML = getTrollFaceSVG();
-        } else {
-            avatarEl.textContent = currentUser.avatar || '🧌';
-        }
+        if (currentUser.premium) avatarEl.innerHTML = getTrollFaceSVG();
+        else avatarEl.textContent = currentUser.avatar || '🧌';
     }
     
     document.getElementById('settingsUserName').textContent = currentUser.userName || 'User';
@@ -651,7 +685,6 @@ function updateSettingsUI() {
     document.getElementById('currentSolanaWallet').textContent = wallet ? wallet.slice(0, 8) + '...' + wallet.slice(-4) : 'Not set';
     
     const tonEl = document.getElementById('tonWalletStatus');
-    
     if (tonEl) {
         if (tonConnected && tonWalletAddress) {
             tonEl.textContent = tonWalletAddress.slice(0, 6) + '...' + tonWalletAddress.slice(-6);
@@ -664,15 +697,12 @@ function updateSettingsUI() {
 }
 
 function getReferralLink() {
-    if (!currentUserId || currentUserId.startsWith('guest_')) {
-        return CONFIG.BOT_LINK;
-    }
-    
+    if (!currentUserId || currentUserId.startsWith('guest_')) return CONFIG.BOT_LINK;
     return CONFIG.BOT_LINK + '?startapp=' + currentUserId;
 }
 
 // ============================================================================
-// SECTION 18: RENDER FUNCTIONS
+// SECTION 19: RENDER FUNCTIONS
 // ============================================================================
 
 function renderAssets() {
@@ -709,9 +739,7 @@ function renderTopCryptos() {
     const container = document.getElementById('topCryptoList');
     if (!container) return;
     
-    const topCoins = ALL_ASSETS.filter(function(a) {
-        return a.symbol === 'TROLL' || a.symbol === 'BTC' || a.symbol === 'ETH' || a.symbol === 'BNB' || a.symbol === 'SOL';
-    });
+    const topCoins = ALL_ASSETS.filter(a => a.symbol === 'TROLL' || a.symbol === 'BTC' || a.symbol === 'ETH' || a.symbol === 'BNB' || a.symbol === 'SOL');
     
     let html = '';
     
@@ -775,7 +803,7 @@ function renderMissionsUI() {
     if (!container) return;
     
     if (currentUser.premium) {
-        container.innerHTML = '<div class="premium-unlocked-card"><div class="premium-icon-large">😏</div><h3>Premium Unlocked!</h3><p>Instant withdrawal access!</p></div>';
+        container.innerHTML = '<div class="premium-unlocked-card"><div class="premium-icon-large">😏</div><h3>' + t('premium.unlocked') + '</h3><p>Instant withdrawal access!</p></div>';
         return;
     }
     
@@ -784,7 +812,7 @@ function renderMissionsUI() {
     let html = '';
     html += '<div class="lock-header">';
     html += '<i class="fa-solid fa-' + (currentUser.withdrawalUnlocked ? 'unlock' : 'lock') + '"></i>';
-    html += '<span>' + (currentUser.withdrawalUnlocked ? '✅ Withdrawal Available!' : '🔒 Withdrawal Locked') + '</span>';
+    html += '<span>' + (currentUser.withdrawalUnlocked ? '✅ ' + t('withdrawal.unlocked') : '🔒 Withdrawal Locked') + '</span>';
     html += '</div>';
     html += '<div class="missions-list-vertical">';
     
@@ -793,17 +821,14 @@ function renderMissionsUI() {
     html += '<div class="mission-icon">' + (m.mission1.completed ? '✅' : '1️⃣') + '</div>';
     html += '<div class="mission-content">';
     html += '<h4>' + MISSIONS.mission1.title + '</h4>';
-    
     if (currentUser.settings && currentUser.settings.solanaWallet) {
         html += '<p>Wallet: ' + currentUser.settings.solanaWallet.slice(0, 8) + '...</p>';
     } else {
         html += '<p>' + MISSIONS.mission1.desc + '</p>';
     }
-    
     if (!m.mission1.completed) {
         html += '<button class="mission-action-btn" onclick="showSolanaWalletModal()">Add Wallet</button>';
     }
-    
     html += '</div></div>';
     
     // Mission 2
@@ -818,10 +843,7 @@ function renderMissionsUI() {
         html += '<p class="mission-hint">💡 ' + MISSIONS.mission2.hint + '</p>';
         html += '</div></div>';
     } else {
-        html += '<div class="mission-card mystery">';
-        html += '<div class="mission-icon">❓</div>';
-        html += '<div class="mission-content"><h4>Mission 2: ???</h4><p>Reveals after Mission 1</p></div>';
-        html += '</div>';
+        html += '<div class="mission-card mystery"><div class="mission-icon">❓</div><div class="mission-content"><h4>Mission 2: ???</h4><p>' + t('mission.revealLater') + '</p></div></div>';
     }
     
     // Mission 3
@@ -836,10 +858,7 @@ function renderMissionsUI() {
         html += '<p class="mission-hint">💡 ' + MISSIONS.mission3.hint + '</p>';
         html += '</div></div>';
     } else {
-        html += '<div class="mission-card mystery">';
-        html += '<div class="mission-icon">❓</div>';
-        html += '<div class="mission-content"><h4>Mission 3: ???</h4><p>Reveals after Mission 2</p></div>';
-        html += '</div>';
+        html += '<div class="mission-card mystery"><div class="mission-icon">❓</div><div class="mission-content"><h4>Mission 3: ???</h4><p>' + t('mission.revealLater') + '</p></div></div>';
     }
     
     // Mission 4
@@ -861,14 +880,11 @@ function renderMissionsUI() {
         html += '<div class="mission-icon">⏳</div>';
         html += '<div class="mission-content">';
         html += '<h4>Final Mystery Mission</h4>';
-        html += '<p>Reveals in ' + daysLeft + ' day' + (daysLeft !== 1 ? 's' : '') + '</p>';
+        html += '<p>' + t('mission.waitDays', {days: daysLeft}) + '</p>';
         html += '<div class="timer-progress-bar"><div class="timer-fill" style="width:' + ((20 - daysLeft) / 20) * 100 + '%"></div></div>';
         html += '</div></div>';
     } else {
-        html += '<div class="mission-card mystery">';
-        html += '<div class="mission-icon">❓</div>';
-        html += '<div class="mission-content"><h4>Mission 4: ???</h4><p>Reveals after Mission 3</p></div>';
-        html += '</div>';
+        html += '<div class="mission-card mystery"><div class="mission-icon">❓</div><div class="mission-content"><h4>Mission 4: ???</h4><p>' + t('mission.revealLater') + '</p></div></div>';
     }
     
     html += '</div>';
@@ -898,11 +914,9 @@ function renderMilestones() {
         if (canClaim) {
             html += '<button class="claim-btn" onclick="claimMilestone(' + m.referrals + ')">Claim</button>';
         }
-        
         if (claimed) {
             html += '<p style="color:#2ecc71;text-align:center;">✓ Claimed</p>';
         }
-        
         html += '</div>';
     }
     
@@ -910,19 +924,18 @@ function renderMilestones() {
 }
 
 // ============================================================================
-// SECTION 19: DATA PERSISTENCE
+// SECTION 20: DATA PERSISTENCE
 // ============================================================================
 
 async function saveUserData() {
     localStorage.setItem('troll_user_data', JSON.stringify(currentUser));
-    
     if (!isGuest) {
         await apiCall('/users/' + currentUserId, 'PATCH', { updates: currentUser });
     }
 }
 
 // ============================================================================
-// SECTION 20: MISSIONS PROGRESS
+// SECTION 21: MISSIONS PROGRESS
 // ============================================================================
 
 async function updateMissionsProgress() {
@@ -977,29 +990,43 @@ async function updateMissionsProgress() {
     if (allDone && !currentUser.withdrawalUnlocked) {
         currentUser.withdrawalUnlocked = true;
         changed = true;
-        showToast('🎉 Withdrawal Unlocked!', 'success');
+        addNotification({
+            type: 'mission',
+            title: '🎉 Congratulations!',
+            message: 'Withdrawal Unlocked! You can now withdraw your TROLL!'
+        });
+        celebrateUnlock();
     }
     
-    if (changed) {
-        await saveUserData();
+    if (changed) await saveUserData();
+}
+
+function celebrateUnlock() {
+    for (let i = 0; i < 50; i++) {
+        setTimeout(() => {
+            const confetti = document.createElement('div');
+            confetti.className = 'confetti';
+            confetti.style.left = Math.random() * 100 + '%';
+            confetti.style.background = ['#FFD700', '#2ecc71', '#e74c3c', '#3498db'][Math.floor(Math.random() * 4)];
+            document.body.appendChild(confetti);
+            setTimeout(() => confetti.remove(), 4000);
+        }, i * 50);
     }
+    showToast('🎉 Withdrawal Unlocked!', 'success');
 }
 
 // ============================================================================
-// SECTION 21: USER ACTIONS
+// SECTION 22: USER ACTIONS
 // ============================================================================
 
 function showSolanaWalletModal() {
-    const address = prompt('Enter your Solana wallet address (TROLL token):');
-    
+    const address = prompt(t('withdraw.address') + ':');
     if (address && address.length > 30) {
         if (!currentUser.settings) currentUser.settings = {};
         currentUser.settings.solanaWallet = address;
-        
         saveUserData();
         updateMissionsProgress();
         updateUI();
-        
         if (currentPage === 'airdrop') renderMissionsUI();
         showToast('✅ Wallet saved!', 'success');
     } else if (address) {
@@ -1011,6 +1038,8 @@ function copyInviteLink() {
     const link = document.getElementById('inviteLink');
     if (link) {
         navigator.clipboard.writeText(link.value);
+        const btn = document.querySelector('.copy-btn');
+        if (btn) { btn.classList.add('copy-success'); setTimeout(() => btn.classList.remove('copy-success'), 300); }
         showToast('🔗 Link copied!', 'success');
     }
 }
@@ -1018,23 +1047,15 @@ function copyInviteLink() {
 function shareInviteLink() {
     const link = getReferralLink();
     const text = encodeURIComponent('🧌 Join Troll Army! Get 1000 TROLL bonus!\n\n👉 ' + link);
-    
-    if (tg) {
-        tg.openTelegramLink('https://t.me/share/url?url=&text=' + text);
-    }
+    if (tg) tg.openTelegramLink('https://t.me/share/url?url=&text=' + text);
 }
 
 async function claimMilestone(referrals) {
-    const milestone = MILESTONES.find(function(m) { return m.referrals === referrals; });
-    
+    const milestone = MILESTONES.find(m => m.referrals === referrals);
     if (!milestone || milestone.isSpecial) return;
-    
     if (!currentUser.claimedMilestones) currentUser.claimedMilestones = [];
     if (currentUser.claimedMilestones.includes(referrals)) return;
-    if (currentUser.inviteCount < referrals) {
-        showToast('Not enough referrals', 'error');
-        return;
-    }
+    if (currentUser.inviteCount < referrals) { showToast('Not enough referrals', 'error'); return; }
     
     currentUser.balances.TROLL += milestone.reward;
     currentUser.claimedMilestones.push(referrals);
@@ -1043,28 +1064,168 @@ async function claimMilestone(referrals) {
     updateUI();
     renderMilestones();
     
+    addNotification({
+        type: 'milestone',
+        title: 'Milestone Claimed!',
+        message: `+${milestone.reward.toLocaleString()} TROLL claimed!`
+    });
+    
     showToast('🎉 Claimed ' + milestone.reward.toLocaleString() + ' TROLL!', 'success');
 }
 
-function showToast(message, type) {
-    const toast = document.getElementById('toast');
-    const msgEl = document.getElementById('toastMessage');
+// ============================================================================
+// SECTION 23: NOTIFICATIONS SYSTEM
+// ============================================================================
+
+function addNotification(notification) {
+    if (!currentUser) return;
+    if (!currentUser.notifications) currentUser.notifications = [];
     
-    if (!toast || !msgEl) return;
+    const newNotification = {
+        id: Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+        type: notification.type || 'info',
+        title: notification.title || 'Notification',
+        message: notification.message,
+        read: false,
+        timestamp: new Date().toISOString()
+    };
     
-    msgEl.textContent = message;
-    toast.classList.remove('hidden');
+    currentUser.notifications.unshift(newNotification);
+    if (currentUser.notifications.length > 50) currentUser.notifications = currentUser.notifications.slice(0, 50);
     
-    const icon = toast.querySelector('i');
-    if (icon) {
-        icon.className = type === 'error' ? 'fa-solid fa-circle-exclamation' : 'fa-solid fa-circle-check';
+    localStorage.setItem('troll_user_data', JSON.stringify(currentUser));
+    updateNotificationBadge();
+}
+
+function updateNotificationBadge() {
+    const badge = document.querySelector('.badge');
+    if (badge && currentUser) {
+        unreadNotifications = currentUser.notifications ? currentUser.notifications.filter(n => !n.read).length : 0;
+        badge.textContent = unreadNotifications;
+        badge.style.display = unreadNotifications > 0 ? 'flex' : 'none';
+    }
+}
+
+function renderNotifications() {
+    const container = document.getElementById('notificationsList');
+    if (!container || !currentUser) return;
+    
+    const notifications = currentUser.notifications || [];
+    
+    let controlsHTML = `
+        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <button onclick="clearReadNotifications()" style="flex:1; padding:8px; background:rgba(46,204,113,0.1); border:1px solid rgba(46,204,113,0.2); border-radius:8px; color:#2ecc71; cursor:pointer;">
+                <i class="fa-regular fa-trash-can"></i> ${t('notifications.clearRead')}
+            </button>
+            <button onclick="clearAllNotifications()" style="flex:1; padding:8px; background:rgba(231,76,60,0.1); border:1px solid rgba(231,76,60,0.2); border-radius:8px; color:#e74c3c; cursor:pointer;">
+                <i class="fa-regular fa-bell-slash"></i> ${t('notifications.clearAll')}
+            </button>
+        </div>
+    `;
+    
+    if (notifications.length === 0) {
+        container.innerHTML = controlsHTML + '<div class="empty-state"><i class="fa-regular fa-bell-slash"></i><p>' + t('notifications.empty') + '</p></div>';
+        return;
     }
     
-    setTimeout(function() { toast.classList.add('hidden'); }, 3000);
+    let html = '';
+    notifications.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    
+    notifications.forEach(n => {
+        const date = new Date(n.timestamp);
+        const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        let iconClass = 'fa-bell';
+        let iconColor = 'info';
+        if (n.type === 'referral') { iconClass = 'fa-users'; iconColor = 'referral'; }
+        else if (n.type === 'deposit') { iconClass = 'fa-circle-down'; iconColor = 'deposit'; }
+        else if (n.type === 'withdraw') { iconClass = 'fa-circle-up'; iconColor = 'withdraw'; }
+        else if (n.type === 'broadcast') { iconClass = 'fa-bullhorn'; iconColor = 'broadcast'; }
+        else if (n.type === 'mission') { iconClass = 'fa-trophy'; iconColor = 'mission'; }
+        else if (n.type === 'milestone') { iconClass = 'fa-medal'; iconColor = 'milestone'; }
+        
+        html += `
+            <div class="notification-item ${n.read ? '' : 'unread'}" onclick="markNotificationRead('${n.id}')">
+                <div class="notification-header">
+                    <span class="notification-icon ${iconColor}">
+                        <i class="fa-regular ${iconClass}"></i>
+                    </span>
+                    <span class="notification-title">${n.title}</span>
+                    <span class="notification-time">${formattedDate}</span>
+                </div>
+                <div class="notification-message">${n.message}</div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = controlsHTML + html;
+}
+
+function markNotificationRead(notificationId) {
+    if (!currentUser.notifications) return;
+    const notification = currentUser.notifications.find(n => n.id === notificationId);
+    if (notification && !notification.read) {
+        notification.read = true;
+        unreadNotifications--;
+        updateNotificationBadge();
+        localStorage.setItem('troll_user_data', JSON.stringify(currentUser));
+        renderNotifications();
+    }
+}
+
+function clearReadNotifications() {
+    if (!currentUser.notifications) return;
+    const readCount = currentUser.notifications.filter(n => n.read).length;
+    if (readCount === 0) { showToast('No read notifications', 'info'); return; }
+    currentUser.notifications = currentUser.notifications.filter(n => !n.read);
+    unreadNotifications = currentUser.notifications.length;
+    updateNotificationBadge();
+    localStorage.setItem('troll_user_data', JSON.stringify(currentUser));
+    renderNotifications();
+    showToast(`Cleared ${readCount} notifications`, 'success');
+}
+
+function clearAllNotifications() {
+    if (!currentUser.notifications || currentUser.notifications.length === 0) return;
+    if (confirm('Delete all notifications?')) {
+        currentUser.notifications = [];
+        unreadNotifications = 0;
+        updateNotificationBadge();
+        localStorage.setItem('troll_user_data', JSON.stringify(currentUser));
+        renderNotifications();
+        showToast('All notifications cleared', 'success');
+    }
+}
+
+async function loadBroadcasts() {
+    if (!db || !currentUser) return;
+    
+    try {
+        const snapshot = await db.collection('broadcasts')
+            .where('target', 'in', ['all', 'app'])
+            .orderBy('sentAt', 'desc')
+            .limit(10)
+            .get();
+        
+        snapshot.forEach(doc => {
+            const broadcast = doc.data();
+            if (!broadcast.readBy || !broadcast.readBy.includes(currentUserId)) {
+                addNotification({
+                    type: 'broadcast',
+                    title: '📢 Announcement',
+                    message: broadcast.message
+                });
+                
+                db.collection('broadcasts').doc(doc.id).update({
+                    readBy: firebase.firestore.FieldValue.arrayUnion(currentUserId)
+                });
+            }
+        });
+    } catch (e) { console.error('Load broadcasts error:', e); }
 }
 
 // ============================================================================
-// SECTION 22: MODAL FUNCTIONS
+// SECTION 24: MODAL FUNCTIONS
 // ============================================================================
 
 function closeModal(id) {
@@ -1072,12 +1233,41 @@ function closeModal(id) {
     if (modal) modal.classList.remove('show');
 }
 
+function showModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) modal.classList.add('show');
+}
+
 function showDepositModal() {
     const modal = document.getElementById('depositModal');
     if (modal) modal.classList.add('show');
     
-    const addressEl = document.getElementById('depositAddress');
-    if (addressEl) addressEl.textContent = '0xbf70420f57342c6Bd4267430D4D3b7E946f09450';
+    const currency = document.getElementById('depositCurrency')?.value || 'TROLL';
+    
+    apiCall('/deposit/generate', 'POST', {
+        userId: currentUserId,
+        userName: currentUser.userName,
+        currency: currency
+    }).then(data => {
+        if (data.success) {
+            document.getElementById('depositAddress').textContent = data.address;
+            document.getElementById('depositNetwork').textContent = data.network || 'BSC (BEP-20)';
+            document.getElementById('depositMinAmount').textContent = data.minDeposit || '10,000';
+            
+            const qrDiv = document.getElementById('depositQR');
+            if (qrDiv) {
+                qrDiv.innerHTML = '';
+                new QRCode(qrDiv, {
+                    text: data.address,
+                    width: 150,
+                    height: 150,
+                    colorDark: '#000000',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            }
+        }
+    });
 }
 
 function showWithdrawModal() {
@@ -1085,24 +1275,24 @@ function showWithdrawModal() {
         showToast('Complete missions to unlock withdrawal!', 'error');
         return;
     }
-    
-    const modal = document.getElementById('withdrawModal');
-    if (modal) modal.classList.add('show');
+    showModal('withdrawModal');
+    updateWithdrawInfo();
 }
 
 function showHistory() {
-    const modal = document.getElementById('historyModal');
-    if (modal) modal.classList.add('show');
+    showModal('historyModal');
+    renderHistory('all');
 }
 
 function showNotifications() {
-    const modal = document.getElementById('notificationsModal');
-    if (modal) modal.classList.add('show');
+    showModal('notificationsModal');
+    renderNotifications();
 }
 
 function showAdminPanel() {
     const panel = document.getElementById('adminPanel');
     if (panel) panel.classList.remove('hidden');
+    loadAdminData();
 }
 
 function closeAdminPanel() {
@@ -1111,40 +1301,269 @@ function closeAdminPanel() {
 }
 
 function copyDepositAddress() {
-    const addr = document.getElementById('depositAddress');
-    if (addr && addr.textContent) {
-        navigator.clipboard.writeText(addr.textContent);
+    const addr = document.getElementById('depositAddress')?.textContent;
+    if (addr) {
+        navigator.clipboard.writeText(addr);
         showToast('Address copied!', 'success');
     }
 }
 
 function submitDeposit() {
-    showToast('Deposit submitted', 'success');
+    showToast('Deposit submitted for verification', 'success');
     closeModal('depositModal');
 }
 
 function submitWithdraw() {
-    showToast('Withdrawal requested', 'success');
+    const amount = document.getElementById('withdrawAmount')?.value;
+    const address = document.getElementById('withdrawAddress')?.value;
+    if (!amount || amount < 10000) { showToast('Min 10,000 TROLL', 'error'); return; }
+    if (!address) { showToast('Enter wallet address', 'error'); return; }
+    
+    showToast('Withdrawal requested!', 'success');
     closeModal('withdrawModal');
+    
+    addNotification({
+        type: 'withdraw',
+        title: 'Withdrawal Requested',
+        message: `Your withdrawal of ${amount} TROLL is being processed.`
+    });
+    
+    celebrateUnlock();
 }
 
 // ============================================================================
-// SECTION 23: NAVIGATION
+// SECTION 25: HISTORY FUNCTIONS
+// ============================================================================
+
+function renderHistory(filter = 'all') {
+    const container = document.getElementById('historyList');
+    if (!container || !currentUser) return;
+    
+    let transactions = currentUser.transactions || [];
+    if (filter !== 'all') transactions = transactions.filter(t => t.type === filter);
+    
+    if (transactions.length === 0) {
+        container.innerHTML = '<div class="empty-state"><i class="fa-regular fa-clock"></i><p>No transactions yet</p></div>';
+        return;
+    }
+    
+    let html = '';
+    transactions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    
+    transactions.forEach(tx => {
+        const date = new Date(tx.timestamp);
+        const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        let icon = 'fa-circle-down';
+        let typeClass = 'deposit';
+        let typeText = 'Deposit';
+        let amountClass = 'positive';
+        let amountPrefix = '+';
+        
+        if (tx.type === 'withdraw') {
+            icon = 'fa-circle-up'; typeClass = 'withdraw'; typeText = 'Withdrawal'; amountClass = 'negative'; amountPrefix = '-';
+        } else if (tx.type === 'referral') {
+            icon = 'fa-users'; typeClass = 'referral'; typeText = 'Referral Bonus';
+        } else if (tx.type === 'milestone') {
+            icon = 'fa-trophy'; typeClass = 'referral'; typeText = 'Milestone';
+        }
+        
+        let statusClass = 'completed';
+        let statusText = 'Completed';
+        if (tx.status === 'pending') { statusClass = 'pending'; statusText = 'Pending'; }
+        else if (tx.status === 'rejected') { statusClass = 'rejected'; statusText = 'Rejected'; }
+        
+        html += `
+            <div class="history-item">
+                <div class="history-item-header">
+                    <div class="history-type ${typeClass}">
+                        <i class="fa-regular ${icon}"></i>
+                        <span>${typeText}</span>
+                    </div>
+                    <span class="history-status-badge ${statusClass}">${statusText}</span>
+                </div>
+                <div class="history-details">
+                    <span class="history-amount ${amountClass}">${amountPrefix}${tx.amount} ${tx.currency || 'TROLL'}</span>
+                    <span class="history-date">${formattedDate}</span>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+function filterHistory(filter) {
+    document.querySelectorAll('.history-tab').forEach(t => t.classList.remove('active'));
+    event?.target?.classList.add('active');
+    renderHistory(filter);
+}
+
+// ============================================================================
+// SECTION 26: ADMIN PANEL FUNCTIONS
+// ============================================================================
+
+async function loadAdminData() {
+    const content = document.getElementById('adminContent');
+    if (!content) return;
+    
+    content.innerHTML = `
+        <div class="admin-search-container">
+            <input type="text" id="adminSearchInput" placeholder="${t('admin.search')}">
+            <button class="admin-action-btn add" onclick="adminSearch()" style="max-width:100px;">
+                <i class="fa-regular fa-search"></i>
+            </button>
+        </div>
+        
+        <div class="broadcast-target-selector">
+            <button class="broadcast-target-btn active" onclick="selectBroadcastTarget('all')">${t('admin.targetAll')}</button>
+            <button class="broadcast-target-btn" onclick="selectBroadcastTarget('bot')">${t('admin.targetBot')}</button>
+            <button class="broadcast-target-btn" onclick="selectBroadcastTarget('app')">${t('admin.targetApp')}</button>
+        </div>
+        
+        <textarea id="broadcastMessage" placeholder="Message to broadcast..." style="width:100%; padding:12px; border-radius:8px; background:var(--bg-primary); border:1px solid var(--border-light); color:var(--text-primary); margin-bottom:12px;" rows="3"></textarea>
+        
+        <button class="admin-action-btn broadcast" onclick="sendBroadcast()" style="width:100%; margin-bottom:20px;">
+            <i class="fa-regular fa-bullhorn"></i> ${t('admin.broadcast')}
+        </button>
+        
+        <div id="adminUserResult"></div>
+        <div id="broadcastResult"></div>
+    `;
+}
+
+let selectedBroadcastTarget = 'all';
+
+function selectBroadcastTarget(target) {
+    selectedBroadcastTarget = target;
+    document.querySelectorAll('.broadcast-target-btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+}
+
+async function adminSearch() {
+    const input = document.getElementById('adminSearchInput');
+    const term = input.value.trim();
+    const resultDiv = document.getElementById('adminUserResult');
+    
+    if (!term) { showToast('Enter User ID or Wallet Address', 'error'); return; }
+    
+    resultDiv.innerHTML = '<div class="loading-spinner"><i class="fa-regular fa-spinner fa-spin"></i> Searching...</div>';
+    
+    let userId = term;
+    
+    if (term.startsWith('0x') || term.startsWith('G') || term.startsWith('T')) {
+        try {
+            const res = await apiCall('/admin/search-by-wallet', 'POST', { walletAddress: term });
+            if (res.success) { userId = res.user.userId; }
+        } catch (e) {}
+    }
+    
+    try {
+        const res = await apiCall('/users/' + userId, 'GET');
+        
+        if (res.success && res.data) {
+            const user = res.data;
+            
+            resultDiv.innerHTML = `
+                <div class="admin-user-card">
+                    <div class="admin-user-header">
+                        <div class="admin-user-avatar">${user.avatar || '🧌'}</div>
+                        <div class="admin-user-info">
+                            <h4>${user.userName}</h4>
+                            <p>ID: ${user.userId}</p>
+                            <p>Invites: ${user.inviteCount || 0}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="admin-balance-grid">
+                        ${Object.entries(user.balances || {}).filter(([_, v]) => v > 0).map(([c, v]) => `
+                            <div class="admin-balance-item">
+                                <div class="currency">${c}</div>
+                                <div class="amount">${v.toLocaleString()}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <div class="admin-actions">
+                        <button class="admin-action-btn add" onclick="adminAddBalance('${user.userId}')">${t('admin.addBalance')}</button>
+                        <button class="admin-action-btn remove" onclick="adminRemoveBalance('${user.userId}')">${t('admin.removeBalance')}</button>
+                    </div>
+                </div>
+            `;
+        } else {
+            resultDiv.innerHTML = '<p style="color:var(--troll-red); text-align:center;">User not found</p>';
+        }
+    } catch (e) {
+        resultDiv.innerHTML = '<p style="color:var(--troll-red); text-align:center;">Error loading user</p>';
+    }
+}
+
+async function adminAddBalance(userId) {
+    const currency = prompt('Currency (TROLL, SOL, BNB, ETH, TRON):', 'TROLL');
+    if (!currency) return;
+    const amount = parseFloat(prompt('Amount:', '0'));
+    if (isNaN(amount) || amount <= 0) { showToast('Invalid amount', 'error'); return; }
+    
+    const res = await apiCall('/admin/add-balance', 'POST', { userId, currency, amount });
+    if (res.success) {
+        showToast(`Added ${amount} ${currency}!`, 'success');
+        adminSearch();
+    }
+}
+
+async function adminRemoveBalance(userId) {
+    const currency = prompt('Currency (TROLL, SOL, BNB, ETH, TRON):', 'TROLL');
+    if (!currency) return;
+    const amount = parseFloat(prompt('Amount:', '0'));
+    if (isNaN(amount) || amount <= 0) { showToast('Invalid amount', 'error'); return; }
+    
+    const res = await apiCall('/admin/remove-balance', 'POST', { userId, currency, amount });
+    if (res.success) {
+        showToast(`Removed ${amount} ${currency}!`, 'success');
+        adminSearch();
+    }
+}
+
+async function sendBroadcast() {
+    const message = document.getElementById('broadcastMessage')?.value.trim();
+    if (!message) { showToast('Enter message', 'error'); return; }
+    
+    const resultDiv = document.getElementById('broadcastResult');
+    resultDiv.innerHTML = '<div class="loading-spinner"><i class="fa-regular fa-spinner fa-spin"></i> Sending...</div>';
+    
+    try {
+        const res = await apiCall('/admin/broadcast-app', 'POST', {
+            message: message,
+            target: selectedBroadcastTarget
+        });
+        
+        if (res.success) {
+            resultDiv.innerHTML = `
+                <div class="broadcast-stats">
+                    <div class="broadcast-stat">
+                        <div class="number">✅</div>
+                        <div class="label">Broadcast Sent</div>
+                    </div>
+                </div>
+            `;
+            showToast('Broadcast sent!', 'success');
+            document.getElementById('broadcastMessage').value = '';
+        }
+    } catch (e) {
+        resultDiv.innerHTML = '<p style="color:var(--troll-red);">Error sending broadcast</p>';
+    }
+}
+
+// ============================================================================
+// SECTION 27: NAVIGATION
 // ============================================================================
 
 function showWallet() {
     currentPage = 'wallet';
-    
-    document.querySelectorAll('.section').forEach(function(s) { s.classList.add('hidden'); });
-    
-    const walletSection = document.getElementById('walletSection');
-    if (walletSection) walletSection.classList.remove('hidden');
-    
-    document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
-    
-    const walletTab = document.querySelector('[data-tab="wallet"]');
-    if (walletTab) walletTab.classList.add('active');
-    
+    document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+    document.getElementById('walletSection')?.classList.remove('hidden');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelector('[data-tab="wallet"]')?.classList.add('active');
     renderAssets();
     renderTopCryptos();
     renderMemeCoins();
@@ -1153,126 +1572,84 @@ function showWallet() {
 
 function showAirdrop() {
     currentPage = 'airdrop';
-    
-    document.querySelectorAll('.section').forEach(function(s) { s.classList.add('hidden'); });
-    
-    const airdropSection = document.getElementById('airdropSection');
-    if (airdropSection) airdropSection.classList.remove('hidden');
-    
-    document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
-    
-    const airdropTab = document.querySelector('[data-tab="airdrop"]');
-    if (airdropTab) airdropTab.classList.add('active');
-    
+    document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+    document.getElementById('airdropSection')?.classList.remove('hidden');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelector('[data-tab="airdrop"]')?.classList.add('active');
     renderMissionsUI();
     renderMilestones();
 }
 
 function showSettings() {
     currentPage = 'settings';
-    
-    document.querySelectorAll('.section').forEach(function(s) { s.classList.add('hidden'); });
-    
-    const settingsSection = document.getElementById('settingsSection');
-    if (settingsSection) settingsSection.classList.remove('hidden');
-    
-    document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
-    
-    const settingsTab = document.querySelector('[data-tab="settings"]');
-    if (settingsTab) settingsTab.classList.add('active');
-    
+    document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+    document.getElementById('settingsSection')?.classList.remove('hidden');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelector('[data-tab="settings"]')?.classList.add('active');
     updateSettingsUI();
 }
 
 // ============================================================================
-// SECTION 24: TON CONNECT & PREMIUM
+// SECTION 28: TON CONNECT & PREMIUM
 // ============================================================================
 
 async function initTONConnect() {
     if (typeof TON_CONNECT_UI === 'undefined') return;
-    
     try {
         tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
             manifestUrl: location.origin + '/tonconnect-manifest.json',
             buttonRootId: 'tonConnectButton'
         });
-        
         const restored = await tonConnectUI.connectionRestored;
         if (restored && tonConnectUI.wallet) {
             tonConnected = true;
             tonWalletAddress = tonConnectUI.wallet.account.address;
         }
-    } catch (e) {
-        console.error('TON init error:', e);
-    }
+    } catch (e) { console.error('TON init error:', e); }
 }
 
 async function connectTONWallet() {
     if (!tonConnectUI) return;
-    
     try {
         await tonConnectUI.openModal();
-        
-        const interval = setInterval(function() {
+        const interval = setInterval(() => {
             if (tonConnectUI.wallet) {
                 clearInterval(interval);
-                
                 tonConnected = true;
                 tonWalletAddress = tonConnectUI.wallet.account.address;
                 currentUser.tonWallet = tonWalletAddress;
-                
                 saveUserData();
                 updateSettingsUI();
-                
                 showToast('✅ TON Connected!', 'success');
             }
         }, 500);
-        
-        setTimeout(function() { clearInterval(interval); }, 30000);
-    } catch (e) {
-        showToast('Connection failed', 'error');
-    }
+        setTimeout(() => clearInterval(interval), 30000);
+    } catch (e) { showToast('Connection failed', 'error'); }
 }
 
-function showPremiumModal() {
-    const modal = document.getElementById('premiumModal');
-    if (modal) modal.classList.add('show');
-}
+function showPremiumModal() { showModal('premiumModal'); }
 
 async function buyPremium() {
-    if (!tonConnected) {
-        showToast('Connect TON wallet first', 'error');
-        return;
-    }
-    
+    if (!tonConnected) { showToast('Connect TON wallet first', 'error'); return; }
     showToast('Processing...', 'info');
-    
     try {
-        const tx = {
-            validUntil: Math.floor(Date.now() / 1000) + 300,
-            messages: [{ address: appConfig.ownerWallet, amount: '5000000000' }]
-        };
-        
+        const tx = { validUntil: Math.floor(Date.now() / 1000) + 300, messages: [{ address: appConfig.ownerWallet, amount: '5000000000' }] };
         const result = await tonConnectUI.sendTransaction(tx);
-        
         if (result.boc) {
             currentUser.premium = true;
             currentUser.avatar = '😏';
             currentUser.withdrawalUnlocked = true;
-            
             await saveUserData();
             updateUI();
             closeModal('premiumModal');
-            
             showToast('🎉 Premium Unlocked!', 'success');
+            celebrateUnlock();
         }
-    } catch (e) {
-        showToast('Payment failed', 'error');
-    }
+    } catch (e) { showToast('Payment failed', 'error'); }
 }
 
 // ============================================================================
-// SECTION 25: HELPERS
+// SECTION 29: HELPERS
 // ============================================================================
 
 function showAssetDetails(symbol) {
@@ -1292,57 +1669,72 @@ function refreshPrices() {
 }
 
 function toggleLanguage() {
-    showToast('Language changed', 'info');
+    currentLanguage = currentLanguage === 'en' ? 'ar' : 'en';
+    localStorage.setItem('language', currentLanguage);
+    document.body.classList.toggle('rtl', currentLanguage === 'ar');
+    document.documentElement.dir = currentLanguage === 'ar' ? 'rtl' : 'ltr';
+    document.getElementById('currentLangDisplay').textContent = currentLanguage === 'en' ? 'English' : 'العربية';
+    updateUI();
+    showToast(currentLanguage === 'en' ? 'Language: English' : 'اللغة: العربية', 'success');
 }
 
 function toggleTheme() {
-    const theme = document.documentElement.getAttribute('data-theme');
-    const newTheme = theme === 'dark' ? 'light' : 'dark';
-    
-    document.documentElement.setAttribute('data-theme', newTheme);
-    localStorage.setItem('theme', newTheme);
-    
-    showToast('Theme changed', 'info');
+    currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('theme', currentTheme);
+    document.documentElement.setAttribute('data-theme', currentTheme);
+    showToast(`Theme: ${currentTheme}`, 'success');
 }
 
 function logout() {
-    if (confirm('Are you sure?')) {
+    if (confirm(t('settings.logout') + '?')) {
         localStorage.clear();
         location.reload();
     }
 }
 
-function openSupport() {
-    window.open('https://t.me/TrollSupport', '_blank');
-}
+function openSupport() { window.open('https://t.me/Troll_Customer_Support', '_blank'); }
+function showComingSoon(feature) { showToast(feature + ' coming soon!', 'info'); }
 
-function showComingSoon(feature) {
-    showToast(feature + ' coming soon!', 'info');
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    const msgEl = document.getElementById('toastMessage');
+    if (!toast || !msgEl) return;
+    msgEl.textContent = message;
+    toast.classList.remove('hidden');
+    const icon = toast.querySelector('i');
+    if (icon) {
+        icon.className = type === 'error' ? 'fa-solid fa-circle-exclamation' : 'fa-solid fa-circle-check';
+    }
+    setTimeout(() => toast.classList.add('hidden'), 3000);
 }
 
 // ============================================================================
-// SECTION 26: INITIALIZATION
+// SECTION 30: INITIALIZATION
 // ============================================================================
 
-document.addEventListener('DOMContentLoaded', async function() {
-    console.log('🚀 Troll Army Starting - Waiting for Telegram...');
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('🚀 Troll Army - Legendary Version 25.0');
     
-    setTimeout(function() {
-        const splash = document.getElementById('splashScreen');
-        if (splash) splash.classList.add('hidden');
-    }, 2000);
+    document.documentElement.setAttribute('data-theme', currentTheme);
+    if (currentLanguage === 'ar') {
+        document.body.classList.add('rtl');
+        document.documentElement.dir = 'rtl';
+    }
+    document.getElementById('currentLangDisplay').textContent = currentLanguage === 'en' ? 'English' : 'العربية';
+    
+    setTimeout(() => document.getElementById('splashScreen')?.classList.add('hidden'), 2000);
     
     await loadConfig();
     await initTONConnect();
     await initUser();
     await fetchLivePrices(true);
     
-    setInterval(function() { fetchLivePrices(); }, 300000);
-    setInterval(function() { updateMissionsProgress(); }, 30000);
+    setInterval(fetchLivePrices, 300000);
+    setInterval(updateMissionsProgress, 30000);
 });
 
 // ============================================================================
-// SECTION 27: GLOBAL EXPORTS
+// SECTION 31: GLOBAL EXPORTS
 // ============================================================================
 
 window.showWallet = showWallet;
@@ -1373,5 +1765,13 @@ window.showComingSoon = showComingSoon;
 window.showAssetDetails = showAssetDetails;
 window.showCryptoDetails = showCryptoDetails;
 window.showSolanaWalletModal = showSolanaWalletModal;
+window.filterHistory = filterHistory;
+window.clearReadNotifications = clearReadNotifications;
+window.clearAllNotifications = clearAllNotifications;
+window.adminSearch = adminSearch;
+window.adminAddBalance = adminAddBalance;
+window.adminRemoveBalance = adminRemoveBalance;
+window.sendBroadcast = sendBroadcast;
+window.selectBroadcastTarget = selectBroadcastTarget;
 
-console.log('✅✅✅ Troll Army - REFERRAL SYSTEM FIXED! ✅✅✅');
+console.log('✅✅✅ Troll Army - LEGENDARY VERSION 25.0 READY! ✅✅✅');
