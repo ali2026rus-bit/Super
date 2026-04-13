@@ -1,6 +1,6 @@
 // ============================================================================
 // TROLL ARMY - FINAL VERSION WITH TELEGRAM WAIT SYSTEM
-// Version: 21.0 - Smooth Telegram User Detection & Registration
+// Version: 22.0 - Production Ready
 // ============================================================================
 
 // ====== TELEGRAM WEBAPP ======
@@ -33,7 +33,12 @@ const ICONS = {
     BNB: 'https://s2.coinmarketcap.com/static/img/coins/64x64/1839.png',
     ETH: 'https://s2.coinmarketcap.com/static/img/coins/64x64/1027.png',
     TRON: 'https://s2.coinmarketcap.com/static/img/coins/64x64/1958.png',
-    BTC: 'https://s2.coinmarketcap.com/static/img/coins/64x64/1.png'
+    BTC: 'https://s2.coinmarketcap.com/static/img/coins/64x64/1.png',
+    DOGE: 'https://s2.coinmarketcap.com/static/img/coins/64x64/74.png',
+    SHIB: 'https://s2.coinmarketcap.com/static/img/coins/64x64/5994.png',
+    PEPE: 'https://s2.coinmarketcap.com/static/img/coins/64x64/24478.png',
+    BONK: 'https://s2.coinmarketcap.com/static/img/coins/64x64/23095.png',
+    WIF: 'https://s2.coinmarketcap.com/static/img/coins/64x64/28752.png'
 };
 
 // ====== ASSETS ======
@@ -45,9 +50,17 @@ const ALL_ASSETS = [
     { symbol: 'TRON', name: 'TRON' }
 ];
 
+const MEME_COINS = [
+    { symbol: 'DOGE', name: 'Dogecoin' },
+    { symbol: 'SHIB', name: 'Shiba Inu' },
+    { symbol: 'PEPE', name: 'Pepe' },
+    { symbol: 'BONK', name: 'Bonk' },
+    { symbol: 'WIF', name: 'Dogwifhat' }
+];
+
 // ====== MYSTERY MISSIONS ======
 const MISSIONS = {
-    mission1: { id: 'solana_wallet', title: 'Mission 1: Connect Solana', desc: 'Add your TROLL Solana wallet', hint: 'Go to Settings â†’ Solana Wallet' },
+    mission1: { id: 'solana_wallet', title: 'Mission 1: Connect Solana', desc: 'Add your TROLL Solana wallet', hint: 'Go to Settings → Solana Wallet' },
     mission2: { id: 'referral_earnings', title: 'Mission 2: Build Wealth', desc: 'Earn 12,500 TROLL from referrals', hint: 'Each referral gives 500 TROLL', required: 12500 },
     mission3: { id: 'new_referrals', title: 'Mission 3: Expand Army', desc: 'Get 12 NEW referrals', hint: 'Only new referrals count', required: 12 },
     mission4: { id: 'holdings', title: 'Mission 4: Prove Holdings', desc: 'Hold 0.025 BNB or 0.25 SOL', hint: 'Deposit to your wallet', requiredBNB: 0.025, requiredSOL: 0.25 }
@@ -55,12 +68,12 @@ const MISSIONS = {
 
 // ====== MILESTONES ======
 const MILESTONES = [
-    { referrals: 10, reward: 5000, title: 'ðŸ¤¡ Baby Troll' },
-    { referrals: 25, reward: 12500, title: 'ðŸ˜ˆ Master Troll' },
-    { referrals: 100, reward: 25000, title: 'ðŸ‘¹ Troll Lord' },
-    { referrals: 250, reward: 50000, title: 'ðŸ§Œ Troll King' },
-    { referrals: 500, reward: 100000, title: 'ðŸ”¥ Troll God' },
-    { referrals: 1000, reward: 0, title: 'ðŸ’€ Grand Master', isSpecial: true }
+    { referrals: 10, reward: 5000, title: '🤡 Baby Troll' },
+    { referrals: 25, reward: 12500, title: '😈 Master Troll' },
+    { referrals: 100, reward: 25000, title: '👹 Troll Lord' },
+    { referrals: 250, reward: 50000, title: '🧌 Troll King' },
+    { referrals: 500, reward: 100000, title: '🔥 Troll God' },
+    { referrals: 1000, reward: 0, title: '💀 Grand Master', isSpecial: true }
 ];
 
 // ====== DEFAULT MISSIONS STRUCTURE ======
@@ -95,7 +108,7 @@ async function loadConfig() {
         if (appConfig.firebaseConfig && typeof firebase !== 'undefined') {
             if (!firebase.apps.length) firebase.initializeApp(appConfig.firebaseConfig);
             db = firebase.firestore();
-            console.log('ðŸ”¥ Firebase ready');
+            console.log('🔥 Firebase ready');
         }
         return true;
     } catch (error) {
@@ -104,22 +117,88 @@ async function loadConfig() {
     }
 }
 
+// ====== COINGECKO LIVE PRICES ======
+let lastPriceFetch = 0;
+
+async function fetchLivePrices(force = false) {
+    const now = Date.now();
+    if (!force && lastPriceFetch && (now - lastPriceFetch) < 300000) return;
+    
+    console.log('🔄 Fetching CoinGecko prices...');
+    
+    try {
+        const allCoins = [...ALL_ASSETS, ...MEME_COINS];
+        const ids = allCoins.map(c => {
+            if (c.symbol === 'TROLL') return 'troll-2';
+            if (c.symbol === 'BTC') return 'bitcoin';
+            if (c.symbol === 'ETH') return 'ethereum';
+            if (c.symbol === 'BNB') return 'binancecoin';
+            if (c.symbol === 'SOL') return 'solana';
+            if (c.symbol === 'DOGE') return 'dogecoin';
+            if (c.symbol === 'SHIB') return 'shiba-inu';
+            if (c.symbol === 'PEPE') return 'pepe';
+            if (c.symbol === 'BONK') return 'bonk';
+            if (c.symbol === 'WIF') return 'dogwifcoin';
+            return '';
+        }).filter(id => id).join(',');
+        
+        const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`;
+        const res = await fetch(url);
+        const data = await res.json();
+        
+        allCoins.forEach(coin => {
+            let coingeckoId = '';
+            if (coin.symbol === 'TROLL') coingeckoId = 'troll-2';
+            else if (coin.symbol === 'BTC') coingeckoId = 'bitcoin';
+            else if (coin.symbol === 'ETH') coingeckoId = 'ethereum';
+            else if (coin.symbol === 'BNB') coingeckoId = 'binancecoin';
+            else if (coin.symbol === 'SOL') coingeckoId = 'solana';
+            else if (coin.symbol === 'DOGE') coingeckoId = 'dogecoin';
+            else if (coin.symbol === 'SHIB') coingeckoId = 'shiba-inu';
+            else if (coin.symbol === 'PEPE') coingeckoId = 'pepe';
+            else if (coin.symbol === 'BONK') coingeckoId = 'bonk';
+            else if (coin.symbol === 'WIF') coingeckoId = 'dogwifcoin';
+            
+            if (coingeckoId && data[coingeckoId]) {
+                cryptoPrices[coin.symbol] = {
+                    price: data[coingeckoId].usd,
+                    change: data[coingeckoId].usd_24h_change || 0
+                };
+            }
+        });
+        
+        if (!cryptoPrices['TROLL']) {
+            cryptoPrices['TROLL'] = { price: CONFIG.TROLL_PRICE_FALLBACK, change: 0 };
+        }
+        
+        lastPriceFetch = now;
+        
+        if (currentPage === 'wallet') {
+            renderAssets();
+            renderTopCryptos();
+            renderMemeCoins();
+            updateTotalBalance();
+        }
+    } catch (error) {
+        console.error('Price error:', error);
+        cryptoPrices['TROLL'] = { price: CONFIG.TROLL_PRICE_FALLBACK, change: 0 };
+    }
+}
+
 // ====== WAIT FOR TELEGRAM USER DATA ======
 async function waitForTelegramUserData(maxAttempts = 15, delayMs = 200) {
-    console.log('â³ Waiting for Telegram user data...');
+    console.log('⏳ Waiting for Telegram user data...');
     
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        console.log(`ðŸ” Attempt ${attempt}/${maxAttempts}`);
+        console.log(`🔍 Attempt ${attempt}/${maxAttempts}`);
         
-        // Check if Telegram WebApp is ready
         if (tg) {
             tg.ready();
             tg.expand();
             
-            // Try to get user from initDataUnsafe (most reliable)
             if (tg.initDataUnsafe?.user?.id) {
                 const user = tg.initDataUnsafe.user;
-                console.log(`âœ… Found user in initDataUnsafe after ${attempt} attempt(s):`, user.id);
+                console.log(`✅ Found user in initDataUnsafe after ${attempt} attempt(s):`, user.id);
                 return {
                     id: user.id.toString(),
                     firstName: user.first_name || 'Troll',
@@ -129,7 +208,6 @@ async function waitForTelegramUserData(maxAttempts = 15, delayMs = 200) {
                 };
             }
             
-            // Try to get user from initData
             if (tg.initData) {
                 try {
                     const params = new URLSearchParams(tg.initData);
@@ -137,7 +215,7 @@ async function waitForTelegramUserData(maxAttempts = 15, delayMs = 200) {
                     if (userJson) {
                         const user = JSON.parse(decodeURIComponent(userJson));
                         if (user?.id) {
-                            console.log(`âœ… Found user in initData after ${attempt} attempt(s):`, user.id);
+                            console.log(`✅ Found user in initData after ${attempt} attempt(s):`, user.id);
                             return {
                                 id: user.id.toString(),
                                 firstName: user.first_name || 'Troll',
@@ -148,52 +226,37 @@ async function waitForTelegramUserData(maxAttempts = 15, delayMs = 200) {
                         }
                     }
                 } catch (e) {
-                    console.warn(`âš ï¸ Error parsing initData:`, e);
+                    console.warn(`⚠️ Error parsing initData:`, e);
                 }
             }
         }
         
-        // Wait before next attempt
         await new Promise(resolve => setTimeout(resolve, delayMs));
     }
     
-    console.log('âŒ No Telegram user found after', maxAttempts, 'attempts');
+    console.log('❌ No Telegram user found after', maxAttempts, 'attempts');
     return null;
 }
 
-// ====== BUILD INIT DATA FROM UNSAFE ======
 function buildInitDataFromUnsafe(unsafe) {
     if (!unsafe) return '';
-    
-    const data = {
-        query_id: unsafe.query_id,
-        user: JSON.stringify(unsafe.user),
-        auth_date: unsafe.auth_date,
-        hash: unsafe.hash
-    };
-    
-    return Object.keys(data)
-        .filter(k => data[k] !== undefined && data[k] !== null)
-        .map(k => `${k}=${encodeURIComponent(data[k])}`)
-        .join('&');
+    const data = { query_id: unsafe.query_id, user: JSON.stringify(unsafe.user), auth_date: unsafe.auth_date, hash: unsafe.hash };
+    return Object.keys(data).filter(k => data[k] !== undefined && data[k] !== null).map(k => `${k}=${encodeURIComponent(data[k])}`).join('&');
 }
 
-// ====== INIT USER - WITH PROPER WAIT ======
+// ====== INIT USER ======
 async function initUser() {
-    console.log('ðŸš€ Initializing user...');
+    console.log('🚀 Initializing user...');
     
-    // Wait for Telegram user data
     const telegramUser = await waitForTelegramUserData(15, 200);
     
     if (!telegramUser) {
-        console.log('âŒ No Telegram user detected - switching to guest mode');
+        console.log('❌ No Telegram user detected - switching to guest mode');
         await createGuestUser();
         return;
     }
     
-    console.log('ðŸ“¤ Authenticating with server...');
-    console.log('ðŸ“¤ User ID:', telegramUser.id);
-    console.log('ðŸ“¤ Name:', telegramUser.firstName);
+    console.log('📤 Authenticating with server...');
     
     try {
         const response = await fetch('/api/init-user', {
@@ -203,12 +266,10 @@ async function initUser() {
         });
         
         const data = await response.json();
-        console.log('ðŸ“¥ Server response:', data.success ? 'âœ… Success' : 'âŒ Failed');
+        console.log('📥 Server response:', data.success ? '✅ Success' : '❌ Failed');
         
         if (data.success) {
-            console.log('âœ… Authenticated:', data.userId);
-            console.log('ðŸ’° Welcome bonus:', data.userData?.balances?.TROLL);
-            
+            console.log('✅ Authenticated:', data.userId);
             currentUser = data.userData;
             currentUserId = data.userId;
             isGuest = false;
@@ -223,18 +284,18 @@ async function initUser() {
             
             showToast(`Welcome ${data.userData.userName}! +${data.userData.balances.TROLL} TROLL`, 'success');
         } else {
-            console.log('âŒ Auth failed:', data.error);
+            console.log('❌ Auth failed:', data.error);
             await createGuestUser();
         }
     } catch (error) {
-        console.error('âŒ Server error:', error);
+        console.error('❌ Server error:', error);
         await createGuestUser();
     }
 }
 
 // ====== CREATE GUEST USER ======
 async function createGuestUser() {
-    console.log('ðŸŽ­ Creating guest user...');
+    console.log('🎭 Creating guest user...');
     
     const guestId = 'guest_' + Date.now();
     
@@ -245,7 +306,7 @@ async function createGuestUser() {
         inviteCount: 0,
         referralEarnings: 0,
         premium: false,
-        avatar: 'ðŸ§Œ',
+        avatar: '🧌',
         withdrawalUnlocked: false,
         claimedMilestones: [],
         settings: { solanaWallet: null },
@@ -268,9 +329,9 @@ async function createGuestUser() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId: guestId, userData: guestData })
         });
-        console.log('âœ… Guest saved to database');
+        console.log('✅ Guest saved to database');
     } catch (e) {
-        console.log('âš ï¸ Guest saved locally only');
+        console.log('⚠️ Guest saved locally only');
     }
     
     hideAllScreens();
@@ -325,7 +386,7 @@ function updateUI() {
             avatarEl.innerHTML = getTrollFaceSVG();
             avatarEl.classList.add('avatar-premium');
         } else {
-            avatarEl.textContent = currentUser.avatar || 'ðŸ§Œ';
+            avatarEl.textContent = currentUser.avatar || '🧌';
         }
     }
     
@@ -335,10 +396,34 @@ function updateUI() {
     document.getElementById('trollEarned').textContent = (currentUser.referralEarnings || 0).toLocaleString();
     document.getElementById('inviteLink').value = getReferralLink();
     
+    updateTotalBalance();
     updateSettingsUI();
     
-    if (currentPage === 'wallet') renderAssets();
-    else if (currentPage === 'airdrop') { renderMissionsUI(); renderMilestones(); }
+    if (currentPage === 'wallet') {
+        renderAssets();
+        renderTopCryptos();
+        renderMemeCoins();
+    } else if (currentPage === 'airdrop') {
+        renderMissionsUI();
+        renderMilestones();
+    }
+}
+
+function updateTotalBalance() {
+    let total = 0;
+    ALL_ASSETS.forEach(asset => {
+        const balance = currentUser.balances?.[asset.symbol] || 0;
+        const price = cryptoPrices[asset.symbol]?.price || 0;
+        total += balance * price;
+    });
+    
+    const totalEl = document.getElementById('totalBalance');
+    if (totalEl) totalEl.textContent = '$' + total.toFixed(2);
+    
+    const trollBalance = currentUser.balances?.TROLL || 0;
+    const trollPrice = cryptoPrices['TROLL']?.price || CONFIG.TROLL_PRICE_FALLBACK;
+    const usdEl = document.getElementById('trollUsdValue');
+    if (usdEl) usdEl.textContent = (trollBalance * trollPrice).toFixed(2);
 }
 
 // ====== GET TROLL FACE SVG ======
@@ -355,7 +440,7 @@ function getTrollFaceSVG() {
 function updateSettingsUI() {
     const avatarEl = document.getElementById('settingsAvatar');
     if (avatarEl) {
-        avatarEl.innerHTML = currentUser.premium ? getTrollFaceSVG() : (currentUser.avatar || 'ðŸ§Œ');
+        avatarEl.innerHTML = currentUser.premium ? getTrollFaceSVG() : (currentUser.avatar || '🧌');
     }
     document.getElementById('settingsUserName').textContent = currentUser.userName || 'User';
     document.getElementById('settingsUserId').textContent = 'ID: ' + currentUserId;
@@ -383,9 +468,45 @@ function renderAssets() {
     let html = '';
     for (const asset of ALL_ASSETS) {
         const balance = currentUser.balances?.[asset.symbol] || 0;
+        const price = cryptoPrices[asset.symbol]?.price || 0;
+        const value = balance * price;
         html += `<div class="asset-item" onclick="showAssetDetails('${asset.symbol}')">
             <div class="asset-left"><img src="${ICONS[asset.symbol] || ICONS.TROLL}" class="asset-icon-img"><div class="asset-info"><h4>${asset.name}</h4><p>${asset.symbol}</p></div></div>
-            <div class="asset-right"><div class="asset-balance">${balance.toLocaleString()} ${asset.symbol}</div></div>
+            <div class="asset-right"><div class="asset-balance">${balance.toLocaleString()} ${asset.symbol}</div><div class="asset-value">$${value.toFixed(2)}</div></div>
+        </div>`;
+    }
+    container.innerHTML = html;
+}
+
+function renderTopCryptos() {
+    const container = document.getElementById('topCryptoList');
+    if (!container) return;
+    const topCoins = ALL_ASSETS.filter(a => ['TROLL', 'BTC', 'ETH', 'BNB', 'SOL'].includes(a.symbol));
+    let html = '';
+    for (const coin of topCoins) {
+        const data = cryptoPrices[coin.symbol] || { price: 0, change: 0 };
+        const changeClass = data.change >= 0 ? 'positive' : 'negative';
+        const changeSymbol = data.change >= 0 ? '+' : '';
+        const decimals = coin.symbol === 'TROLL' ? 5 : 2;
+        html += `<div class="crypto-item" onclick="showCryptoDetails('${coin.symbol}')">
+            <div class="crypto-left"><img src="${ICONS[coin.symbol]}" class="crypto-icon-img"><div class="crypto-info"><h4>${coin.name}</h4><p>${coin.symbol}</p></div></div>
+            <div class="crypto-right"><div class="crypto-price">$${data.price.toFixed(decimals)}</div><div class="crypto-change ${changeClass}">${changeSymbol}${data.change.toFixed(1)}%</div></div>
+        </div>`;
+    }
+    container.innerHTML = html;
+}
+
+function renderMemeCoins() {
+    const container = document.getElementById('memeCoinList');
+    if (!container) return;
+    let html = '';
+    for (const coin of MEME_COINS) {
+        const data = cryptoPrices[coin.symbol] || { price: 0, change: 0 };
+        const changeClass = data.change >= 0 ? 'positive' : 'negative';
+        const changeSymbol = data.change >= 0 ? '+' : '';
+        html += `<div class="crypto-item" onclick="showCryptoDetails('${coin.symbol}')">
+            <div class="crypto-left"><img src="${ICONS[coin.symbol]}" class="crypto-icon-img"><div class="crypto-info"><h4>${coin.name}</h4><p>${coin.symbol}</p></div></div>
+            <div class="crypto-right"><div class="crypto-price">$${data.price.toFixed(8)}</div><div class="crypto-change ${changeClass}">${changeSymbol}${data.change.toFixed(1)}%</div></div>
         </div>`;
     }
     container.innerHTML = html;
@@ -398,41 +519,41 @@ function renderMissionsUI() {
     const m = currentUser.withdrawalMissions;
     
     if (currentUser.premium) {
-        container.innerHTML = `<div class="premium-unlocked-card"><div class="premium-icon-large">ðŸ˜</div><h3>Premium Unlocked!</h3><p>Instant withdrawal access!</p></div>`;
+        container.innerHTML = `<div class="premium-unlocked-card"><div class="premium-icon-large">😏</div><h3>Premium Unlocked!</h3><p>Instant withdrawal access!</p></div>`;
         return;
     }
     
-    let html = `<div class="lock-header"><i class="fa-solid fa-${currentUser.withdrawalUnlocked ? 'unlock' : 'lock'}"></i><span>${currentUser.withdrawalUnlocked ? 'âœ… Withdrawal Available!' : 'ðŸ”’ Withdrawal Locked'}</span></div><div class="missions-list-vertical">`;
+    let html = `<div class="lock-header"><i class="fa-solid fa-${currentUser.withdrawalUnlocked ? 'unlock' : 'lock'}"></i><span>${currentUser.withdrawalUnlocked ? '✅ Withdrawal Available!' : '🔒 Withdrawal Locked'}</span></div><div class="missions-list-vertical">`;
     
     // Mission 1
-    html += `<div class="mission-card ${m.mission1.completed ? 'completed' : ''}"><div class="mission-icon">${m.mission1.completed ? 'âœ…' : '1ï¸âƒ£'}</div><div class="mission-content"><h4>${MISSIONS.mission1.title}</h4><p>${currentUser.settings?.solanaWallet ? 'Wallet: ' + currentUser.settings.solanaWallet.slice(0, 8) + '...' : MISSIONS.mission1.desc}</p>${!m.mission1.completed ? '<button class="mission-action-btn" onclick="showSolanaWalletModal()">Add Wallet</button>' : ''}</div></div>`;
+    html += `<div class="mission-card ${m.mission1.completed ? 'completed' : ''}"><div class="mission-icon">${m.mission1.completed ? '✅' : '1️⃣'}</div><div class="mission-content"><h4>${MISSIONS.mission1.title}</h4><p>${currentUser.settings?.solanaWallet ? 'Wallet: ' + currentUser.settings.solanaWallet.slice(0, 8) + '...' : MISSIONS.mission1.desc}</p>${!m.mission1.completed ? '<button class="mission-action-btn" onclick="showSolanaWalletModal()">Add Wallet</button>' : ''}</div></div>`;
     
     // Mission 2
     if (m.mission2.revealed) {
         const prog = (m.mission2.currentAmount / 12500) * 100;
-        html += `<div class="mission-card ${m.mission2.completed ? 'completed' : ''}"><div class="mission-icon">${m.mission2.completed ? 'âœ…' : '2ï¸âƒ£'}</div><div class="mission-content"><h4>${MISSIONS.mission2.title}</h4><p>${m.mission2.currentAmount.toLocaleString()} / 12,500 TROLL</p><div class="progress-bar small"><div class="progress-fill" style="width:${prog}%"></div></div><p class="mission-hint">ðŸ’¡ ${MISSIONS.mission2.hint}</p></div></div>`;
+        html += `<div class="mission-card ${m.mission2.completed ? 'completed' : ''}"><div class="mission-icon">${m.mission2.completed ? '✅' : '2️⃣'}</div><div class="mission-content"><h4>${MISSIONS.mission2.title}</h4><p>${m.mission2.currentAmount.toLocaleString()} / 12,500 TROLL</p><div class="progress-bar small"><div class="progress-fill" style="width:${prog}%"></div></div><p class="mission-hint">💡 ${MISSIONS.mission2.hint}</p></div></div>`;
     } else {
-        html += `<div class="mission-card mystery"><div class="mission-icon">â“</div><div class="mission-content"><h4>Mission 2: ???</h4><p>Reveals after Mission 1</p></div></div>`;
+        html += `<div class="mission-card mystery"><div class="mission-icon">❓</div><div class="mission-content"><h4>Mission 2: ???</h4><p>Reveals after Mission 1</p></div></div>`;
     }
     
     // Mission 3
     if (m.mission3.revealed) {
         const prog = (m.mission3.currentNewReferrals / 12) * 100;
-        html += `<div class="mission-card ${m.mission3.completed ? 'completed' : ''}"><div class="mission-icon">${m.mission3.completed ? 'âœ…' : '3ï¸âƒ£'}</div><div class="mission-content"><h4>${MISSIONS.mission3.title}</h4><p>${m.mission3.currentNewReferrals} / 12 new referrals</p><div class="progress-bar small"><div class="progress-fill" style="width:${prog}%"></div></div><p class="mission-hint">ðŸ’¡ ${MISSIONS.mission3.hint}</p></div></div>`;
+        html += `<div class="mission-card ${m.mission3.completed ? 'completed' : ''}"><div class="mission-icon">${m.mission3.completed ? '✅' : '3️⃣'}</div><div class="mission-content"><h4>${MISSIONS.mission3.title}</h4><p>${m.mission3.currentNewReferrals} / 12 new referrals</p><div class="progress-bar small"><div class="progress-fill" style="width:${prog}%"></div></div><p class="mission-hint">💡 ${MISSIONS.mission3.hint}</p></div></div>`;
     } else {
-        html += `<div class="mission-card mystery"><div class="mission-icon">â“</div><div class="mission-content"><h4>Mission 3: ???</h4><p>Reveals after Mission 2</p></div></div>`;
+        html += `<div class="mission-card mystery"><div class="mission-icon">❓</div><div class="mission-content"><h4>Mission 3: ???</h4><p>Reveals after Mission 2</p></div></div>`;
     }
     
     // Mission 4
     if (m.mission4.revealed) {
         const bnb = currentUser.balances?.BNB || 0;
         const sol = currentUser.balances?.SOL || 0;
-        html += `<div class="mission-card ${m.mission4.completed ? 'completed' : ''}"><div class="mission-icon">${m.mission4.completed ? 'âœ…' : '4ï¸âƒ£'}</div><div class="mission-content"><h4>${MISSIONS.mission4.title}</h4><p>BNB: ${bnb.toFixed(4)}/0.025 | SOL: ${sol.toFixed(4)}/0.25</p><p class="mission-hint">ðŸ’¡ ${MISSIONS.mission4.hint}</p></div></div>`;
+        html += `<div class="mission-card ${m.mission4.completed ? 'completed' : ''}"><div class="mission-icon">${m.mission4.completed ? '✅' : '4️⃣'}</div><div class="mission-content"><h4>${MISSIONS.mission4.title}</h4><p>BNB: ${bnb.toFixed(4)}/0.025 | SOL: ${sol.toFixed(4)}/0.25</p><p class="mission-hint">💡 ${MISSIONS.mission4.hint}</p></div></div>`;
     } else if (m.mission3.completed) {
         const daysLeft = Math.max(0, Math.ceil((new Date(m.mission4.revealDate) - new Date()) / (1000 * 60 * 60 * 24)));
-        html += `<div class="mission-card mystery-timer"><div class="mission-icon">â³</div><div class="mission-content"><h4>Final Mystery Mission</h4><p>Reveals in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}</p><div class="timer-progress-bar"><div class="timer-fill" style="width:${((20 - daysLeft) / 20) * 100}%"></div></div></div></div>`;
+        html += `<div class="mission-card mystery-timer"><div class="mission-icon">⏳</div><div class="mission-content"><h4>Final Mystery Mission</h4><p>Reveals in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}</p><div class="timer-progress-bar"><div class="timer-fill" style="width:${((20 - daysLeft) / 20) * 100}%"></div></div></div></div>`;
     } else {
-        html += `<div class="mission-card mystery"><div class="mission-icon">â“</div><div class="mission-content"><h4>Mission 4: ???</h4><p>Reveals after Mission 3</p></div></div>`;
+        html += `<div class="mission-card mystery"><div class="mission-icon">❓</div><div class="mission-content"><h4>Mission 4: ???</h4><p>Reveals after Mission 3</p></div></div>`;
     }
     
     html += '</div>';
@@ -448,7 +569,7 @@ function renderMilestones() {
         const progress = Math.min(((currentUser.inviteCount || 0) / m.referrals) * 100, 100);
         const claimed = currentUser.claimedMilestones?.includes(m.referrals);
         const canClaim = (currentUser.inviteCount >= m.referrals) && !claimed && !m.isSpecial;
-        html += `<div class="milestone-item ${claimed ? 'claimed' : ''}"><div class="milestone-header"><span>${m.title}</span><span>${m.isSpecial ? 'ðŸŽ Mystery Box' : m.reward.toLocaleString() + ' TROLL'}</span></div><div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div></div><div class="progress-text">${currentUser.inviteCount || 0}/${m.referrals}</div>${canClaim ? `<button class="claim-btn" onclick="claimMilestone(${m.referrals})">Claim</button>` : ''}${claimed ? '<p style="color:#2ecc71;text-align:center;">âœ“ Claimed</p>' : ''}</div>`;
+        html += `<div class="milestone-item ${claimed ? 'claimed' : ''}"><div class="milestone-header"><span>${m.title}</span><span>${m.isSpecial ? '🎁 Mystery Box' : m.reward.toLocaleString() + ' TROLL'}</span></div><div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div></div><div class="progress-text">${currentUser.inviteCount || 0}/${m.referrals}</div>${canClaim ? `<button class="claim-btn" onclick="claimMilestone(${m.referrals})">Claim</button>` : ''}${claimed ? '<p style="color:#2ecc71;text-align:center;">✓ Claimed</p>' : ''}</div>`;
     }
     container.innerHTML = html;
 }
@@ -459,85 +580,36 @@ async function saveUserData() {
     if (!isGuest) await apiCall('/users/' + currentUserId, 'PATCH', { updates: currentUser });
 }
 
-// ====== UPDATE MISSIONS PROGRESS ======
+// ====== UPDATE MISSIONS PROGRESS & ACTIONS ======
 async function updateMissionsProgress() {
     const m = currentUser.withdrawalMissions;
     let changed = false;
     
-    if (!m.mission1.completed && currentUser.settings?.solanaWallet) {
-        m.mission1.completed = true;
-        m.mission2.revealed = true;
-        changed = true;
-    }
-    if (m.mission2.revealed && !m.mission2.completed) {
-        m.mission2.currentAmount = currentUser.referralEarnings || 0;
-        if (m.mission2.currentAmount >= m.mission2.requiredAmount) {
-            m.mission2.completed = true;
-            m.mission3.revealed = true;
-            m.mission3.referralsAtStart = currentUser.inviteCount || 0;
-            changed = true;
-        }
-    }
-    if (m.mission3.revealed && !m.mission3.completed) {
-        m.mission3.currentNewReferrals = Math.max(0, (currentUser.inviteCount || 0) - (m.mission3.referralsAtStart || 0));
-        if (m.mission3.currentNewReferrals >= m.mission3.requiredReferrals) {
-            m.mission3.completed = true;
-            const revealDate = new Date();
-            revealDate.setDate(revealDate.getDate() + 20);
-            m.mission4.revealDate = revealDate.toISOString();
-            changed = true;
-        }
-    }
-    if (m.mission3.completed && !m.mission4.revealed && new Date() >= new Date(m.mission4.revealDate)) {
-        m.mission4.revealed = true;
-        changed = true;
-    }
-    if (m.mission4.revealed && !m.mission4.completed) {
-        const bnb = currentUser.balances?.BNB || 0;
-        const sol = currentUser.balances?.SOL || 0;
-        if (bnb >= m.mission4.requiredBNB || sol >= m.mission4.requiredSOL) {
-            m.mission4.completed = true;
-            changed = true;
-        }
-    }
+    if (!m.mission1.completed && currentUser.settings?.solanaWallet) { m.mission1.completed = true; m.mission2.revealed = true; changed = true; }
+    if (m.mission2.revealed && !m.mission2.completed) { m.mission2.currentAmount = currentUser.referralEarnings || 0; if (m.mission2.currentAmount >= m.mission2.requiredAmount) { m.mission2.completed = true; m.mission3.revealed = true; m.mission3.referralsAtStart = currentUser.inviteCount || 0; changed = true; } }
+    if (m.mission3.revealed && !m.mission3.completed) { m.mission3.currentNewReferrals = Math.max(0, (currentUser.inviteCount || 0) - (m.mission3.referralsAtStart || 0)); if (m.mission3.currentNewReferrals >= m.mission3.requiredReferrals) { m.mission3.completed = true; const revealDate = new Date(); revealDate.setDate(revealDate.getDate() + 20); m.mission4.revealDate = revealDate.toISOString(); changed = true; } }
+    if (m.mission3.completed && !m.mission4.revealed && new Date() >= new Date(m.mission4.revealDate)) { m.mission4.revealed = true; changed = true; }
+    if (m.mission4.revealed && !m.mission4.completed) { const bnb = currentUser.balances?.BNB || 0; const sol = currentUser.balances?.SOL || 0; if (bnb >= m.mission4.requiredBNB || sol >= m.mission4.requiredSOL) { m.mission4.completed = true; changed = true; } }
+    
     const allDone = m.mission1.completed && m.mission2.completed && m.mission3.completed && m.mission4.completed;
-    if (allDone && !currentUser.withdrawalUnlocked) {
-        currentUser.withdrawalUnlocked = true;
-        changed = true;
-    }
+    if (allDone && !currentUser.withdrawalUnlocked) { currentUser.withdrawalUnlocked = true; changed = true; showToast('🎉 Withdrawal Unlocked!', 'success'); }
     if (changed) await saveUserData();
 }
 
-// ====== SHOW SOLANA WALLET MODAL ======
 function showSolanaWalletModal() {
     const address = prompt('Enter your Solana wallet address (TROLL token):');
-    if (address && address.length > 30) {
-        currentUser.settings = currentUser.settings || {};
-        currentUser.settings.solanaWallet = address;
-        saveUserData();
-        updateMissionsProgress();
-        updateUI();
-        if (currentPage === 'airdrop') renderMissionsUI();
-        showToast('âœ… Wallet saved!', 'success');
-    } else if (address) {
-        showToast('Invalid address', 'error');
-    }
+    if (address && address.length > 30) { currentUser.settings = currentUser.settings || {}; currentUser.settings.solanaWallet = address; saveUserData(); updateMissionsProgress(); updateUI(); if (currentPage === 'airdrop') renderMissionsUI(); showToast('✅ Wallet saved!', 'success'); }
+    else if (address) { showToast('Invalid address', 'error'); }
 }
 
-// ====== COPY INVITE LINK ======
-function copyInviteLink() {
-    const link = document.getElementById('inviteLink');
-    if (link) { navigator.clipboard?.writeText(link.value); showToast('ðŸ”— Link copied!'); }
-}
+function copyInviteLink() { const link = document.getElementById('inviteLink'); if (link) { navigator.clipboard?.writeText(link.value); showToast('🔗 Link copied!'); } }
 
-// ====== SHARE INVITE LINK ======
 function shareInviteLink() {
     const link = getReferralLink();
-    const text = encodeURIComponent(`ðŸ§Œ Join Troll Army! Get 1000 TROLL bonus!\n\nðŸ‘‰ ${link}`);
+    const text = encodeURIComponent(`🧌 Join Troll Army! Get 1000 TROLL bonus!\n\n👉 ${link}`);
     tg?.openTelegramLink(`https://t.me/share/url?url=&text=${text}`);
 }
 
-// ====== CLAIM MILESTONE ======
 async function claimMilestone(referrals) {
     const milestone = MILESTONES.find(m => m.referrals === referrals);
     if (!milestone || milestone.isSpecial) return;
@@ -550,10 +622,9 @@ async function claimMilestone(referrals) {
     await saveUserData();
     updateUI();
     renderMilestones();
-    showToast(`ðŸŽ‰ Claimed ${milestone.reward.toLocaleString()} TROLL!`, 'success');
+    showToast(`🎉 Claimed ${milestone.reward.toLocaleString()} TROLL!`, 'success');
 }
 
-// ====== SHOW TOAST ======
 function showToast(message, type) {
     const toast = document.getElementById('toast');
     const msgEl = document.getElementById('toastMessage');
@@ -567,15 +638,15 @@ function showToast(message, type) {
 
 // ====== MODAL FUNCTIONS ======
 function closeModal(id) { document.getElementById(id)?.classList.remove('show'); }
-function showDepositModal() { document.getElementById('depositModal')?.classList.add('show'); }
-function showWithdrawModal() {
-    if (!currentUser.withdrawalUnlocked && !currentUser.premium) { showToast('Complete missions to unlock withdrawal!', 'error'); return; }
-    document.getElementById('withdrawModal')?.classList.add('show');
-}
+function showDepositModal() { document.getElementById('depositModal')?.classList.add('show'); document.getElementById('depositAddress').textContent = '0xbf70420f57342c6Bd4267430D4D3b7E946f09450'; }
+function showWithdrawModal() { if (!currentUser.withdrawalUnlocked && !currentUser.premium) { showToast('Complete missions to unlock withdrawal!', 'error'); return; } document.getElementById('withdrawModal')?.classList.add('show'); }
 function showHistory() { document.getElementById('historyModal')?.classList.add('show'); }
 function showNotifications() { document.getElementById('notificationsModal')?.classList.add('show'); }
 function showAdminPanel() { document.getElementById('adminPanel')?.classList.remove('hidden'); }
 function closeAdminPanel() { document.getElementById('adminPanel')?.classList.add('hidden'); }
+function copyDepositAddress() { const addr = document.getElementById('depositAddress')?.textContent; if (addr) { navigator.clipboard?.writeText(addr); showToast('Address copied!'); } }
+function submitDeposit() { showToast('Deposit submitted', 'success'); closeModal('depositModal'); }
+function submitWithdraw() { showToast('Withdrawal requested', 'success'); closeModal('withdrawModal'); }
 
 // ====== NAVIGATION ======
 function showWallet() {
@@ -585,7 +656,11 @@ function showWallet() {
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.querySelector('[data-tab="wallet"]')?.classList.add('active');
     renderAssets();
+    renderTopCryptos();
+    renderMemeCoins();
+    updateTotalBalance();
 }
+
 function showAirdrop() {
     currentPage = 'airdrop';
     document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
@@ -595,6 +670,7 @@ function showAirdrop() {
     renderMissionsUI();
     renderMilestones();
 }
+
 function showSettings() {
     currentPage = 'settings';
     document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
@@ -604,60 +680,16 @@ function showSettings() {
     updateSettingsUI();
 }
 
-// ====== TON CONNECT ======
-async function initTONConnect() {
-    if (typeof TON_CONNECT_UI === 'undefined') return;
-    try {
-        tonConnectUI = new TON_CONNECT_UI.TonConnectUI({ manifestUrl: location.origin + '/tonconnect-manifest.json', buttonRootId: 'tonConnectButton' });
-        const restored = await tonConnectUI.connectionRestored;
-        if (restored && tonConnectUI.wallet) { tonConnected = true; tonWalletAddress = tonConnectUI.wallet.account.address; }
-    } catch (e) { console.error('TON init error:', e); }
-}
-async function connectTONWallet() {
-    if (!tonConnectUI) return;
-    try {
-        await tonConnectUI.openModal();
-        const interval = setInterval(() => {
-            if (tonConnectUI.wallet) {
-                clearInterval(interval);
-                tonConnected = true;
-                tonWalletAddress = tonConnectUI.wallet.account.address;
-                currentUser.tonWallet = tonWalletAddress;
-                saveUserData();
-                updateSettingsUI();
-                showToast('âœ… TON Connected!', 'success');
-            }
-        }, 500);
-        setTimeout(() => clearInterval(interval), 30000);
-    } catch (e) { showToast('Connection failed', 'error'); }
-}
-
-// ====== PREMIUM ======
+// ====== TON CONNECT & PREMIUM ======
+async function initTONConnect() { if (typeof TON_CONNECT_UI === 'undefined') return; try { tonConnectUI = new TON_CONNECT_UI.TonConnectUI({ manifestUrl: location.origin + '/tonconnect-manifest.json', buttonRootId: 'tonConnectButton' }); const restored = await tonConnectUI.connectionRestored; if (restored && tonConnectUI.wallet) { tonConnected = true; tonWalletAddress = tonConnectUI.wallet.account.address; } } catch (e) { console.error('TON init error:', e); } }
+async function connectTONWallet() { if (!tonConnectUI) return; try { await tonConnectUI.openModal(); const interval = setInterval(() => { if (tonConnectUI.wallet) { clearInterval(interval); tonConnected = true; tonWalletAddress = tonConnectUI.wallet.account.address; currentUser.tonWallet = tonWalletAddress; saveUserData(); updateSettingsUI(); showToast('✅ TON Connected!', 'success'); } }, 500); setTimeout(() => clearInterval(interval), 30000); } catch (e) { showToast('Connection failed', 'error'); } }
 function showPremiumModal() { document.getElementById('premiumModal')?.classList.add('show'); }
-async function buyPremium() {
-    if (!tonConnected) { showToast('Connect TON wallet first', 'error'); return; }
-    showToast('Processing...', 'info');
-    try {
-        const tx = { validUntil: Math.floor(Date.now() / 1000) + 300, messages: [{ address: appConfig.ownerWallet, amount: '5000000000' }] };
-        const result = await tonConnectUI.sendTransaction(tx);
-        if (result.boc) {
-            currentUser.premium = true;
-            currentUser.avatar = 'ðŸ˜';
-            currentUser.withdrawalUnlocked = true;
-            await saveUserData();
-            updateUI();
-            closeModal('premiumModal');
-            showToast('ðŸŽ‰ Premium Unlocked!', 'success');
-        }
-    } catch (e) { showToast('Payment failed', 'error'); }
-}
+async function buyPremium() { if (!tonConnected) { showToast('Connect TON wallet first', 'error'); return; } showToast('Processing...', 'info'); try { const tx = { validUntil: Math.floor(Date.now() / 1000) + 300, messages: [{ address: appConfig.ownerWallet, amount: '5000000000' }] }; const result = await tonConnectUI.sendTransaction(tx); if (result.boc) { currentUser.premium = true; currentUser.avatar = '😏'; currentUser.withdrawalUnlocked = true; await saveUserData(); updateUI(); closeModal('premiumModal'); showToast('🎉 Premium Unlocked!', 'success'); } } catch (e) { showToast('Payment failed', 'error'); } }
 
 // ====== HELPERS ======
 function showAssetDetails(symbol) { showToast(`${symbol}: ${(currentUser.balances?.[symbol] || 0).toLocaleString()}`, 'info'); }
-function copyDepositAddress() { const addr = document.getElementById('depositAddress')?.textContent; if (addr) { navigator.clipboard?.writeText(addr); showToast('Address copied!'); } }
-function submitDeposit() { showToast('Deposit submitted', 'success'); closeModal('depositModal'); }
-function submitWithdraw() { showToast('Withdrawal requested', 'success'); closeModal('withdrawModal'); }
-function refreshPrices() { showToast('Prices refreshed', 'success'); }
+function showCryptoDetails(symbol) { const data = cryptoPrices[symbol] || { price: 0, change: 0 }; showToast(`${symbol}: $${data.price.toFixed(6)} (${data.change >= 0 ? '+' : ''}${data.change.toFixed(1)}%)`, 'info'); }
+function refreshPrices() { fetchLivePrices(true); showToast('Prices refreshed!', 'success'); }
 function toggleLanguage() { showToast('Language changed', 'info'); }
 function toggleTheme() { const theme = document.documentElement.getAttribute('data-theme'); const newTheme = theme === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', newTheme); localStorage.setItem('theme', newTheme); showToast('Theme changed', 'info'); }
 function logout() { if (confirm('Are you sure?')) { localStorage.clear(); location.reload(); } }
@@ -666,11 +698,14 @@ function showComingSoon(feature) { showToast(feature + ' coming soon!', 'info');
 
 // ====== INIT ======
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('ðŸš€ Troll Army Starting - Waiting for Telegram...');
+    console.log('🚀 Troll Army Starting - Waiting for Telegram...');
     setTimeout(() => document.getElementById('splashScreen')?.classList.add('hidden'), 2000);
     await loadConfig();
     await initTONConnect();
     await initUser();
+    await fetchLivePrices(true);
+    setInterval(() => fetchLivePrices(), 300000);
+    setInterval(() => updateMissionsProgress(), 30000);
 });
 
 // ====== EXPORTS ======
@@ -700,6 +735,7 @@ window.openSupport = openSupport;
 window.connectTONWallet = connectTONWallet;
 window.showComingSoon = showComingSoon;
 window.showAssetDetails = showAssetDetails;
+window.showCryptoDetails = showCryptoDetails;
 window.showSolanaWalletModal = showSolanaWalletModal;
 
-console.log('âœ… Troll Army - Ready with Telegram Wait System!');
+console.log('✅ Troll Army - Ready with Telegram Wait System!');
