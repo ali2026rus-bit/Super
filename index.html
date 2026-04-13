@@ -31,7 +31,24 @@
     <!-- Splash Screen -->
     <div id="splashScreen" class="splash-screen">
         <div class="splash-content">
-            <div class="troll-face">😏</div>
+            <div class="troll-face">
+                <svg viewBox="0 0 100 100" width="120" height="120">
+                    <defs>
+                        <radialGradient id="splashGrad" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stop-color="#FFD700"/>
+                            <stop offset="100%" stop-color="#DAA520"/>
+                        </radialGradient>
+                    </defs>
+                    <circle cx="50" cy="50" r="48" fill="url(#splashGrad)" stroke="#B8860B" stroke-width="2"/>
+                    <path d="M 28 68 Q 50 88, 78 58 Q 82 52, 75 48 Q 58 70, 28 62 Z" fill="#2C1810"/>
+                    <ellipse cx="35" cy="40" rx="8" ry="10" fill="#FFFFFF" stroke="#333333" stroke-width="1"/>
+                    <circle cx="38" cy="40" r="3" fill="#000000"/>
+                    <path d="M 23 28 Q 35 22, 47 28" stroke="#2C1810" stroke-width="3" fill="none" stroke-linecap="round"/>
+                    <ellipse cx="65" cy="40" rx="8" ry="10" fill="#FFFFFF" stroke="#333333" stroke-width="1"/>
+                    <circle cx="62" cy="42" r="3" fill="#000000"/>
+                    <path d="M 53 28 Q 65 22, 77 28" stroke="#2C1810" stroke-width="3" fill="none" stroke-linecap="round"/>
+                </svg>
+            </div>
             <h1>TROLL ARMY</h1>
             <div class="splash-subtitle">Mystery Missions</div>
             <div class="loading-bar">
@@ -43,7 +60,16 @@
     <!-- Onboarding Screen (New Users) -->
     <div id="onboardingScreen" class="onboarding-screen" style="display: none;">
         <div class="onboarding-container">
-            <div class="onboarding-icon">🧌</div>
+            <div class="onboarding-icon">
+                <svg viewBox="0 0 100 100" width="80" height="80">
+                    <circle cx="50" cy="50" r="48" fill="#FFD700" stroke="#DAA520" stroke-width="2"/>
+                    <path d="M 28 68 Q 50 88, 78 58 Q 82 52, 75 48 Q 58 70, 28 62 Z" fill="#2C1810"/>
+                    <ellipse cx="35" cy="40" rx="8" ry="10" fill="#FFF"/>
+                    <circle cx="38" cy="40" r="3" fill="#000"/>
+                    <ellipse cx="65" cy="40" rx="8" ry="10" fill="#FFF"/>
+                    <circle cx="62" cy="42" r="3" fill="#000"/>
+                </svg>
+            </div>
             <h1>Join Troll Army</h1>
             <p>Create your wallet and start earning TROLL tokens!</p>
             <div class="onboarding-features">
@@ -76,7 +102,16 @@
         <!-- ====== HEADER ====== -->
         <div class="header">
             <div class="user-info">
-                <div class="avatar" id="userAvatar">🧌</div>
+                <div class="avatar" id="userAvatar">
+                    <svg viewBox="0 0 100 100" width="40" height="40">
+                        <circle cx="50" cy="50" r="48" fill="#FFD700" stroke="#DAA520" stroke-width="2"/>
+                        <path d="M 28 68 Q 50 88, 78 58 Q 82 52, 75 48 Q 58 70, 28 62 Z" fill="#2C1810"/>
+                        <ellipse cx="35" cy="40" rx="8" ry="10" fill="#FFFFFF"/>
+                        <circle cx="38" cy="40" r="3" fill="#000000"/>
+                        <ellipse cx="65" cy="40" rx="8" ry="10" fill="#FFFFFF"/>
+                        <circle cx="62" cy="42" r="3" fill="#000000"/>
+                    </svg>
+                </div>
                 <div class="user-details">
                     <h3 id="userName">Loading...</h3>
                     <p id="userIdDisplay">ID: -----</p>
@@ -156,7 +191,16 @@
         <div id="airdropSection" class="section hidden">
             
             <div class="airdrop-header">
-                <div class="troll-face-large">😏</div>
+                <div class="troll-face-large">
+                    <svg viewBox="0 0 100 100" width="80" height="80">
+                        <circle cx="50" cy="50" r="48" fill="#FFD700" stroke="#DAA520" stroke-width="2"/>
+                        <path d="M 28 68 Q 50 88, 78 58 Q 82 52, 75 48 Q 58 70, 28 62 Z" fill="#2C1810"/>
+                        <ellipse cx="35" cy="40" rx="8" ry="10" fill="#FFF"/>
+                        <circle cx="38" cy="40" r="3" fill="#000"/>
+                        <ellipse cx="65" cy="40" rx="8" ry="10" fill="#FFF"/>
+                        <circle cx="62" cy="42" r="3" fill="#000"/>
+                    </svg>
+                </div>
                 <h2>Mystery Missions</h2>
                 <p>Complete 4 missions to unlock withdrawal!</p>
             </div>
@@ -208,7 +252,16 @@
             
             <!-- Profile Card -->
             <div class="profile-card">
-                <div class="profile-avatar" id="settingsAvatar">🧌</div>
+                <div class="profile-avatar" id="settingsAvatar">
+                    <svg viewBox="0 0 100 100" width="80" height="80">
+                        <circle cx="50" cy="50" r="48" fill="#FFD700" stroke="#DAA520" stroke-width="2"/>
+                        <path d="M 28 68 Q 50 88, 78 58 Q 82 52, 75 48 Q 58 70, 28 62 Z" fill="#2C1810"/>
+                        <ellipse cx="35" cy="40" rx="8" ry="10" fill="#FFFFFF"/>
+                        <circle cx="38" cy="40" r="3" fill="#000000"/>
+                        <ellipse cx="65" cy="40" rx="8" ry="10" fill="#FFFFFF"/>
+                        <circle cx="62" cy="42" r="3" fill="#000000"/>
+                    </svg>
+                </div>
                 <h3 id="settingsUserName">Loading...</h3>
                 <p id="settingsUserId">ID: -----</p>
             </div>
@@ -278,7 +331,7 @@
 
             <!-- App Info -->
             <div class="app-info">
-                <p><i class="fa-regular fa-code"></i> Troll Army v18.0</p>
+                <p><i class="fa-regular fa-code"></i> Troll Army v24.0</p>
                 <p><i class="fa-regular fa-calendar"></i> TGE: May 2026</p>
             </div>
         </div>
@@ -386,7 +439,36 @@
     <div id="premiumModal" class="modal">
         <div class="modal-content premium-modal">
             <button class="close-btn" onclick="closeModal('premiumModal')">&times;</button>
-            <div class="premium-icon">😏</div>
+            <div class="premium-icon">
+                <svg viewBox="0 0 100 100" width="80" height="80">
+                    <defs>
+                        <radialGradient id="premiumGrad" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stop-color="#FFD700"/>
+                            <stop offset="100%" stop-color="#FF8C00"/>
+                        </radialGradient>
+                        <filter id="premiumGlow">
+                            <feGaussianBlur stdDeviation="4" result="blur"/>
+                            <feMerge>
+                                <feMergeNode in="blur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                        </filter>
+                    </defs>
+                    <circle cx="50" cy="50" r="48" fill="url(#premiumGrad)" stroke="#FFD700" stroke-width="3" filter="url(#premiumGlow)"/>
+                    <path d="M 28 68 Q 50 88, 78 58 Q 82 52, 75 48 Q 58 70, 28 62 Z" fill="#1A1A2E"/>
+                    <ellipse cx="35" cy="40" rx="8" ry="10" fill="#FFFFFF" stroke="#333" stroke-width="1"/>
+                    <circle cx="38" cy="40" r="3" fill="#FF0000"/>
+                    <path d="M 23 28 Q 35 22, 47 28" stroke="#1A1A2E" stroke-width="3" fill="none" stroke-linecap="round"/>
+                    <ellipse cx="65" cy="40" rx="8" ry="10" fill="#FFFFFF" stroke="#333" stroke-width="1"/>
+                    <circle cx="62" cy="42" r="3" fill="#FF0000"/>
+                    <path d="M 53 28 Q 65 22, 77 28" stroke="#1A1A2E" stroke-width="3" fill="none" stroke-linecap="round"/>
+                    <!-- Crown on Premium -->
+                    <path d="M 35 20 L 40 10 L 50 18 L 60 10 L 65 20 Z" fill="#FFD700" stroke="#DAA520" stroke-width="1"/>
+                    <circle cx="42" cy="14" r="2" fill="#FF0000"/>
+                    <circle cx="50" cy="20" r="2" fill="#00FF00"/>
+                    <circle cx="58" cy="14" r="2" fill="#0000FF"/>
+                </svg>
+            </div>
             <h2>Premium Unlock</h2>
             <p>Get the legendary <strong>Troll Face</strong> avatar and <strong>INSTANT withdrawal</strong> access!</p>
             
