@@ -159,7 +159,7 @@ function isAdmin(req) {
     return isValid;
 }
 
-// ====== COINPAYMENTS - FIXED: استخدام get_deposit_address مع nonce للحصول على عنوان ثابت ======
+// ====== COINPAYMENTS - NEW: استخدام get_callback_address للحصول على عنوان فريد لكل مستخدم ======
 async function generateCoinPaymentsAddress(userId, currency) {
     if (!COINPAYMENTS_PUBLIC || !COINPAYMENTS_PRIVATE) {
         console.log('⚠️ CoinPayments keys not configured');
@@ -173,18 +173,15 @@ async function generateCoinPaymentsAddress(userId, currency) {
                           currency === 'ETH' ? 'ETH' : 
                           currency === 'TRX' ? 'TRX' : currency;
         
-        console.log(`🔄 Generating deposit address for ${userId} with currency ${cpCurrency}`);
+        console.log(`🔄 Generating callback address for ${userId} with currency ${cpCurrency}`);
         
-        // إنشاء nonce فريد لكل طلب (مطلوب لحساب HMAC بشكل صحيح)
-        const nonce = Date.now().toString();
-        
-        // استخدام get_deposit_address للحصول على عنوان ثابت
+        // استخدام get_callback_address للحصول على عنوان فريد للعميل (مصمم للاستخدام التجاري)
         const postData = {
             key: COINPAYMENTS_PUBLIC,
             version: '1',
-            cmd: 'get_deposit_address',
+            cmd: 'get_callback_address',
             currency: cpCurrency,
-            nonce: nonce
+            label: userId  // ربط العنوان بمعرف المستخدم لسهولة التتبع في لوحة تحكم CoinPayments
         };
         
         // ترتيب البارامترات أبجدياً وحساب HMAC
@@ -212,7 +209,7 @@ async function generateCoinPaymentsAddress(userId, currency) {
         console.log('📥 CoinPayments response:', JSON.stringify(data));
         
         if (data.error === 'ok') {
-            console.log(`✅ CoinPayments deposit address generated for ${userId}: ${data.result.address}`);
+            console.log(`✅ CoinPayments callback address generated for ${userId}: ${data.result.address}`);
             return data.result.address;
         }
         
@@ -785,7 +782,7 @@ app.post('/api/buy-premium', async (req, res) => {
     }
 });
 
-// ====== DEPOSIT API - FIXED مع get_deposit_address و nonce ======
+// ====== DEPOSIT API - NEW: استخدام get_callback_address ======
 app.post('/api/deposit/generate', async (req, res) => {
     console.log('📥 Deposit generate called:', req.body);
     try {
@@ -805,7 +802,7 @@ app.post('/api/deposit/generate', async (req, res) => {
             return res.json({ success: false, error: 'Database not connected' });
         }
         
-        // التحقق من وجود عنوان سابق في قاعدة البيانات
+        // التحقق من وجود عنوان سابق في قاعدة البيانات (عنوان ثابت لكل مستخدم)
         const existingSnapshot = await db.collection('deposit_addresses')
             .where('userId', '==', userId)
             .where('currency', '==', currency)
@@ -825,7 +822,7 @@ app.post('/api/deposit/generate', async (req, res) => {
         
         console.log('🆕 Calling CoinPayments for', userId, currency);
         
-        // استدعاء CoinPayments API مع get_deposit_address و nonce
+        // استدعاء CoinPayments API مع get_callback_address
         const address = await generateCoinPaymentsAddress(userId, currency);
         
         if (!address) {
@@ -838,7 +835,7 @@ app.post('/api/deposit/generate', async (req, res) => {
         
         const network = currency === 'SOL' ? 'Solana' : (currency === 'TRX' ? 'TRON' : 'BSC/BEP-20');
         
-        // حفظ العنوان في قاعدة البيانات
+        // حفظ العنوان في قاعدة البيانات (ليظل ثابتاً للمستخدم)
         await db.collection('deposit_addresses').add({
             userId, 
             userName, 
@@ -1436,7 +1433,7 @@ app.get('/', (req, res) => {
 // 🚀 Start Server
 // ============================================================
 app.listen(PORT, () => {
-    console.log(`\n🧌 Troll Army Server - PROFESSIONAL EDITION v26.0`);
+    console.log(`\n🧌 Troll Army Server - PROFESSIONAL EDITION v27.0`);
     console.log(`📍 Port: ${PORT}`);
     console.log(`🔥 Firebase: ${db ? '✅ Connected' : '❌ Disconnected'}`);
     console.log(`👑 Admin ID: ${ADMIN_ID || '❌ Not configured'}`);
@@ -1445,5 +1442,6 @@ app.listen(PORT, () => {
     console.log(`🌐 App URL: ${APP_URL}`);
     console.log(`\n✅ Server ready for production!\n`);
     console.log(`📢 Broadcast system: Works via notifications (not just bot messages)`);
-    console.log(`💳 Deposit system: Uses get_deposit_address with nonce for permanent addresses`);
+    console.log(`💳 Deposit system: Uses get_callback_address for unique customer addresses`);
+    console.log(`💾 Address caching: Each user gets ONE permanent address per currency`);
 });
