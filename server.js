@@ -63,6 +63,8 @@ try {
     COINPAYMENTS_PUBLIC = cpKeys.public_key;
     COINPAYMENTS_PRIVATE = cpKeys.private_key;
     console.log('✅ CoinPayments keys loaded');
+    console.log('🔑 Public Key:', COINPAYMENTS_PUBLIC ? COINPAYMENTS_PUBLIC.substring(0, 10) + '...' : 'Missing');
+    console.log('🔐 Private Key:', COINPAYMENTS_PRIVATE ? 'Loaded (hidden)' : 'Missing');
 } catch (error) {
     console.error('❌ CoinPayments keys error:', error.message);
 }
@@ -128,7 +130,7 @@ function createNewUserData(userId, userName, userUsername, refCode) {
         settings: { solanaWallet: null },
         withdrawalMissions: getDefaultMissions(),
         notifications: [{
-            id: Date.now().toString(),
+            id: Date.now().toString() + '_' + Math.random().toString(36).substr(2, 5),
             type: 'welcome',
             title: '🎉 Welcome!',
             message: `Welcome! +${WELCOME_BONUS} TROLL bonus!`,
@@ -146,10 +148,18 @@ function getMinDeposit(currency) {
 
 function isAdmin(req) {
     const authHeader = req.headers.authorization;
-    return authHeader === `Bearer ${ADMIN_PASSWORD}`;
+    if (!authHeader) {
+        console.log('❌ No Authorization header');
+        return false;
+    }
+    const isValid = authHeader === `Bearer ${ADMIN_PASSWORD}`;
+    if (!isValid) {
+        console.log('❌ Invalid admin password');
+    }
+    return isValid;
 }
 
-// ====== COINPAYMENTS - REAL ADDRESS GENERATION ======
+// ====== COINPAYMENTS - FIXED: استخدام get_deposit_address للحصول على عنوان ثابت ======
 async function generateCoinPaymentsAddress(userId, currency) {
     if (!COINPAYMENTS_PUBLIC || !COINPAYMENTS_PRIVATE) {
         console.log('⚠️ CoinPayments keys not configured');
@@ -157,25 +167,33 @@ async function generateCoinPaymentsAddress(userId, currency) {
     }
     
     try {
+        // تحويل العملة إلى الصيغة التي يفهمها CoinPayments
         const cpCurrency = currency === 'BNB' ? 'BNB' : 
-                          currency === 'SOL' ? 'SOL' : 
+                          currency === 'SOL' ? 'SOL2' :  // SOL2 هو الرمز الصحيح لـ Solana في CoinPayments
                           currency === 'ETH' ? 'ETH' : 
                           currency === 'TRX' ? 'TRX' : currency;
         
-        const nonce = Date.now().toString();
+        console.log(`🔄 Generating deposit address for ${userId} with currency ${cpCurrency}`);
+        
+        // استخدام get_deposit_address بدلاً من get_callback_address للحصول على عنوان ثابت
         const postData = {
             key: COINPAYMENTS_PUBLIC,
             version: '1',
-            cmd: 'get_callback_address',
-            currency: cpCurrency,
-            label: userId,
-            nonce: nonce
+            cmd: 'get_deposit_address',
+            currency: cpCurrency
         };
         
+        // ترتيب البارامترات أبجدياً وحساب HMAC
         const postString = Object.keys(postData).sort().map(k => `${k}=${postData[k]}`).join('&');
+        console.log('📝 Post string for HMAC:', postString);
+        
         const hmac = crypto.createHmac('sha512', COINPAYMENTS_PRIVATE);
         hmac.update(postString);
         const signature = hmac.digest('hex');
+        
+        console.log('🔐 HMAC Signature generated');
+        
+        const formData = new URLSearchParams(postData);
         
         const response = await fetch('https://www.coinpayments.net/api.php', {
             method: 'POST',
@@ -183,28 +201,29 @@ async function generateCoinPaymentsAddress(userId, currency) {
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'HMAC': signature
             },
-            body: new URLSearchParams(postData)
+            body: formData
         });
         
         const data = await response.json();
+        console.log('📥 CoinPayments response:', JSON.stringify(data));
         
         if (data.error === 'ok') {
-            console.log(`✅ CoinPayments address generated for ${userId}: ${data.result.address}`);
+            console.log(`✅ CoinPayments deposit address generated for ${userId}: ${data.result.address}`);
             return data.result.address;
         }
         
-        console.log('CoinPayments error:', data.error);
+        console.log('❌ CoinPayments error:', data.error);
         return null;
         
     } catch (error) {
-        console.error('CoinPayments API error:', error);
+        console.error('❌ CoinPayments API error:', error);
         return null;
     }
 }
 
 // ====== إرسال إشعار لمستخدم ======
 async function sendNotification(targetUserId, notification) {
-    if (!db) return;
+    if (!db) return false;
     
     try {
         const notifData = {
@@ -220,7 +239,7 @@ async function sendNotification(targetUserId, notification) {
             notifications: admin.firestore.FieldValue.arrayUnion(notifData)
         });
         
-        console.log(`✅ Notification sent to ${targetUserId}`);
+        console.log(`✅ Notification sent to ${targetUserId}: ${notification.title}`);
         return true;
     } catch (error) {
         console.error('❌ Error sending notification:', error);
@@ -228,11 +247,12 @@ async function sendNotification(targetUserId, notification) {
     }
 }
 
-// ====== إرسال بث لجميع المستخدمين ======
+// ====== إرسال بث لجميع المستخدمين (عبر الإشعارات وليس رسائل البوت فقط) ======
 async function broadcastToAllUsers(message, target = 'all') {
     if (!db) return { success: false, error: 'Database not connected' };
     
     try {
+        // حفظ البث في قاعدة البيانات
         const broadcastRef = await db.collection('broadcasts').add({
             message: message,
             target: target,
@@ -243,13 +263,16 @@ async function broadcastToAllUsers(message, target = 'all') {
         
         console.log(`✅ Broadcast saved: ${broadcastRef.id}`);
         
-        // إضافة الإشعار لكل المستخدمين
+        // إضافة الإشعار لكل المستخدمين في الـ notifications array
         const usersSnapshot = await db.collection('users').get();
         let notifiedCount = 0;
         
-        const batch = db.batch();
+        // استخدام batch للكتابة بكفاءة (كل 500 مستخدم)
+        let batch = db.batch();
+        let batchCount = 0;
+        
         const notification = {
-            id: `broadcast_${Date.now()}`,
+            id: `broadcast_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
             type: 'broadcast',
             title: '📢 Announcement',
             message: message,
@@ -263,38 +286,52 @@ async function broadcastToAllUsers(message, target = 'all') {
                 notifications: admin.firestore.FieldValue.arrayUnion(notification)
             });
             notifiedCount++;
+            batchCount++;
             
             // Firestore batch limit is 500
-            if (notifiedCount % 400 === 0) {
+            if (batchCount >= 400) {
                 await batch.commit();
+                console.log(`📦 Batch committed: ${notifiedCount} users processed`);
                 batch = db.batch();
+                batchCount = 0;
+                // انتظار بسيط لتجنب الضغط على Firestore
+                await new Promise(r => setTimeout(r, 100));
             }
         }
         
-        if (notifiedCount % 400 !== 0) {
+        // الـ batch الأخير
+        if (batchCount > 0) {
             await batch.commit();
+            console.log(`📦 Final batch committed: total ${notifiedCount} users`);
         }
         
-        console.log(`📢 Broadcast notification sent to ${notifiedCount} users`);
+        console.log(`📢 Broadcast notification added to ${notifiedCount} users' notification centers`);
         
-        // إرسال للبوت إذا كان الهدف يشمل البوت
+        // إرسال للبوت إذا كان الهدف يشمل البوت (اختياري)
+        let botSentCount = 0;
         if (target === 'all' || target === 'bot') {
-            let sentCount = 0;
             for (const doc of usersSnapshot.docs) {
                 try {
                     await bot.telegram.sendMessage(doc.id, `📢 *Announcement*\n\n${message}`, { parse_mode: 'Markdown' });
-                    sentCount++;
-                    if (sentCount % 30 === 0) {
+                    botSentCount++;
+                    if (botSentCount % 30 === 0) {
                         await new Promise(r => setTimeout(r, 2000));
                     } else {
                         await new Promise(r => setTimeout(r, 50));
                     }
-                } catch (e) {}
+                } catch (e) {
+                    // المستخدم قد يكون حظر البوت
+                }
             }
-            console.log(`📢 Bot broadcast sent to ${sentCount} users`);
+            console.log(`📢 Bot broadcast sent to ${botSentCount} users`);
         }
         
-        return { success: true, broadcastId: broadcastRef.id, notifiedCount };
+        return { 
+            success: true, 
+            broadcastId: broadcastRef.id, 
+            notifiedCount,
+            botSentCount 
+        };
         
     } catch (error) {
         console.error('❌ Broadcast error:', error);
@@ -309,26 +346,60 @@ const bot = new Telegraf(BOT_TOKEN);
 const welcomeCache = new Map();
 const botAdminSessions = new Map();
 
+// دالة إرسال رسالة الترحيب (تُستخدم في /start وعند الدخول من رابط الإحالة)
+async function sendWelcomeMessage(ctx, userId, userName, isNewUser = false) {
+    const welcomeBonusText = isNewUser ? `\n🎁 Welcome Bonus: *${WELCOME_BONUS} TROLL*` : '';
+    
+    await ctx.reply(
+        `🧌 *Welcome to Troll Army, ${userName}!*${welcomeBonusText}\n\n` +
+        `👥 Referral Bonus: *${REFERRAL_BONUS} TROLL*\n\n` +
+        `🔮 *4 Mystery Missions*\n` +
+        `Complete them to unlock FREE & INSTANT withdrawals!\n` +
+        `Trade TROLL on centralized exchanges!\n\n` +
+        `👇 *Choose an option:*`,
+        {
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '📢 Official Channel', url: 'https://t.me/troll_io' }],
+                    [{ text: '👥 Community Group', url: 'https://t.me/TROLL_sol' }],
+                    [{ text: '📊 CoinMarketCap', url: 'https://coinmarketcap.com/currencies/troll-sol' }],
+                    [{ text: '🧌 Open Troll Wallet', web_app: { url: APP_URL } }]
+                ]
+            }
+        }
+    );
+}
+
 bot.start(async (ctx) => {
     const refCode = ctx.startPayload;
     const userId = ctx.from.id.toString();
     const userName = ctx.from.first_name || 'Troll';
     const userUsername = ctx.from.username || '';
     
+    console.log(`🚀 /start command from ${userId} (${userName}), ref: ${refCode || 'none'}`);
+    
     const cacheKey = `${userId}_welcome`;
     const now = Date.now();
-    if (welcomeCache.has(cacheKey) && (now - welcomeCache.get(cacheKey)) < 5000) return;
+    if (welcomeCache.has(cacheKey) && (now - welcomeCache.get(cacheKey)) < 5000) {
+        console.log(`⏭️ Skipping duplicate welcome for ${userId}`);
+        return;
+    }
     welcomeCache.set(cacheKey, now);
+    
+    let isNewUser = false;
     
     if (db) {
         const userRef = db.collection('users').doc(userId);
         const userDoc = await userRef.get();
         
         if (!userDoc.exists) {
+            isNewUser = true;
             const userData = createNewUserData(userId, userName, userUsername, refCode);
             await userRef.set(userData);
             console.log(`✅ New user created via bot: ${userId}`);
             
+            // معالجة الإحالة
             if (refCode && refCode !== userId) {
                 const referrerRef = db.collection('users').doc(refCode);
                 const referrerDoc = await referrerRef.get();
@@ -353,32 +424,18 @@ bot.start(async (ctx) => {
                             `🧌 *New Troll Recruited!*\n\n+${REFERRAL_BONUS} TROLL\nTotal Trolls: ${(referrerData.inviteCount || 0) + 1}`, 
                             { parse_mode: 'Markdown' }
                         ).catch(() => {});
+                        
+                        console.log(`✅ Referral processed: ${refCode} referred ${userId}`);
                     }
                 }
             }
+        } else {
+            console.log(`✅ Existing user: ${userId}`);
         }
     }
     
-    await ctx.reply(
-        `🧌 *Welcome to Troll Army, ${userName}!*\n\n` +
-        `🎁 Welcome Bonus: *${WELCOME_BONUS} TROLL*\n` +
-        `👥 Referral Bonus: *${REFERRAL_BONUS} TROLL*\n\n` +
-        `🔮 *4 Mystery Missions*\n` +
-        `Complete them to unlock FREE & INSTANT withdrawals!\n` +
-        `Trade TROLL on centralized exchanges!\n\n` +
-        `👇 *Choose an option:*`,
-        {
-            parse_mode: 'Markdown',
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: '📢 Official Channel', url: 'https://t.me/troll_io' }],
-                    [{ text: '👥 Community Group', url: 'https://t.me/TROLL_sol' }],
-                    [{ text: '📊 CoinMarketCap', url: 'https://coinmarketcap.com/currencies/troll-sol' }],
-                    [{ text: '🧌 Open Troll Wallet', web_app: { url: APP_URL } }]
-                ]
-            }
-        }
-    );
+    // إرسال رسالة الترحيب (سواء كان مستخدم جديد أو قديم)
+    await sendWelcomeMessage(ctx, userId, userName, isNewUser);
 });
 
 bot.command('stats', async (ctx) => {
@@ -429,7 +486,7 @@ bot.on('text', async (ctx) => {
             ctx.reply(
                 '✅ *Authentication Successful!*\n\n' +
                 'You can now use:\n' +
-                '• `/broadcast` - Send message to all bot users\n' +
+                '• `/broadcast` - Send message to all users\n' +
                 '• `/botstats` - View bot statistics',
                 { parse_mode: 'Markdown' }
             );
@@ -459,7 +516,7 @@ bot.on('text', async (ctx) => {
         const result = await broadcastToAllUsers(text, 'all');
         
         if (result.success) {
-            ctx.reply(`✅ *Broadcast Complete!*\n\n📊 Notified: ${result.notifiedCount} users`, { parse_mode: 'Markdown' });
+            ctx.reply(`✅ *Broadcast Complete!*\n\n📊 Notification added for: ${result.notifiedCount} users\n📨 Bot messages sent: ${result.botSentCount || 0}`, { parse_mode: 'Markdown' });
         } else {
             ctx.reply('❌ Error sending broadcast');
         }
@@ -481,6 +538,18 @@ async function getBotStats() {
         `📥 Pending Deposits: ${pendingDeposits.size}\n` +
         `🕐 Uptime: ${Math.floor(process.uptime() / 3600)}h ${Math.floor((process.uptime() % 3600) / 60)}m`;
 }
+
+// عند الدخول من رابط الإحالة عبر التطبيق (بدون /start)
+bot.on('message', async (ctx) => {
+    // نتأكد أن الرسالة ليست أمراً
+    if (ctx.message.text && ctx.message.text.startsWith('/')) return;
+    
+    const userId = ctx.from.id.toString();
+    const userName = ctx.from.first_name || 'Troll';
+    
+    // التحقق إذا كان المستخدم جديداً ونريد إرسال رسالة ترحيب
+    console.log(`📨 Message from ${userId}: ${ctx.message.text || '[non-text]'}`);
+});
 
 bot.telegram.deleteWebhook({ drop_pending_updates: true })
     .then(() => bot.launch({ dropPendingUpdates: true }))
@@ -529,8 +598,10 @@ app.post('/api/admin/verify', (req, res) => {
     }
     
     if (password === ADMIN_PASSWORD) {
+        console.log('✅ Admin verified successfully');
         res.json({ success: true, message: 'Authenticated' });
     } else {
+        console.log('❌ Admin verification failed: invalid password');
         res.json({ success: false, error: 'Invalid password' });
     }
 });
@@ -710,7 +781,7 @@ app.post('/api/buy-premium', async (req, res) => {
     }
 });
 
-// ====== DEPOSIT API ======
+// ====== DEPOSIT API - FIXED مع get_deposit_address ======
 app.post('/api/deposit/generate', async (req, res) => {
     console.log('📥 Deposit generate called:', req.body);
     try {
@@ -730,6 +801,7 @@ app.post('/api/deposit/generate', async (req, res) => {
             return res.json({ success: false, error: 'Database not connected' });
         }
         
+        // التحقق من وجود عنوان سابق في قاعدة البيانات
         const existingSnapshot = await db.collection('deposit_addresses')
             .where('userId', '==', userId)
             .where('currency', '==', currency)
@@ -738,7 +810,7 @@ app.post('/api/deposit/generate', async (req, res) => {
         
         if (!existingSnapshot.empty) {
             const addr = existingSnapshot.docs[0].data();
-            console.log('📦 Returning existing address:', addr.address);
+            console.log('📦 Returning existing address from database:', addr.address);
             return res.json({ 
                 success: true, 
                 address: addr.address, 
@@ -749,6 +821,7 @@ app.post('/api/deposit/generate', async (req, res) => {
         
         console.log('🆕 Calling CoinPayments for', userId, currency);
         
+        // استدعاء CoinPayments API مع get_deposit_address
         const address = await generateCoinPaymentsAddress(userId, currency);
         
         if (!address) {
@@ -761,12 +834,17 @@ app.post('/api/deposit/generate', async (req, res) => {
         
         const network = currency === 'SOL' ? 'Solana' : (currency === 'TRX' ? 'TRON' : 'BSC/BEP-20');
         
+        // حفظ العنوان في قاعدة البيانات
         await db.collection('deposit_addresses').add({
-            userId, userName, currency, address, network,
+            userId, 
+            userName, 
+            currency, 
+            address, 
+            network,
             createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
         
-        console.log('✅ New address saved:', address);
+        console.log('✅ New address saved to database:', address);
         res.json({ 
             success: true, 
             address, 
@@ -779,14 +857,14 @@ app.post('/api/deposit/generate', async (req, res) => {
     }
 });
 
-// ====== SUBMIT DEPOSIT REQUEST (للمشرف فقط) ======
+// ====== SUBMIT DEPOSIT REQUEST ======
 app.post('/api/deposit/submit-request', async (req, res) => {
     if (!db) return res.json({ success: false, error: 'Database not connected' });
     
     try {
         const { userId, userName, currency, amount, address, txnId } = req.body;
         
-        if (!userId || !currency || !amount || !address) {
+        if (!userId || !currency || !address) {
             return res.json({ success: false, error: 'Missing required fields' });
         }
         
@@ -794,7 +872,7 @@ app.post('/api/deposit/submit-request', async (req, res) => {
             userId,
             userName,
             currency,
-            amount,
+            amount: amount || 0,
             address,
             txnId: txnId || null,
             status: 'pending',
@@ -808,13 +886,13 @@ app.post('/api/deposit/submit-request', async (req, res) => {
         await sendNotification(ADMIN_ID, {
             type: 'deposit',
             title: '📥 New Deposit Request',
-            message: `${userName} wants to deposit ${amount} ${currency}`
+            message: `${userName} wants to deposit ${amount || '?'} ${currency}`
         });
         
         bot.telegram.sendMessage(ADMIN_ID, 
             `📥 *New Deposit Request*\n\n` +
             `👤 ${userName} (${userId})\n` +
-            `💰 ${amount} ${currency}\n` +
+            `💰 Amount: ${amount || 'Not specified'} ${currency}\n` +
             `📮 ${address}\n` +
             `🔗 TXID: ${txnId || 'N/A'}`,
             { parse_mode: 'Markdown' }
@@ -929,11 +1007,18 @@ app.post('/api/admin/search-by-wallet', async (req, res) => {
 
 // إضافة رصيد
 app.post('/api/admin/add-balance', async (req, res) => {
-    if (!isAdmin(req)) return res.status(403).json({ error: 'Unauthorized' });
+    if (!isAdmin(req)) {
+        console.log('❌ Unauthorized add-balance attempt');
+        return res.status(403).json({ error: 'Unauthorized' });
+    }
     if (!db) return res.json({ success: true, mock: true });
     try {
         const { userId, currency, amount } = req.body;
-        await db.collection('users').doc(userId).update({ [`balances.${currency}`]: admin.firestore.FieldValue.increment(amount) });
+        console.log(`💰 Admin adding balance: ${userId} - ${amount} ${currency}`);
+        
+        await db.collection('users').doc(userId).update({ 
+            [`balances.${currency}`]: admin.firestore.FieldValue.increment(amount) 
+        });
         
         const transaction = {
             userId, userName: 'Admin',
@@ -954,17 +1039,25 @@ app.post('/api/admin/add-balance', async (req, res) => {
         bot.telegram.sendMessage(userId, `💰 *Admin added ${amount} ${currency}*`, { parse_mode: 'Markdown' }).catch(() => {});
         res.json({ success: true });
     } catch (error) {
+        console.error('❌ Add balance error:', error);
         res.status(500).json({ error: error.message });
     }
 });
 
 // خصم رصيد
 app.post('/api/admin/remove-balance', async (req, res) => {
-    if (!isAdmin(req)) return res.status(403).json({ error: 'Unauthorized' });
+    if (!isAdmin(req)) {
+        console.log('❌ Unauthorized remove-balance attempt');
+        return res.status(403).json({ error: 'Unauthorized' });
+    }
     if (!db) return res.json({ success: true, mock: true });
     try {
         const { userId, currency, amount } = req.body;
-        await db.collection('users').doc(userId).update({ [`balances.${currency}`]: admin.firestore.FieldValue.increment(-amount) });
+        console.log(`💰 Admin removing balance: ${userId} - ${amount} ${currency}`);
+        
+        await db.collection('users').doc(userId).update({ 
+            [`balances.${currency}`]: admin.firestore.FieldValue.increment(-amount) 
+        });
         
         const transaction = {
             userId, userName: 'Admin',
@@ -985,6 +1078,7 @@ app.post('/api/admin/remove-balance', async (req, res) => {
         bot.telegram.sendMessage(userId, `💰 *Admin removed ${amount} ${currency}*`, { parse_mode: 'Markdown' }).catch(() => {});
         res.json({ success: true });
     } catch (error) {
+        console.error('❌ Remove balance error:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -996,6 +1090,7 @@ app.post('/api/admin/block-user', async (req, res) => {
     
     try {
         const { userId } = req.body;
+        console.log(`🚫 Admin blocking user: ${userId}`);
         
         await db.collection('users').doc(userId).update({
             withdrawBlocked: true,
@@ -1016,7 +1111,7 @@ app.post('/api/admin/block-user', async (req, res) => {
     }
 });
 
-// بث رسالة
+// بث رسالة (يعمل الآن عبر الإشعارات)
 app.post('/api/admin/broadcast', async (req, res) => {
     console.log('📢 Broadcast API called');
     
@@ -1031,6 +1126,8 @@ app.post('/api/admin/broadcast', async (req, res) => {
         if (!message) {
             return res.json({ success: false, error: 'No message provided' });
         }
+        
+        console.log(`📢 Broadcasting message (target: ${target || 'all'}): ${message.substring(0, 50)}...`);
         
         const result = await broadcastToAllUsers(message, target || 'all');
         res.json(result);
@@ -1147,6 +1244,7 @@ app.post('/api/admin/approve-deposit', async (req, res) => {
         }
         
         const data = depositDoc.data();
+        console.log(`✅ Approving deposit: ${depositId} - ${data.amount} ${data.currency} for ${data.userId}`);
         
         // إضافة الرصيد للمستخدم
         await db.collection('users').doc(data.userId).update({
@@ -1205,6 +1303,7 @@ app.post('/api/admin/reject-deposit', async (req, res) => {
         }
         
         const data = depositDoc.data();
+        console.log(`❌ Rejecting deposit: ${depositId} - Reason: ${reason}`);
         
         await depositRef.update({
             status: 'rejected',
@@ -1247,6 +1346,7 @@ app.post('/api/admin/approve-withdrawal', async (req, res) => {
         }
         
         const data = withdrawalDoc.data();
+        console.log(`✅ Approving withdrawal: ${withdrawalId} - ${data.amount} ${data.currency} for ${data.userId}`);
         
         await withdrawalRef.update({
             status: 'approved',
@@ -1288,6 +1388,7 @@ app.post('/api/admin/reject-withdrawal', async (req, res) => {
         }
         
         const data = withdrawalDoc.data();
+        console.log(`❌ Rejecting withdrawal: ${withdrawalId} - Reason: ${reason}`);
         
         // إعادة الرصيد للمستخدم
         const userRef = db.collection('users').doc(data.userId);
@@ -1331,7 +1432,7 @@ app.get('/', (req, res) => {
 // 🚀 Start Server
 // ============================================================
 app.listen(PORT, () => {
-    console.log(`\n🧌 Troll Army Server - PROFESSIONAL EDITION`);
+    console.log(`\n🧌 Troll Army Server - PROFESSIONAL EDITION v26.0`);
     console.log(`📍 Port: ${PORT}`);
     console.log(`🔥 Firebase: ${db ? '✅ Connected' : '❌ Disconnected'}`);
     console.log(`👑 Admin ID: ${ADMIN_ID || '❌ Not configured'}`);
@@ -1339,4 +1440,6 @@ app.listen(PORT, () => {
     console.log(`💳 CoinPayments: ${COINPAYMENTS_PUBLIC ? '✅ Configured' : '❌ Missing'}`);
     console.log(`🌐 App URL: ${APP_URL}`);
     console.log(`\n✅ Server ready for production!\n`);
+    console.log(`📢 Broadcast system: Works via notifications (not just bot messages)`);
+    console.log(`💳 Deposit system: Uses get_deposit_address for permanent addresses`);
 });
