@@ -159,7 +159,7 @@ function isAdmin(req) {
     return isValid;
 }
 
-// ====== COINPAYMENTS - FIXED: استخدام get_deposit_address للحصول على عنوان ثابت ======
+// ====== COINPAYMENTS - FIXED: استخدام get_deposit_address مع nonce للحصول على عنوان ثابت ======
 async function generateCoinPaymentsAddress(userId, currency) {
     if (!COINPAYMENTS_PUBLIC || !COINPAYMENTS_PRIVATE) {
         console.log('⚠️ CoinPayments keys not configured');
@@ -175,12 +175,16 @@ async function generateCoinPaymentsAddress(userId, currency) {
         
         console.log(`🔄 Generating deposit address for ${userId} with currency ${cpCurrency}`);
         
-        // استخدام get_deposit_address بدلاً من get_callback_address للحصول على عنوان ثابت
+        // إنشاء nonce فريد لكل طلب (مطلوب لحساب HMAC بشكل صحيح)
+        const nonce = Date.now().toString();
+        
+        // استخدام get_deposit_address للحصول على عنوان ثابت
         const postData = {
             key: COINPAYMENTS_PUBLIC,
             version: '1',
             cmd: 'get_deposit_address',
-            currency: cpCurrency
+            currency: cpCurrency,
+            nonce: nonce
         };
         
         // ترتيب البارامترات أبجدياً وحساب HMAC
@@ -781,7 +785,7 @@ app.post('/api/buy-premium', async (req, res) => {
     }
 });
 
-// ====== DEPOSIT API - FIXED مع get_deposit_address ======
+// ====== DEPOSIT API - FIXED مع get_deposit_address و nonce ======
 app.post('/api/deposit/generate', async (req, res) => {
     console.log('📥 Deposit generate called:', req.body);
     try {
@@ -821,7 +825,7 @@ app.post('/api/deposit/generate', async (req, res) => {
         
         console.log('🆕 Calling CoinPayments for', userId, currency);
         
-        // استدعاء CoinPayments API مع get_deposit_address
+        // استدعاء CoinPayments API مع get_deposit_address و nonce
         const address = await generateCoinPaymentsAddress(userId, currency);
         
         if (!address) {
@@ -1441,5 +1445,5 @@ app.listen(PORT, () => {
     console.log(`🌐 App URL: ${APP_URL}`);
     console.log(`\n✅ Server ready for production!\n`);
     console.log(`📢 Broadcast system: Works via notifications (not just bot messages)`);
-    console.log(`💳 Deposit system: Uses get_deposit_address for permanent addresses`);
+    console.log(`💳 Deposit system: Uses get_deposit_address with nonce for permanent addresses`);
 });
