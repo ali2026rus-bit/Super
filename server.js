@@ -296,12 +296,13 @@ bot.command('stats', async (ctx) => {
 bot.command('broadcast', async (ctx) => {
     const userId = ctx.from.id.toString();
     if (userId !== ADMIN_ID) return ctx.reply('⛔ Not authorized!');
+    
     const message = ctx.message.text.replace('/broadcast', '').trim();
     if (!message) return ctx.reply('Usage: /broadcast Your message here');
     
     if (!db) return ctx.reply('❌ Database not connected');
     
-    ctx.reply('📢 Broadcasting...');
+    ctx.reply('📢 Broadcasting to bot users...');
     
     try {
         const usersSnapshot = await db.collection('users').get();
@@ -312,7 +313,11 @@ bot.command('broadcast', async (ctx) => {
             try {
                 await bot.telegram.sendMessage(doc.id, `📢 *Announcement*\n\n${message}`, { parse_mode: 'Markdown' });
                 successCount++;
-                await new Promise(r => setTimeout(r, 50));
+                if (successCount % 30 === 0) {
+                    await new Promise(r => setTimeout(r, 2000));
+                } else {
+                    await new Promise(r => setTimeout(r, 50));
+                }
             } catch (e) {
                 failCount++;
             }
@@ -327,7 +332,7 @@ bot.command('broadcast', async (ctx) => {
             failCount
         });
         
-        ctx.reply(`✅ Broadcast sent!\n📊 Sent: ${successCount}\n❌ Failed: ${failCount}`);
+        ctx.reply(`✅ Broadcast complete!\n📊 Sent: ${successCount}\n❌ Failed: ${failCount}`);
     } catch (error) {
         console.error('Broadcast error:', error);
         ctx.reply('❌ Error sending broadcast');
@@ -528,10 +533,12 @@ app.post('/api/buy-premium', async (req, res) => {
 
 // ====== DEPOSIT API ======
 app.post('/api/deposit/generate', async (req, res) => {
+    console.log('📥 Deposit generate called:', req.body);
     try {
         const { userId, userName, currency } = req.body;
         
         if (!db) {
+            console.log('⚠️ No database, returning mock');
             return res.json({ success: true, address: getMockAddress(userId, currency), mock: true });
         }
         
@@ -543,9 +550,11 @@ app.post('/api/deposit/generate', async (req, res) => {
         
         if (!existingSnapshot.empty) {
             const addr = existingSnapshot.docs[0].data();
+            console.log('📦 Returning existing address:', addr.address);
             return res.json({ success: true, address: addr.address, network: addr.network, minDeposit: getMinDeposit(currency) });
         }
         
+        console.log('🆕 Generating new address for', userId, currency);
         const address = await generateCoinPaymentsAddress(userId, currency);
         
         await db.collection('deposit_addresses').add({
@@ -554,27 +563,17 @@ app.post('/api/deposit/generate', async (req, res) => {
             createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
         
+        console.log('✅ New address saved:', address);
         res.json({ success: true, address, network: currency === 'SOL' ? 'Solana' : (currency === 'TRX' ? 'TRON' : 'BSC/BEP-20'), minDeposit: getMinDeposit(currency) });
     } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-app.get('/api/deposit/addresses/:userId', async (req, res) => {
-    if (!db) return res.json({ success: false, addresses: [] });
-    try {
-        const snapshot = await db.collection('deposit_addresses')
-            .where('userId', '==', req.params.userId)
-            .get();
-        const addresses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        res.json({ success: true, addresses });
-    } catch (error) {
+        console.error('❌ Deposit generate error:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
 // ====== WITHDRAW API ======
 app.post('/api/withdraw/request', async (req, res) => {
+    console.log('📤 Withdraw request called:', req.body);
     if (!db) return res.json({ success: true, mock: true });
     try {
         const { userId, userName, currency, amount, address } = req.body;
@@ -638,29 +637,17 @@ app.post('/api/withdraw/request', async (req, res) => {
             { parse_mode: 'Markdown' }
         ).catch(() => {});
         
+        console.log('✅ Withdrawal request saved:', docRef.id);
         res.json({ success: true, requestId: docRef.id });
     } catch (error) {
+        console.error('❌ Withdraw error:', error);
         res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-app.get('/api/withdrawal-status/:userId', async (req, res) => {
-    if (!db) return res.json({ canWithdraw: false });
-    try {
-        const userDoc = await db.collection('users').doc(req.params.userId).get();
-        if (!userDoc.exists) return res.json({ canWithdraw: false });
-        const user = userDoc.data();
-        if (user.premium) return res.json({ canWithdraw: true, unlockedBy: 'premium' });
-        const missions = user.withdrawalMissions || getDefaultMissions();
-        const allCompleted = missions.mission1?.completed && missions.mission2?.completed && missions.mission3?.completed && missions.mission4?.completed;
-        res.json({ canWithdraw: allCompleted, missions: missions });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
     }
 });
 
 // ====== ADMIN APIs ======
 app.post('/api/admin/search-by-wallet', async (req, res) => {
+    console.log('🔍 Admin search by wallet:', req.body);
     if (!isAdmin(req)) return res.status(403).json({ error: 'Unauthorized' });
     try {
         const { walletAddress } = req.body;
@@ -676,15 +663,16 @@ app.post('/api/admin/search-by-wallet', async (req, res) => {
 });
 
 app.post('/api/admin/add-balance', async (req, res) => {
+    console.log('💰 Admin add balance:', req.body);
     if (!isAdmin(req)) return res.status(403).json({ error: 'Unauthorized' });
-    if (!db) return res.json({ success: true });
+    if (!db) return res.json({ success: true, mock: true });
     try {
         const { userId, currency, amount } = req.body;
         await db.collection('users').doc(userId).update({ [`balances.${currency}`]: admin.firestore.FieldValue.increment(amount) });
         
         const transaction = {
             userId, userName: 'Admin',
-            type: 'deposit',
+            type: 'admin_add',
             currency, amount,
             status: 'completed',
             timestamp: new Date().toISOString(),
@@ -700,15 +688,16 @@ app.post('/api/admin/add-balance', async (req, res) => {
 });
 
 app.post('/api/admin/remove-balance', async (req, res) => {
+    console.log('💰 Admin remove balance:', req.body);
     if (!isAdmin(req)) return res.status(403).json({ error: 'Unauthorized' });
-    if (!db) return res.json({ success: true });
+    if (!db) return res.json({ success: true, mock: true });
     try {
         const { userId, currency, amount } = req.body;
         await db.collection('users').doc(userId).update({ [`balances.${currency}`]: admin.firestore.FieldValue.increment(-amount) });
         
         const transaction = {
             userId, userName: 'Admin',
-            type: 'withdraw',
+            type: 'admin_remove',
             currency, amount,
             status: 'completed',
             timestamp: new Date().toISOString(),
@@ -723,31 +712,51 @@ app.post('/api/admin/remove-balance', async (req, res) => {
     }
 });
 
+// ✅✅✅ BROADCAST API - FIXED
 app.post('/api/admin/broadcast-app', async (req, res) => {
-    if (!isAdmin(req)) return res.status(403).json({ error: 'Unauthorized' });
+    console.log('📢 Broadcast API called');
+    console.log('Headers:', req.headers);
+    console.log('Body:', req.body);
+    
+    if (!isAdmin(req)) {
+        console.log('❌ Unauthorized - Invalid admin password');
+        return res.status(403).json({ success: false, error: 'Unauthorized' });
+    }
+    
     try {
         const { message, target } = req.body;
+        
+        if (!message) {
+            console.log('❌ No message provided');
+            return res.json({ success: false, error: 'No message provided' });
+        }
+        
+        if (!db) {
+            console.log('❌ Database not connected');
+            return res.json({ success: false, error: 'Database not connected' });
+        }
+        
+        console.log('📝 Saving broadcast to Firebase...');
+        
         const broadcastRef = await db.collection('broadcasts').add({
-            message, target: target || 'all',
+            message: message,
+            target: target || 'all',
             sentBy: 'admin',
             sentAt: admin.firestore.FieldValue.serverTimestamp(),
             readBy: []
         });
-        res.json({ success: true, broadcastId: broadcastRef.id });
+        
+        console.log('✅ Broadcast saved with ID:', broadcastRef.id);
+        
+        res.json({ 
+            success: true, 
+            broadcastId: broadcastRef.id,
+            message: 'Broadcast saved and will be delivered to users'
+        });
+        
     } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-app.get('/api/admin/users', async (req, res) => {
-    if (!isAdmin(req)) return res.status(403).json({ error: 'Unauthorized' });
-    if (!db) return res.json({ users: [] });
-    try {
-        const snapshot = await db.collection('users').orderBy('createdAt', 'desc').limit(100).get();
-        const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        res.json({ users });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('❌ Broadcast error:', error);
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
@@ -756,14 +765,12 @@ app.get('/api/admin/stats', async (req, res) => {
     if (!db) return res.json({ success: false });
     try {
         const usersSnapshot = await db.collection('users').get();
-        const pendingDeposits = await db.collection('deposit_requests').where('status', '==', 'pending').get();
-        const pendingWithdrawals = await db.collection('withdrawals').where('status', '==', 'pending').get();
+        const pendingDeposits = await db.collection('withdrawals').where('status', '==', 'pending').get();
         
         res.json({
             success: true,
             totalUsers: usersSnapshot.size,
-            pendingDeposits: pendingDeposits.size,
-            pendingWithdrawals: pendingWithdrawals.size
+            pendingWithdrawals: pendingDeposits.size
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
