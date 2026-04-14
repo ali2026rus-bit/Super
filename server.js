@@ -159,7 +159,7 @@ function isAdmin(req) {
     return isValid;
 }
 
-// ====== COINPAYMENTS - NEW: استخدام get_callback_address للحصول على عنوان فريد لكل مستخدم ======
+// ====== COINPAYMENTS - FIXED HMAC: استخدام get_callback_address مع ترميز القيم وإضافة & ======
 async function generateCoinPaymentsAddress(userId, currency) {
     if (!COINPAYMENTS_PUBLIC || !COINPAYMENTS_PRIVATE) {
         console.log('⚠️ CoinPayments keys not configured');
@@ -175,17 +175,18 @@ async function generateCoinPaymentsAddress(userId, currency) {
         
         console.log(`🔄 Generating callback address for ${userId} with currency ${cpCurrency}`);
         
-        // استخدام get_callback_address للحصول على عنوان فريد للعميل (مصمم للاستخدام التجاري)
+        // استخدام get_callback_address للحصول على عنوان فريد للعميل
         const postData = {
             key: COINPAYMENTS_PUBLIC,
             version: '1',
             cmd: 'get_callback_address',
             currency: cpCurrency,
-            label: userId  // ربط العنوان بمعرف المستخدم لسهولة التتبع في لوحة تحكم CoinPayments
+            label: userId
         };
         
-        // ترتيب البارامترات أبجدياً وحساب HMAC
-        const postString = Object.keys(postData).sort().map(k => `${k}=${postData[k]}`).join('&');
+        // 🔥 إصلاح HMAC: ترتيب أبجدي + ترميز القيم + إضافة & في النهاية
+        const sortedKeys = Object.keys(postData).sort();
+        const postString = sortedKeys.map(k => `${k}=${encodeURIComponent(postData[k])}`).join('&') + '&';
         console.log('📝 Post string for HMAC:', postString);
         
         const hmac = crypto.createHmac('sha512', COINPAYMENTS_PRIVATE);
@@ -193,6 +194,7 @@ async function generateCoinPaymentsAddress(userId, currency) {
         const signature = hmac.digest('hex');
         
         console.log('🔐 HMAC Signature generated');
+        console.log('🔑 Signature:', signature.substring(0, 20) + '...');
         
         const formData = new URLSearchParams(postData);
         
@@ -782,7 +784,7 @@ app.post('/api/buy-premium', async (req, res) => {
     }
 });
 
-// ====== DEPOSIT API - NEW: استخدام get_callback_address ======
+// ====== DEPOSIT API - FIXED HMAC ======
 app.post('/api/deposit/generate', async (req, res) => {
     console.log('📥 Deposit generate called:', req.body);
     try {
@@ -802,7 +804,7 @@ app.post('/api/deposit/generate', async (req, res) => {
             return res.json({ success: false, error: 'Database not connected' });
         }
         
-        // التحقق من وجود عنوان سابق في قاعدة البيانات (عنوان ثابت لكل مستخدم)
+        // التحقق من وجود عنوان سابق في قاعدة البيانات
         const existingSnapshot = await db.collection('deposit_addresses')
             .where('userId', '==', userId)
             .where('currency', '==', currency)
@@ -822,7 +824,7 @@ app.post('/api/deposit/generate', async (req, res) => {
         
         console.log('🆕 Calling CoinPayments for', userId, currency);
         
-        // استدعاء CoinPayments API مع get_callback_address
+        // استدعاء CoinPayments API مع HMAC المُصلح
         const address = await generateCoinPaymentsAddress(userId, currency);
         
         if (!address) {
@@ -835,7 +837,7 @@ app.post('/api/deposit/generate', async (req, res) => {
         
         const network = currency === 'SOL' ? 'Solana' : (currency === 'TRX' ? 'TRON' : 'BSC/BEP-20');
         
-        // حفظ العنوان في قاعدة البيانات (ليظل ثابتاً للمستخدم)
+        // حفظ العنوان في قاعدة البيانات
         await db.collection('deposit_addresses').add({
             userId, 
             userName, 
@@ -1433,7 +1435,7 @@ app.get('/', (req, res) => {
 // 🚀 Start Server
 // ============================================================
 app.listen(PORT, () => {
-    console.log(`\n🧌 Troll Army Server - PROFESSIONAL EDITION v27.0`);
+    console.log(`\n🧌 Troll Army Server - PROFESSIONAL EDITION v27.0 (HMAC FIXED)`);
     console.log(`📍 Port: ${PORT}`);
     console.log(`🔥 Firebase: ${db ? '✅ Connected' : '❌ Disconnected'}`);
     console.log(`👑 Admin ID: ${ADMIN_ID || '❌ Not configured'}`);
@@ -1442,6 +1444,5 @@ app.listen(PORT, () => {
     console.log(`🌐 App URL: ${APP_URL}`);
     console.log(`\n✅ Server ready for production!\n`);
     console.log(`📢 Broadcast system: Works via notifications (not just bot messages)`);
-    console.log(`💳 Deposit system: Uses get_callback_address for unique customer addresses`);
-    console.log(`💾 Address caching: Each user gets ONE permanent address per currency`);
+    console.log(`💳 Deposit system: Uses get_callback_address with FIXED HMAC (URL encoding + trailing &)`);
 });
