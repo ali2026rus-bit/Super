@@ -1,6 +1,6 @@
 // ============================================================================
-// TROLL ARMY - LEGENDARY COMPLETE VERSION 25.0 FINAL
-// All Features + CoinPayments + Admin Panel + Notifications + RTL + Theme
+// TROLL ARMY - PROFESSIONAL EDITION v26.0
+// Complete Rewrite - All Features + Admin Panel + Notifications + RTL + Theme
 // ============================================================================
 
 // ============================================================================
@@ -11,6 +11,7 @@ const tg = window.Telegram?.WebApp;
 if (tg) {
     tg.ready();
     tg.expand();
+    tg.enableClosingConfirmation?.();
     console.log("✅ Telegram WebApp initialized");
 }
 
@@ -33,6 +34,14 @@ let currentTheme = localStorage.getItem('theme') || 'dark';
 let unreadNotifications = 0;
 let currentManageUserId = null;
 let selectedBroadcastTarget = 'all';
+let adminAuthenticated = false;
+let adminAuthToken = null;
+
+// Admin Panel State
+let currentAdminTab = 'dashboard';
+let adminStats = { totalUsers: 0, pendingWithdrawals: 0, pendingDeposits: 0, premiumUsers: 0 };
+let pendingWithdrawals = [];
+let pendingDeposits = [];
 
 // ============================================================================
 // SECTION 3: CONFIGURATION
@@ -82,6 +91,22 @@ const MEME_COINS = [
     { symbol: 'BONK', name: 'Bonk' },
     { symbol: 'WIF', name: 'Dogwifhat' }
 ];
+
+// العملات المدعومة للإيداع
+const DEPOSIT_CURRENCIES = [
+    { symbol: 'BNB', name: 'BNB (BSC/BEP-20)' },
+    { symbol: 'SOL', name: 'Solana' },
+    { symbol: 'ETH', name: 'Ethereum' },
+    { symbol: 'TRX', name: 'TRON' }
+];
+
+// الحدود الدنيا للإيداع
+const DEPOSIT_MINIMUMS = {
+    BNB: 0.01,
+    SOL: 0.01,
+    ETH: 0.01,
+    TRX: 10
+};
 
 // ============================================================================
 // SECTION 6: MYSTERY MISSIONS
@@ -150,100 +175,246 @@ function getDefaultMissions() {
 
 const translations = {
     en: {
-        'nav.vault': 'Vault',
-        'nav.quests': 'Quests',
-        'nav.arsenal': 'Arsenal',
+        'nav.wallet': 'Wallet',
+        'nav.airdrop': 'Airdrop',
+        'nav.settings': 'Settings',
         'wallet.totalBalance': 'Total Balance',
         'wallet.myAssets': 'My Assets',
         'wallet.topCryptos': 'Top Cryptocurrencies',
         'wallet.memeCoins': 'Meme Coins',
+        'wallet.deposit': 'Deposit',
+        'wallet.withdraw': 'Withdraw',
+        'wallet.history': 'History',
         'airdrop.missions': 'Mystery Missions',
         'airdrop.totalInvites': 'Total Invites',
         'airdrop.earned': 'TROLL Earned',
         'airdrop.yourLink': 'Your Invite Link',
         'airdrop.milestones': 'Troll Ranks',
+        'airdrop.share': 'Share on Telegram',
+        'airdrop.copy': 'Copy',
+        'airdrop.bonus': 'Earn 500 TROLL for each friend who joins!',
         'mission.revealLater': 'Reveals after previous mission',
         'mission.waitDays': 'Reveals in {days} days',
+        'mission.addWallet': 'Add Wallet',
+        'mission.completed': 'Completed',
         'premium.unlocked': 'Premium Unlocked!',
+        'premium.title': 'Premium Unlock',
+        'premium.desc': 'Get the legendary Troll Face avatar and INSTANT withdrawal access!',
+        'premium.feature1': 'Exclusive Troll Face Avatar',
+        'premium.feature2': 'Instant Withdrawal Access',
+        'premium.feature3': 'Skip All Mystery Missions',
+        'premium.feature4': 'Premium Badge & Glow Effect',
+        'premium.price': '5 TON',
+        'premium.buy': 'Pay with TON',
+        'premium.note': 'Payment processed securely via Telegram Wallet',
         'withdrawal.unlocked': 'Withdrawal Unlocked!',
+        'withdrawal.locked': 'Withdrawal Locked',
         'deposit.title': 'Deposit Crypto',
+        'deposit.selectCurrency': 'Select Currency',
         'deposit.address': 'Your Deposit Address',
         'deposit.network': 'Network',
         'deposit.minAmount': 'Minimum Deposit',
         'deposit.warning': 'Only send the correct token to this address.',
+        'deposit.copy': 'Copy',
+        'deposit.copied': 'Address copied!',
+        'deposit.scan': 'Scan QR Code',
+        'deposit.confirm': 'I have sent the deposit',
+        'deposit.txnId': 'Transaction ID (optional)',
+        'deposit.submit': 'Submit Deposit Request',
+        'deposit.success': 'Deposit request submitted!',
         'withdraw.title': 'Withdraw TROLL',
         'withdraw.amount': 'Amount (min 10,000 TROLL)',
         'withdraw.address': 'Solana Wallet Address',
-        'withdraw.fee': 'Network Fee',
-        'withdraw.receive': 'You will receive',
+        'withdraw.available': 'Available',
+        'withdraw.submit': 'Request Withdrawal',
+        'withdraw.success': 'Withdrawal requested!',
         'history.title': 'Transaction History',
         'history.all': 'All',
         'history.deposits': 'Deposits',
         'history.withdrawals': 'Withdrawals',
         'history.referrals': 'Referrals',
+        'history.empty': 'No transactions yet',
         'notifications.title': 'Notifications',
         'notifications.clearRead': 'Clear Read',
         'notifications.clearAll': 'Clear All',
         'notifications.empty': 'No notifications',
+        'settings.profile': 'Profile',
+        'settings.premium': 'Premium Unlock',
+        'settings.solanaWallet': 'Solana Wallet',
+        'settings.tonConnect': 'Connect TON Wallet',
+        'settings.darkMode': 'Dark Mode',
+        'settings.notifications': 'Notifications',
         'settings.language': 'Language',
-        'settings.theme': 'Theme',
         'settings.logout': 'Logout',
-        'admin.panel': 'Admin Panel',
+        'settings.version': 'Troll Army v26.0',
+        'settings.tge': 'TGE: May 2026',
+        'settings.notSet': 'Not set',
+        'settings.connected': 'Connected',
+        'settings.notConnected': 'Not connected',
+        'solanaWallet.title': 'Connect Solana Wallet',
+        'solanaWallet.desc': 'Enter your TROLL Solana wallet address to complete the first mission.',
+        'solanaWallet.placeholder': 'GzR...kLp',
+        'solanaWallet.invalid': 'Address must be 32-44 characters',
+        'solanaWallet.valid': 'Valid address',
+        'solanaWallet.save': 'Save & Continue',
+        'solanaWallet.cancel': 'Cancel',
+        'solanaWallet.success': 'Wallet saved successfully!',
+        'admin.title': 'Admin Panel',
+        'admin.authenticate': 'Admin Authentication',
+        'admin.password': 'Enter Admin Password',
+        'admin.verify': 'Verify',
+        'admin.cancel': 'Cancel',
+        'admin.dashboard': 'Dashboard',
+        'admin.pendingDeposits': 'Pending Deposits',
+        'admin.pendingWithdrawals': 'Pending Withdrawals',
+        'admin.users': 'Manage Users',
+        'admin.broadcast': 'Broadcast',
+        'admin.totalUsers': 'Total Users',
+        'admin.pending': 'Pending',
+        'admin.premium': 'Premium',
         'admin.search': 'Search by User ID or Wallet',
+        'admin.searchBtn': 'Search',
         'admin.addBalance': 'Add Balance',
         'admin.removeBalance': 'Remove Balance',
-        'admin.broadcast': 'Broadcast',
+        'admin.blockUser': 'Block Withdrawals',
+        'admin.blocked': 'User Blocked',
+        'admin.approve': 'Approve',
+        'admin.reject': 'Reject',
+        'admin.reason': 'Rejection Reason',
+        'admin.broadcastMessage': 'Broadcast Message',
         'admin.targetAll': 'All Users',
         'admin.targetBot': 'Bot Only',
-        'admin.targetApp': 'App Only'
+        'admin.targetApp': 'App Only',
+        'admin.send': 'Send Broadcast',
+        'admin.success': 'Operation successful!',
+        'admin.error': 'Operation failed',
+        'toast.copied': 'Copied to clipboard!',
+        'toast.success': 'Success!',
+        'toast.error': 'Error!',
+        'toast.info': 'Information',
+        'guest.mode': 'Guest Mode - Connect Telegram for full access',
+        'logout.confirm': 'Are you sure you want to logout?'
     },
     ar: {
-        'nav.vault': 'الخزينة',
-        'nav.quests': 'المهام',
-        'nav.arsenal': 'الترسانة',
+        'nav.wallet': 'المحفظة',
+        'nav.airdrop': 'الإيردروب',
+        'nav.settings': 'الإعدادات',
         'wallet.totalBalance': 'الرصيد الإجمالي',
         'wallet.myAssets': 'أصولي',
         'wallet.topCryptos': 'أفضل العملات',
         'wallet.memeCoins': 'عملات الميم',
+        'wallet.deposit': 'إيداع',
+        'wallet.withdraw': 'سحب',
+        'wallet.history': 'السجل',
         'airdrop.missions': 'المهام الغامضة',
         'airdrop.totalInvites': 'إجمالي الدعوات',
         'airdrop.earned': 'TROLL المكتسبة',
         'airdrop.yourLink': 'رابط الدعوة',
         'airdrop.milestones': 'مراتب الجيش',
+        'airdrop.share': 'مشاركة عبر تيليجرام',
+        'airdrop.copy': 'نسخ',
+        'airdrop.bonus': 'اربح 500 TROLL لكل صديق ينضم!',
         'mission.revealLater': 'ستكشف بعد المهمة السابقة',
         'mission.waitDays': 'ستكشف بعد {days} يوم',
+        'mission.addWallet': 'إضافة محفظة',
+        'mission.completed': 'مكتمل',
         'premium.unlocked': 'تم تفعيل البريميوم!',
+        'premium.title': 'تفعيل البريميوم',
+        'premium.desc': 'احصل على أفاتار وجه Troll الأسطوري وصلاحية السحب الفوري!',
+        'premium.feature1': 'أفاتار وجه Troll حصري',
+        'premium.feature2': 'صلاحية سحب فوري',
+        'premium.feature3': 'تخطي جميع المهام الغامضة',
+        'premium.feature4': 'شارة بريميوم وتأثير إضاءة',
+        'premium.price': '5 TON',
+        'premium.buy': 'الدفع عبر TON',
+        'premium.note': 'تتم معالجة الدفع بشكل آمن عبر محفظة تيليجرام',
         'withdrawal.unlocked': 'تم فتح السحب!',
+        'withdrawal.locked': 'السحب مقفل',
         'deposit.title': 'إيداع العملات',
+        'deposit.selectCurrency': 'اختر العملة',
         'deposit.address': 'عنوان الإيداع',
         'deposit.network': 'الشبكة',
         'deposit.minAmount': 'الحد الأدنى',
         'deposit.warning': 'أرسل فقط العملة الصحيحة إلى هذا العنوان.',
+        'deposit.copy': 'نسخ',
+        'deposit.copied': 'تم نسخ العنوان!',
+        'deposit.scan': 'مسح رمز QR',
+        'deposit.confirm': 'لقد قمت بالإيداع',
+        'deposit.txnId': 'رقم المعاملة (اختياري)',
+        'deposit.submit': 'تقديم طلب الإيداع',
+        'deposit.success': 'تم تقديم طلب الإيداع!',
         'withdraw.title': 'سحب TROLL',
         'withdraw.amount': 'المبلغ (الحد الأدنى 10,000 TROLL)',
         'withdraw.address': 'عنوان محفظة Solana',
-        'withdraw.fee': 'رسوم الشبكة',
-        'withdraw.receive': 'سوف تستلم',
+        'withdraw.available': 'المتاح',
+        'withdraw.submit': 'طلب السحب',
+        'withdraw.success': 'تم تقديم طلب السحب!',
         'history.title': 'سجل المعاملات',
         'history.all': 'الكل',
         'history.deposits': 'إيداعات',
         'history.withdrawals': 'سحوبات',
         'history.referrals': 'إحالات',
+        'history.empty': 'لا توجد معاملات',
         'notifications.title': 'الإشعارات',
         'notifications.clearRead': 'حذف المقروء',
         'notifications.clearAll': 'حذف الكل',
         'notifications.empty': 'لا توجد إشعارات',
+        'settings.profile': 'الملف الشخصي',
+        'settings.premium': 'تفعيل البريميوم',
+        'settings.solanaWallet': 'محفظة Solana',
+        'settings.tonConnect': 'ربط محفظة TON',
+        'settings.darkMode': 'الوضع الليلي',
+        'settings.notifications': 'الإشعارات',
         'settings.language': 'اللغة',
-        'settings.theme': 'المظهر',
         'settings.logout': 'تسجيل الخروج',
-        'admin.panel': 'لوحة المشرف',
+        'settings.version': 'Troll Army v26.0',
+        'settings.tge': 'TGE: مايو 2026',
+        'settings.notSet': 'غير محدد',
+        'settings.connected': 'متصل',
+        'settings.notConnected': 'غير متصل',
+        'solanaWallet.title': 'ربط محفظة Solana',
+        'solanaWallet.desc': 'أدخل عنوان محفظة TROLL Solana الخاصة بك لإكمال المهمة الأولى.',
+        'solanaWallet.placeholder': 'GzR...kLp',
+        'solanaWallet.invalid': 'يجب أن يكون العنوان 32-44 حرفاً',
+        'solanaWallet.valid': 'عنوان صالح',
+        'solanaWallet.save': 'حفظ ومتابعة',
+        'solanaWallet.cancel': 'إلغاء',
+        'solanaWallet.success': 'تم حفظ المحفظة بنجاح!',
+        'admin.title': 'لوحة المشرف',
+        'admin.authenticate': 'مصادقة المشرف',
+        'admin.password': 'أدخل كلمة مرور المشرف',
+        'admin.verify': 'تحقق',
+        'admin.cancel': 'إلغاء',
+        'admin.dashboard': 'لوحة التحكم',
+        'admin.pendingDeposits': 'إيداعات معلقة',
+        'admin.pendingWithdrawals': 'سحوبات معلقة',
+        'admin.users': 'إدارة المستخدمين',
+        'admin.broadcast': 'بث رسالة',
+        'admin.totalUsers': 'إجمالي المستخدمين',
+        'admin.pending': 'معلق',
+        'admin.premium': 'بريميوم',
         'admin.search': 'بحث بمعرف المستخدم أو المحفظة',
+        'admin.searchBtn': 'بحث',
         'admin.addBalance': 'إضافة رصيد',
         'admin.removeBalance': 'خصم رصيد',
-        'admin.broadcast': 'بث رسالة',
+        'admin.blockUser': 'حظر السحب',
+        'admin.blocked': 'محظور',
+        'admin.approve': 'موافقة',
+        'admin.reject': 'رفض',
+        'admin.reason': 'سبب الرفض',
+        'admin.broadcastMessage': 'رسالة البث',
         'admin.targetAll': 'جميع المستخدمين',
         'admin.targetBot': 'البوت فقط',
-        'admin.targetApp': 'التطبيق فقط'
+        'admin.targetApp': 'التطبيق فقط',
+        'admin.send': 'إرسال البث',
+        'admin.success': 'تمت العملية بنجاح!',
+        'admin.error': 'فشلت العملية',
+        'toast.copied': 'تم النسخ إلى الحافظة!',
+        'toast.success': 'تم بنجاح!',
+        'toast.error': 'خطأ!',
+        'toast.info': 'معلومة',
+        'guest.mode': 'وضع الزائر - قم بربط تيليجرام للوصول الكامل',
+        'logout.confirm': 'هل أنت متأكد من تسجيل الخروج؟'
     }
 };
 
@@ -257,9 +428,18 @@ function t(key, params = {}) {
 // SECTION 10: API CALL
 // ============================================================================
 
-async function apiCall(endpoint, method, body) {
-    const options = { method: method, headers: { 'Content-Type': 'application/json' } };
+async function apiCall(endpoint, method = 'GET', body = null, requiresAuth = false) {
+    const options = { 
+        method: method, 
+        headers: { 'Content-Type': 'application/json' } 
+    };
+    
+    if (requiresAuth && adminAuthToken) {
+        options.headers['Authorization'] = `Bearer ${adminAuthToken}`;
+    }
+    
     if (body) options.body = JSON.stringify(body);
+    
     try {
         const response = await fetch('/api' + endpoint, options);
         const data = await response.json();
@@ -369,15 +549,13 @@ async function waitForTelegramUserData(maxAttempts = 15, delayMs = 200) {
     console.log('⏳ Waiting for Telegram user data...');
     
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        console.log('🔍 Attempt ' + attempt + '/' + maxAttempts);
-        
         if (tg) {
             tg.ready();
             tg.expand();
             
-            if (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
+            if (tg.initDataUnsafe?.user?.id) {
                 const user = tg.initDataUnsafe.user;
-                console.log('✅ Found user in initDataUnsafe after ' + attempt + ' attempt(s):', user.id);
+                console.log('✅ Found user:', user.id);
                 return {
                     id: user.id.toString(),
                     firstName: user.first_name || 'Troll',
@@ -393,8 +571,8 @@ async function waitForTelegramUserData(maxAttempts = 15, delayMs = 200) {
                     const userJson = params.get('user');
                     if (userJson) {
                         const user = JSON.parse(decodeURIComponent(userJson));
-                        if (user && user.id) {
-                            console.log('✅ Found user in initData after ' + attempt + ' attempt(s):', user.id);
+                        if (user?.id) {
+                            console.log('✅ Found user in initData:', user.id);
                             return {
                                 id: user.id.toString(),
                                 firstName: user.first_name || 'Troll',
@@ -404,32 +582,27 @@ async function waitForTelegramUserData(maxAttempts = 15, delayMs = 200) {
                             };
                         }
                     }
-                } catch (e) { console.warn('⚠️ Error parsing initData:', e); }
+                } catch (e) {}
             }
         }
         
         await new Promise(resolve => setTimeout(resolve, delayMs));
     }
     
-    console.log('❌ No Telegram user found after', maxAttempts, 'attempts');
+    console.log('❌ No Telegram user found');
     return null;
 }
 
 function buildInitDataFromUnsafe(unsafe) {
     if (!unsafe) return '';
     const data = { query_id: unsafe.query_id, user: JSON.stringify(unsafe.user), auth_date: unsafe.auth_date, hash: unsafe.hash };
-    return Object.keys(data).filter(k => data[k] !== undefined && data[k] !== null).map(k => `${k}=${encodeURIComponent(data[k])}`).join('&');
+    return Object.keys(data).filter(k => data[k]).map(k => `${k}=${encodeURIComponent(data[k])}`).join('&');
 }
 
 function getReferralFromUrl() {
-    if (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
-        console.log('🔗 Referral from start_param:', tg.initDataUnsafe.start_param);
-        return tg.initDataUnsafe.start_param;
-    }
+    if (tg?.initDataUnsafe?.start_param) return tg.initDataUnsafe.start_param;
     const params = new URLSearchParams(window.location.search);
-    const ref = params.get('startapp') || params.get('startapp') || params.get('ref') || null;
-    if (ref) console.log('🔗 Referral from URL:', ref);
-    return ref;
+    return params.get('startapp') || params.get('ref') || null;
 }
 
 // ============================================================================
@@ -442,12 +615,10 @@ async function initUser() {
     const telegramUser = await waitForTelegramUserData(15, 200);
     
     if (!telegramUser) {
-        console.log('❌ No Telegram user detected - switching to guest mode');
+        console.log('❌ No Telegram user - guest mode');
         await createGuestUser();
         return;
     }
-    
-    console.log('📤 Authenticating with server...');
     
     try {
         const response = await fetch('/api/init-user', {
@@ -457,7 +628,6 @@ async function initUser() {
         });
         
         const data = await response.json();
-        console.log('📥 Server response:', data.success ? '✅ Success' : '❌ Failed');
         
         if (data.success) {
             console.log('✅ Authenticated:', data.userId);
@@ -471,7 +641,6 @@ async function initUser() {
             
             const refCode = getReferralFromUrl();
             if (refCode && refCode !== currentUserId) {
-                console.log('🔗 Processing referral from:', refCode);
                 await processReferral(refCode);
             }
             
@@ -484,7 +653,6 @@ async function initUser() {
             
             showToast('Welcome ' + data.userData.userName + '! +' + data.userData.balances.TROLL + ' TROLL', 'success');
         } else {
-            console.log('❌ Auth failed:', data.error);
             await createGuestUser();
         }
     } catch (error) {
@@ -499,8 +667,6 @@ async function initUser() {
 
 async function processReferral(refCode) {
     if (!refCode || refCode === currentUserId || currentUser.referredBy) return;
-    
-    console.log('🔗 Processing referral:', refCode, '→', currentUserId);
     
     try {
         const response = await apiCall('/referral', 'POST', { referrerId: refCode, newUserId: currentUserId });
@@ -520,7 +686,6 @@ async function processReferral(refCode) {
             });
             
             showToast('🎉 +' + CONFIG.REFERRAL_BONUS + ' TROLL from referral!', 'success');
-            console.log('✅ Referral processed successfully');
         }
     } catch (error) {
         console.error('❌ Referral error:', error);
@@ -532,8 +697,6 @@ async function processReferral(refCode) {
 // ============================================================================
 
 async function createGuestUser() {
-    console.log('🎭 Creating guest user...');
-    
     const guestId = 'guest_' + Date.now();
     
     const guestData = {
@@ -545,6 +708,7 @@ async function createGuestUser() {
         premium: false,
         avatar: '🧌',
         withdrawalUnlocked: false,
+        withdrawBlocked: false,
         claimedMilestones: [],
         settings: { solanaWallet: null },
         withdrawalMissions: getDefaultMissions(),
@@ -566,15 +730,12 @@ async function createGuestUser() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId: guestId, userData: guestData })
         });
-        console.log('✅ Guest saved to database');
-    } catch (e) {
-        console.log('⚠️ Guest saved locally only');
-    }
+    } catch (e) {}
     
     hideAllScreens();
     showMainApp();
     updateUI();
-    showToast('Guest Mode - Connect Telegram for full access', 'info');
+    showToast(t('guest.mode'), 'info');
 }
 
 // ============================================================================
@@ -582,8 +743,10 @@ async function createGuestUser() {
 // ============================================================================
 
 function hideAllScreens() {
-    const screens = ['onboardingScreen', 'guestOnboardingScreen', 'splashScreen'];
-    screens.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+    ['onboardingScreen', 'splashScreen'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
 }
 
 function showMainApp() {
@@ -594,15 +757,14 @@ function showMainApp() {
 }
 
 function checkAdmin() {
-    const isAdmin = (currentUserId === appConfig.adminId);
-    if (isAdmin) {
+    if (currentUserId === appConfig.adminId) {
         const header = document.querySelector('.header-actions');
         if (header && !document.getElementById('adminCrownBtn')) {
             const btn = document.createElement('button');
             btn.id = 'adminCrownBtn';
             btn.className = 'icon-btn';
             btn.innerHTML = '<i class="fa-solid fa-crown" style="color: gold;"></i>';
-            btn.onclick = showAdminPanel;
+            btn.onclick = showAdminAuthModal;
             header.insertBefore(btn, header.firstChild);
         }
     }
@@ -620,16 +782,11 @@ function updateUI() {
     
     const avatarEl = document.getElementById('userAvatar');
     if (avatarEl) {
-        if (currentUser.premium) {
-            avatarEl.innerHTML = getPremiumAvatarSVG();
-            avatarEl.classList.add('avatar-premium');
-        } else {
-            avatarEl.innerHTML = getDefaultAvatarSVG();
-        }
+        avatarEl.innerHTML = currentUser.premium ? getPremiumAvatarSVG() : getDefaultAvatarSVG();
+        if (currentUser.premium) avatarEl.classList.add('avatar-premium');
     }
     
-    const troll = currentUser.balances.TROLL || 0;
-    document.getElementById('trollBalance').textContent = troll.toLocaleString();
+    document.getElementById('trollBalance').textContent = (currentUser.balances.TROLL || 0).toLocaleString();
     document.getElementById('totalInvites').textContent = currentUser.inviteCount || 0;
     document.getElementById('trollEarned').textContent = (currentUser.referralEarnings || 0).toLocaleString();
     document.getElementById('inviteLink').value = getReferralLink();
@@ -651,7 +808,7 @@ function updateTotalBalance() {
     let total = 0;
     ALL_ASSETS.forEach(asset => {
         const balance = currentUser.balances[asset.symbol] || 0;
-        const price = cryptoPrices[asset.symbol] ? cryptoPrices[asset.symbol].price : 0;
+        const price = cryptoPrices[asset.symbol]?.price || 0;
         total += balance * price;
     });
     
@@ -659,13 +816,13 @@ function updateTotalBalance() {
     if (totalEl) totalEl.textContent = '$' + total.toFixed(2);
     
     const trollBalance = currentUser.balances.TROLL || 0;
-    const trollPrice = cryptoPrices['TROLL'] ? cryptoPrices['TROLL'].price : CONFIG.TROLL_PRICE_FALLBACK;
+    const trollPrice = cryptoPrices['TROLL']?.price || CONFIG.TROLL_PRICE_FALLBACK;
     const usdEl = document.getElementById('trollUsdValue');
     if (usdEl) usdEl.textContent = (trollBalance * trollPrice).toFixed(2);
 }
 
 function getDefaultAvatarSVG() {
-    return `<svg viewBox="0 0 100 100" width="40" height="40" xmlns="http://www.w3.org/2000/svg">
+    return `<svg viewBox="0 0 100 100" width="40" height="40">
         <defs><radialGradient id="avGrad" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#FFE44D"/><stop offset="100%" stop-color="#FFD700"/></radialGradient></defs>
         <circle cx="50" cy="50" r="48" fill="url(#avGrad)" stroke="#E6C200" stroke-width="2"/>
         <path d="M 28 65 Q 45 85, 70 60 Q 78 50, 72 45 Q 55 65, 28 58 Z" fill="#2C1810"/>
@@ -677,7 +834,7 @@ function getDefaultAvatarSVG() {
 }
 
 function getPremiumAvatarSVG() {
-    return `<svg viewBox="0 0 100 100" width="40" height="40" xmlns="http://www.w3.org/2000/svg">
+    return `<svg viewBox="0 0 100 100" width="40" height="40">
         <defs><radialGradient id="premGrad" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#FFE44D"/><stop offset="100%" stop-color="#FFD700"/></radialGradient></defs>
         <circle cx="50" cy="50" r="48" fill="url(#premGrad)" stroke="#FFD700" stroke-width="3"/>
         <path d="M 28 65 Q 45 85, 70 60 Q 78 50, 72 45 Q 55 65, 28 58 Z" fill="#2C1810"/>
@@ -699,8 +856,8 @@ function updateSettingsUI() {
     document.getElementById('settingsUserName').textContent = currentUser.userName || 'User';
     document.getElementById('settingsUserId').textContent = 'ID: ' + currentUserId;
     
-    const wallet = currentUser.settings ? currentUser.settings.solanaWallet : null;
-    document.getElementById('currentSolanaWallet').textContent = wallet ? wallet.slice(0, 8) + '...' + wallet.slice(-4) : 'Not set';
+    const wallet = currentUser.settings?.solanaWallet;
+    document.getElementById('currentSolanaWallet').textContent = wallet ? wallet.slice(0, 8) + '...' + wallet.slice(-4) : t('settings.notSet');
     
     const tonEl = document.getElementById('tonWalletStatus');
     if (tonEl) {
@@ -708,7 +865,7 @@ function updateSettingsUI() {
             tonEl.textContent = tonWalletAddress.slice(0, 6) + '...' + tonWalletAddress.slice(-6);
             tonEl.style.color = '#2ecc71';
         } else {
-            tonEl.textContent = 'Not connected';
+            tonEl.textContent = t('settings.notConnected');
             tonEl.style.color = '';
         }
     }
@@ -729,26 +886,25 @@ function renderAssets() {
     
     let html = '';
     
-    for (let i = 0; i < ALL_ASSETS.length; i++) {
-        const asset = ALL_ASSETS[i];
+    ALL_ASSETS.forEach(asset => {
         const balance = currentUser.balances[asset.symbol] || 0;
-        const price = cryptoPrices[asset.symbol] ? cryptoPrices[asset.symbol].price : 0;
+        const price = cryptoPrices[asset.symbol]?.price || 0;
         const value = balance * price;
         
-        html += '<div class="asset-item" onclick="showAssetDetails(\'' + asset.symbol + '\')">';
-        html += '<div class="asset-left">';
-        html += '<img src="' + (ICONS[asset.symbol] || ICONS.TROLL) + '" class="asset-icon-img">';
-        html += '<div class="asset-info">';
-        html += '<h4>' + asset.name + '</h4>';
-        html += '<p>' + asset.symbol + '</p>';
-        html += '</div>';
-        html += '</div>';
-        html += '<div class="asset-right">';
-        html += '<div class="asset-balance">' + balance.toLocaleString() + ' ' + asset.symbol + '</div>';
-        html += '<div class="asset-value">$' + value.toFixed(2) + '</div>';
-        html += '</div>';
-        html += '</div>';
-    }
+        html += `<div class="asset-item" onclick="showAssetDetails('${asset.symbol}')">
+            <div class="asset-left">
+                <img src="${ICONS[asset.symbol] || ICONS.TROLL}" class="asset-icon-img">
+                <div class="asset-info">
+                    <h4>${asset.name}</h4>
+                    <p>${asset.symbol}</p>
+                </div>
+            </div>
+            <div class="asset-right">
+                <div class="asset-balance">${balance.toLocaleString()} ${asset.symbol}</div>
+                <div class="asset-value">$${value.toFixed(2)}</div>
+            </div>
+        </div>`;
+    });
     
     container.innerHTML = html;
 }
@@ -757,31 +913,30 @@ function renderTopCryptos() {
     const container = document.getElementById('topCryptoList');
     if (!container) return;
     
-    const topCoins = ALL_ASSETS.filter(a => a.symbol === 'TROLL' || a.symbol === 'BTC' || a.symbol === 'ETH' || a.symbol === 'BNB' || a.symbol === 'SOL');
+    const topCoins = ALL_ASSETS.filter(a => ['TROLL', 'BTC', 'ETH', 'BNB', 'SOL'].includes(a.symbol));
     
     let html = '';
     
-    for (let i = 0; i < topCoins.length; i++) {
-        const coin = topCoins[i];
+    topCoins.forEach(coin => {
         const data = cryptoPrices[coin.symbol] || { price: 0, change: 0 };
         const changeClass = data.change >= 0 ? 'positive' : 'negative';
         const changeSymbol = data.change >= 0 ? '+' : '';
         const decimals = coin.symbol === 'TROLL' ? 5 : 2;
         
-        html += '<div class="crypto-item" onclick="showCryptoDetails(\'' + coin.symbol + '\')">';
-        html += '<div class="crypto-left">';
-        html += '<img src="' + ICONS[coin.symbol] + '" class="crypto-icon-img">';
-        html += '<div class="crypto-info">';
-        html += '<h4>' + coin.name + '</h4>';
-        html += '<p>' + coin.symbol + '</p>';
-        html += '</div>';
-        html += '</div>';
-        html += '<div class="crypto-right">';
-        html += '<div class="crypto-price">$' + data.price.toFixed(decimals) + '</div>';
-        html += '<div class="crypto-change ' + changeClass + '">' + changeSymbol + data.change.toFixed(1) + '%</div>';
-        html += '</div>';
-        html += '</div>';
-    }
+        html += `<div class="crypto-item" onclick="showCryptoDetails('${coin.symbol}')">
+            <div class="crypto-left">
+                <img src="${ICONS[coin.symbol]}" class="crypto-icon-img">
+                <div class="crypto-info">
+                    <h4>${coin.name}</h4>
+                    <p>${coin.symbol}</p>
+                </div>
+            </div>
+            <div class="crypto-right">
+                <div class="crypto-price">$${data.price.toFixed(decimals)}</div>
+                <div class="crypto-change ${changeClass}">${changeSymbol}${data.change.toFixed(1)}%</div>
+            </div>
+        </div>`;
+    });
     
     container.innerHTML = html;
 }
@@ -792,26 +947,25 @@ function renderMemeCoins() {
     
     let html = '';
     
-    for (let i = 0; i < MEME_COINS.length; i++) {
-        const coin = MEME_COINS[i];
+    MEME_COINS.forEach(coin => {
         const data = cryptoPrices[coin.symbol] || { price: 0, change: 0 };
         const changeClass = data.change >= 0 ? 'positive' : 'negative';
         const changeSymbol = data.change >= 0 ? '+' : '';
         
-        html += '<div class="crypto-item" onclick="showCryptoDetails(\'' + coin.symbol + '\')">';
-        html += '<div class="crypto-left">';
-        html += '<img src="' + ICONS[coin.symbol] + '" class="crypto-icon-img">';
-        html += '<div class="crypto-info">';
-        html += '<h4>' + coin.name + '</h4>';
-        html += '<p>' + coin.symbol + '</p>';
-        html += '</div>';
-        html += '</div>';
-        html += '<div class="crypto-right">';
-        html += '<div class="crypto-price">$' + data.price.toFixed(8) + '</div>';
-        html += '<div class="crypto-change ' + changeClass + '">' + changeSymbol + data.change.toFixed(1) + '%</div>';
-        html += '</div>';
-        html += '</div>';
-    }
+        html += `<div class="crypto-item" onclick="showCryptoDetails('${coin.symbol}')">
+            <div class="crypto-left">
+                <img src="${ICONS[coin.symbol]}" class="crypto-icon-img">
+                <div class="crypto-info">
+                    <h4>${coin.name}</h4>
+                    <p>${coin.symbol}</p>
+                </div>
+            </div>
+            <div class="crypto-right">
+                <div class="crypto-price">$${data.price.toFixed(8)}</div>
+                <div class="crypto-change ${changeClass}">${changeSymbol}${data.change.toFixed(1)}%</div>
+            </div>
+        </div>`;
+    });
     
     container.innerHTML = html;
 }
@@ -821,91 +975,95 @@ function renderMissionsUI() {
     if (!container) return;
     
     if (currentUser.premium) {
-        container.innerHTML = '<div class="premium-unlocked-card"><div class="premium-icon-large">😏</div><h3>' + t('premium.unlocked') + '</h3><p>Instant withdrawal access!</p></div>';
+        container.innerHTML = `<div class="premium-unlocked-card"><div class="premium-icon-large">😏</div><h3>${t('premium.unlocked')}</h3><p>Instant withdrawal access!</p></div>`;
         return;
     }
     
     const m = currentUser.withdrawalMissions;
     
-    let html = '';
-    html += '<div class="lock-header">';
-    html += '<i class="fa-solid fa-' + (currentUser.withdrawalUnlocked ? 'unlock' : 'lock') + '"></i>';
-    html += '<span>' + (currentUser.withdrawalUnlocked ? '✅ ' + t('withdrawal.unlocked') : '🔒 Withdrawal Locked') + '</span>';
-    html += '</div>';
-    html += '<div class="missions-list-vertical">';
+    let html = `
+        <div class="lock-header">
+            <i class="fa-solid fa-${currentUser.withdrawalUnlocked ? 'unlock' : 'lock'}"></i>
+            <span>${currentUser.withdrawalUnlocked ? '✅ ' + t('withdrawal.unlocked') : '🔒 ' + t('withdrawal.locked')}</span>
+        </div>
+        <div class="missions-list-vertical">`;
     
     // Mission 1
-    html += '<div class="mission-card ' + (m.mission1.completed ? 'completed' : '') + '">';
-    html += '<div class="mission-icon">' + (m.mission1.completed ? '✅' : '1️⃣') + '</div>';
-    html += '<div class="mission-content">';
-    html += '<h4>' + MISSIONS.mission1.title + '</h4>';
-    if (currentUser.settings && currentUser.settings.solanaWallet) {
-        html += '<p>Wallet: ' + currentUser.settings.solanaWallet.slice(0, 8) + '...</p>';
+    html += `<div class="mission-card ${m.mission1.completed ? 'completed' : ''}">
+        <div class="mission-icon">${m.mission1.completed ? '✅' : '1️⃣'}</div>
+        <div class="mission-content">
+            <h4>${MISSIONS.mission1.title}</h4>`;
+    if (currentUser.settings?.solanaWallet) {
+        html += `<p>Wallet: ${currentUser.settings.solanaWallet.slice(0, 8)}...</p>`;
     } else {
-        html += '<p>' + MISSIONS.mission1.desc + '</p>';
+        html += `<p>${MISSIONS.mission1.desc}</p>`;
     }
     if (!m.mission1.completed) {
-        html += '<button class="mission-action-btn" onclick="showSolanaWalletModal()">Add Wallet</button>';
+        html += `<button class="mission-action-btn" onclick="showSolanaWalletModal()">${t('mission.addWallet')}</button>`;
     }
-    html += '</div></div>';
+    html += `</div></div>`;
     
     // Mission 2
     if (m.mission2.revealed) {
         const prog = (m.mission2.currentAmount / 12500) * 100;
-        html += '<div class="mission-card ' + (m.mission2.completed ? 'completed' : '') + '">';
-        html += '<div class="mission-icon">' + (m.mission2.completed ? '✅' : '2️⃣') + '</div>';
-        html += '<div class="mission-content">';
-        html += '<h4>' + MISSIONS.mission2.title + '</h4>';
-        html += '<p>' + m.mission2.currentAmount.toLocaleString() + ' / 12,500 TROLL</p>';
-        html += '<div class="progress-bar small"><div class="progress-fill" style="width:' + prog + '%"></div></div>';
-        html += '<p class="mission-hint">💡 ' + MISSIONS.mission2.hint + '</p>';
-        html += '</div></div>';
+        html += `<div class="mission-card ${m.mission2.completed ? 'completed' : ''}">
+            <div class="mission-icon">${m.mission2.completed ? '✅' : '2️⃣'}</div>
+            <div class="mission-content">
+                <h4>${MISSIONS.mission2.title}</h4>
+                <p>${m.mission2.currentAmount.toLocaleString()} / 12,500 TROLL</p>
+                <div class="progress-bar small"><div class="progress-fill" style="width:${prog}%"></div></div>
+                <p class="mission-hint">💡 ${MISSIONS.mission2.hint}</p>
+            </div>
+        </div>`;
     } else {
-        html += '<div class="mission-card mystery"><div class="mission-icon">❓</div><div class="mission-content"><h4>Mission 2: ???</h4><p>' + t('mission.revealLater') + '</p></div></div>';
+        html += `<div class="mission-card mystery"><div class="mission-icon">❓</div><div class="mission-content"><h4>Mission 2: ???</h4><p>${t('mission.revealLater')}</p></div></div>`;
     }
     
     // Mission 3
     if (m.mission3.revealed) {
         const prog = (m.mission3.currentNewReferrals / 12) * 100;
-        html += '<div class="mission-card ' + (m.mission3.completed ? 'completed' : '') + '">';
-        html += '<div class="mission-icon">' + (m.mission3.completed ? '✅' : '3️⃣') + '</div>';
-        html += '<div class="mission-content">';
-        html += '<h4>' + MISSIONS.mission3.title + '</h4>';
-        html += '<p>' + m.mission3.currentNewReferrals + ' / 12 new referrals</p>';
-        html += '<div class="progress-bar small"><div class="progress-fill" style="width:' + prog + '%"></div></div>';
-        html += '<p class="mission-hint">💡 ' + MISSIONS.mission3.hint + '</p>';
-        html += '</div></div>';
+        html += `<div class="mission-card ${m.mission3.completed ? 'completed' : ''}">
+            <div class="mission-icon">${m.mission3.completed ? '✅' : '3️⃣'}</div>
+            <div class="mission-content">
+                <h4>${MISSIONS.mission3.title}</h4>
+                <p>${m.mission3.currentNewReferrals} / 12 new referrals</p>
+                <div class="progress-bar small"><div class="progress-fill" style="width:${prog}%"></div></div>
+                <p class="mission-hint">💡 ${MISSIONS.mission3.hint}</p>
+            </div>
+        </div>`;
     } else {
-        html += '<div class="mission-card mystery"><div class="mission-icon">❓</div><div class="mission-content"><h4>Mission 3: ???</h4><p>' + t('mission.revealLater') + '</p></div></div>';
+        html += `<div class="mission-card mystery"><div class="mission-icon">❓</div><div class="mission-content"><h4>Mission 3: ???</h4><p>${t('mission.revealLater')}</p></div></div>`;
     }
     
     // Mission 4
     if (m.mission4.revealed) {
         const bnb = currentUser.balances.BNB || 0;
         const sol = currentUser.balances.SOL || 0;
-        html += '<div class="mission-card ' + (m.mission4.completed ? 'completed' : '') + '">';
-        html += '<div class="mission-icon">' + (m.mission4.completed ? '✅' : '4️⃣') + '</div>';
-        html += '<div class="mission-content">';
-        html += '<h4>' + MISSIONS.mission4.title + '</h4>';
-        html += '<p>BNB: ' + bnb.toFixed(4) + '/0.025 | SOL: ' + sol.toFixed(4) + '/0.25</p>';
-        html += '<p class="mission-hint">💡 ' + MISSIONS.mission4.hint + '</p>';
-        html += '</div></div>';
+        html += `<div class="mission-card ${m.mission4.completed ? 'completed' : ''}">
+            <div class="mission-icon">${m.mission4.completed ? '✅' : '4️⃣'}</div>
+            <div class="mission-content">
+                <h4>${MISSIONS.mission4.title}</h4>
+                <p>BNB: ${bnb.toFixed(4)}/0.025 | SOL: ${sol.toFixed(4)}/0.25</p>
+                <p class="mission-hint">💡 ${MISSIONS.mission4.hint}</p>
+            </div>
+        </div>`;
     } else if (m.mission3.completed) {
         const revealDate = new Date(m.mission4.revealDate);
         const now = new Date();
         const daysLeft = Math.max(0, Math.ceil((revealDate - now) / (1000 * 60 * 60 * 24)));
-        html += '<div class="mission-card mystery-timer">';
-        html += '<div class="mission-icon">⏳</div>';
-        html += '<div class="mission-content">';
-        html += '<h4>Final Mystery Mission</h4>';
-        html += '<p>' + t('mission.waitDays', {days: daysLeft}) + '</p>';
-        html += '<div class="timer-progress-bar"><div class="timer-fill" style="width:' + ((20 - daysLeft) / 20) * 100 + '%"></div></div>';
-        html += '</div></div>';
+        html += `<div class="mission-card mystery-timer">
+            <div class="mission-icon">⏳</div>
+            <div class="mission-content">
+                <h4>Final Mystery Mission</h4>
+                <p>${t('mission.waitDays', {days: daysLeft})}</p>
+                <div class="timer-progress-bar"><div class="timer-fill" style="width:${((20 - daysLeft) / 20) * 100}%"></div></div>
+            </div>
+        </div>`;
     } else {
-        html += '<div class="mission-card mystery"><div class="mission-icon">❓</div><div class="mission-content"><h4>Mission 4: ???</h4><p>' + t('mission.revealLater') + '</p></div></div>';
+        html += `<div class="mission-card mystery"><div class="mission-icon">❓</div><div class="mission-content"><h4>Mission 4: ???</h4><p>${t('mission.revealLater')}</p></div></div>`;
     }
     
-    html += '</div>';
+    html += `</div>`;
     container.innerHTML = html;
 }
 
@@ -915,28 +1073,27 @@ function renderMilestones() {
     
     let html = '';
     
-    for (let i = 0; i < MILESTONES.length; i++) {
-        const m = MILESTONES[i];
+    MILESTONES.forEach(m => {
         const progress = Math.min(((currentUser.inviteCount || 0) / m.referrals) * 100, 100);
-        const claimed = currentUser.claimedMilestones ? currentUser.claimedMilestones.includes(m.referrals) : false;
+        const claimed = currentUser.claimedMilestones?.includes(m.referrals);
         const canClaim = (currentUser.inviteCount >= m.referrals) && !claimed && !m.isSpecial;
         
-        html += '<div class="milestone-item ' + (claimed ? 'claimed' : '') + '">';
-        html += '<div class="milestone-header">';
-        html += '<span>' + m.title + '</span>';
-        html += '<span>' + (m.isSpecial ? '🎁 Mystery Box' : m.reward.toLocaleString() + ' TROLL') + '</span>';
-        html += '</div>';
-        html += '<div class="progress-bar"><div class="progress-fill" style="width:' + progress + '%"></div></div>';
-        html += '<div class="progress-text">' + (currentUser.inviteCount || 0) + '/' + m.referrals + '</div>';
+        html += `<div class="milestone-item ${claimed ? 'claimed' : ''}">
+            <div class="milestone-header">
+                <span>${m.title}</span>
+                <span>${m.isSpecial ? '🎁 Mystery Box' : m.reward.toLocaleString() + ' TROLL'}</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div></div>
+            <div class="progress-text">${currentUser.inviteCount || 0}/${m.referrals}</div>`;
         
         if (canClaim) {
-            html += '<button class="claim-btn" onclick="claimMilestone(' + m.referrals + ')">Claim</button>';
+            html += `<button class="claim-btn" onclick="claimMilestone(${m.referrals})">Claim</button>`;
         }
         if (claimed) {
-            html += '<p style="color:#2ecc71;text-align:center;">✓ Claimed</p>';
+            html += `<p style="color:#2ecc71;text-align:center;">✓ Claimed</p>`;
         }
-        html += '</div>';
-    }
+        html += `</div>`;
+    });
     
     container.innerHTML = html;
 }
@@ -960,7 +1117,7 @@ async function updateMissionsProgress() {
     const m = currentUser.withdrawalMissions;
     let changed = false;
     
-    if (!m.mission1.completed && currentUser.settings && currentUser.settings.solanaWallet) {
+    if (!m.mission1.completed && currentUser.settings?.solanaWallet) {
         m.mission1.completed = true;
         m.mission2.revealed = true;
         changed = true;
@@ -1011,7 +1168,7 @@ async function updateMissionsProgress() {
         addNotification({
             type: 'mission',
             title: '🎉 Congratulations!',
-            message: 'Withdrawal Unlocked! You can now withdraw your TROLL!'
+            message: t('withdrawal.unlocked')
         });
         celebrateUnlock();
     }
@@ -1030,25 +1187,107 @@ function celebrateUnlock() {
             setTimeout(() => confetti.remove(), 4000);
         }, i * 50);
     }
-    showToast('🎉 Withdrawal Unlocked!', 'success');
+    showToast(t('withdrawal.unlocked'), 'success');
 }
 
 // ============================================================================
 // SECTION 22: USER ACTIONS
 // ============================================================================
 
+// ====== SOLANA WALLET MODAL (احترافية) ======
 function showSolanaWalletModal() {
-    const address = prompt(t('withdraw.address') + ':');
-    if (address && address.length > 30) {
+    // إنشاء المودال إذا لم يكن موجوداً
+    let modal = document.getElementById('solanaWalletModal');
+    
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'solanaWalletModal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <button class="close-btn" onclick="closeModal('solanaWalletModal')">&times;</button>
+                <div class="modal-icon">🔑</div>
+                <h2 id="solanaModalTitle">${t('solanaWallet.title')}</h2>
+                <p class="modal-desc" id="solanaModalDesc">${t('solanaWallet.desc')}</p>
+                
+                <div class="input-group">
+                    <label>Solana Wallet Address</label>
+                    <input type="text" id="solanaWalletInput" placeholder="${t('solanaWallet.placeholder')}" autocomplete="off">
+                    <div id="solanaWalletValidation" class="validation-hint"></div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button class="modal-action-btn primary" id="saveSolanaWalletBtn" onclick="submitSolanaWallet()" disabled>
+                        <i class="fa-regular fa-save"></i> ${t('solanaWallet.save')}
+                    </button>
+                    <button class="modal-action-btn secondary" onclick="closeModal('solanaWalletModal')">
+                        <i class="fa-regular fa-times"></i> ${t('solanaWallet.cancel')}
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        // إضافة مستمع للتحقق المباشر
+        const input = document.getElementById('solanaWalletInput');
+        const validation = document.getElementById('solanaWalletValidation');
+        const saveBtn = document.getElementById('saveSolanaWalletBtn');
+        
+        input.addEventListener('input', function() {
+            const value = this.value.trim();
+            if (value.length >= 32 && value.length <= 44) {
+                validation.textContent = '✓ ' + t('solanaWallet.valid');
+                validation.className = 'validation-hint valid';
+                saveBtn.disabled = false;
+            } else {
+                validation.textContent = t('solanaWallet.invalid');
+                validation.className = 'validation-hint invalid';
+                saveBtn.disabled = true;
+            }
+        });
+        
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !saveBtn.disabled) {
+                submitSolanaWallet();
+            }
+        });
+    }
+    
+    // تحديث النصوص حسب اللغة
+    document.getElementById('solanaModalTitle').textContent = t('solanaWallet.title');
+    document.getElementById('solanaModalDesc').textContent = t('solanaWallet.desc');
+    document.getElementById('solanaWalletInput').placeholder = t('solanaWallet.placeholder');
+    document.getElementById('saveSolanaWalletBtn').innerHTML = `<i class="fa-regular fa-save"></i> ${t('solanaWallet.save')}`;
+    
+    // إظهار المودال
+    modal.classList.add('show');
+    document.getElementById('solanaWalletInput').value = '';
+    document.getElementById('solanaWalletInput').focus();
+    document.getElementById('solanaWalletValidation').textContent = '';
+    document.getElementById('saveSolanaWalletBtn').disabled = true;
+}
+
+function submitSolanaWallet() {
+    const input = document.getElementById('solanaWalletInput');
+    const address = input.value.trim();
+    
+    if (address.length >= 32 && address.length <= 44) {
         if (!currentUser.settings) currentUser.settings = {};
         currentUser.settings.solanaWallet = address;
         saveUserData();
         updateMissionsProgress();
         updateUI();
         if (currentPage === 'airdrop') renderMissionsUI();
-        showToast('✅ Wallet saved!', 'success');
-    } else if (address) {
-        showToast('Invalid address', 'error');
+        closeModal('solanaWalletModal');
+        showToast(t('solanaWallet.success'), 'success');
+        
+        addNotification({
+            type: 'mission',
+            title: '✅ Mission 1 Complete!',
+            message: 'Solana wallet added. Mission 2 unlocked!'
+        });
+    } else {
+        showToast(t('solanaWallet.invalid'), 'error');
     }
 }
 
@@ -1056,9 +1295,7 @@ function copyInviteLink() {
     const link = document.getElementById('inviteLink');
     if (link) {
         navigator.clipboard.writeText(link.value);
-        const btn = document.querySelector('.copy-btn');
-        if (btn) { btn.classList.add('copy-success'); setTimeout(() => btn.classList.remove('copy-success'), 300); }
-        showToast('🔗 Link copied!', 'success');
+        showToast(t('toast.copied'), 'success');
     }
 }
 
@@ -1118,7 +1355,7 @@ function addNotification(notification) {
 function updateNotificationBadge() {
     const badge = document.querySelector('.badge');
     if (badge && currentUser) {
-        unreadNotifications = currentUser.notifications ? currentUser.notifications.filter(n => !n.read).length : 0;
+        unreadNotifications = currentUser.notifications?.filter(n => !n.read).length || 0;
         badge.textContent = unreadNotifications;
         badge.style.display = unreadNotifications > 0 ? 'flex' : 'none';
     }
@@ -1142,7 +1379,7 @@ function renderNotifications() {
     `;
     
     if (notifications.length === 0) {
-        container.innerHTML = controlsHTML + '<div class="empty-state"><i class="fa-regular fa-bell-slash"></i><p>' + t('notifications.empty') + '</p></div>';
+        container.innerHTML = controlsHTML + `<div class="empty-state"><i class="fa-regular fa-bell-slash"></i><p>${t('notifications.empty')}</p></div>`;
         return;
     }
     
@@ -1239,7 +1476,7 @@ async function loadBroadcasts() {
                 }).catch(() => {});
             }
         });
-    } catch (e) { console.error('Load broadcasts error:', e); }
+    } catch (e) {}
 }
 
 // ============================================================================
@@ -1256,116 +1493,151 @@ function showModal(id) {
     if (modal) modal.classList.add('show');
 }
 
+// ====== DEPOSIT MODAL (نصف-مركزي) ======
 function showDepositModal() {
     const modal = document.getElementById('depositModal');
-    if (modal) modal.classList.add('show');
+    if (!modal) return;
     
-    const currency = document.getElementById('depositCurrency')?.value || 'TROLL';
+    // إنشاء قائمة العملات إذا لم تكن موجودة
+    let currencySelect = document.getElementById('depositCurrencySelect');
+    if (!currencySelect) {
+        const container = modal.querySelector('.modal-content');
+        const selectHtml = `
+            <div class="input-group">
+                <label>${t('deposit.selectCurrency')}</label>
+                <select id="depositCurrencySelect" class="currency-select">
+                    ${DEPOSIT_CURRENCIES.map(c => `<option value="${c.symbol}">${c.name}</option>`).join('')}
+                </select>
+            </div>
+            <div id="depositAddressContainer" style="display:none;">
+                <div class="deposit-address-container">
+                    <label>${t('deposit.address')}</label>
+                    <div class="address-box">
+                        <code id="depositAddress">Loading...</code>
+                        <button onclick="copyDepositAddress()">
+                            <i class="fa-regular fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="deposit-info">
+                    <div class="info-row"><i class="fa-regular fa-circle-check"></i> <span id="depositNetwork">-</span></div>
+                    <div class="info-row"><i class="fa-regular fa-coins"></i> <span id="depositMinAmount">-</span></div>
+                    <div class="info-row"><i class="fa-regular fa-shield"></i> <span>${t('deposit.warning')}</span></div>
+                </div>
+                <div class="input-group">
+                    <label>${t('deposit.txnId')}</label>
+                    <input type="text" id="depositTxnId" placeholder="0x...">
+                </div>
+                <button class="modal-action-btn" onclick="submitDepositRequest()">
+                    <i class="fa-regular fa-paper-plane"></i> ${t('deposit.submit')}
+                </button>
+            </div>
+        `;
+        
+        // إضافة العناصر قبل زر الإغلاق
+        const closeBtn = container.querySelector('.close-btn');
+        closeBtn.insertAdjacentHTML('beforebegin', selectHtml);
+        
+        // إضافة مستمع لتغيير العملة
+        document.getElementById('depositCurrencySelect').addEventListener('change', generateDepositAddress);
+    }
     
-    apiCall('/deposit/generate', 'POST', {
+    modal.classList.add('show');
+    generateDepositAddress();
+}
+
+async function generateDepositAddress() {
+    const currency = document.getElementById('depositCurrencySelect').value;
+    const container = document.getElementById('depositAddressContainer');
+    const addressEl = document.getElementById('depositAddress');
+    
+    container.style.display = 'block';
+    addressEl.textContent = 'Generating address...';
+    
+    const result = await apiCall('/deposit/generate', 'POST', {
         userId: currentUserId,
         userName: currentUser.userName,
         currency: currency
-    }).then(data => {
-        if (data.success) {
-            document.getElementById('depositAddress').textContent = data.address;
-            document.getElementById('depositNetwork').textContent = data.network || 'BSC (BEP-20)';
-            document.getElementById('depositMinAmount').textContent = data.minDeposit || '10,000';
-            
-            const qrDiv = document.getElementById('depositQR');
-            if (qrDiv && typeof QRCode !== 'undefined') {
-                qrDiv.innerHTML = '';
-                new QRCode(qrDiv, {
-                    text: data.address,
-                    width: 150,
-                    height: 150,
-                    colorDark: '#000000',
-                    colorLight: '#ffffff',
-                    correctLevel: QRCode.CorrectLevel.H
-                });
-            }
-        } else {
-            showToast('Failed to generate address', 'error');
-        }
     });
-}
-
-function updateWithdrawInfo() {
-    const balance = currentUser.balances.TROLL || 0;
-    const fee = 0; // No fee for TROLL withdrawals
-    const amountInput = document.getElementById('withdrawAmount');
-    const receiveEl = document.getElementById('withdrawReceiveAmount');
     
-    if (amountInput) {
-        amountInput.placeholder = `Min 10,000 TROLL (Available: ${balance.toLocaleString()})`;
+    if (result.success) {
+        addressEl.textContent = result.address;
+        document.getElementById('depositNetwork').innerHTML = `<i class="fa-regular fa-link"></i> Network: ${result.network}`;
+        document.getElementById('depositMinAmount').innerHTML = `<i class="fa-regular fa-arrow-down"></i> Min: ${result.minDeposit} ${currency}`;
+    } else {
+        addressEl.textContent = 'Failed to generate address';
+        showToast(result.error || 'Error generating address', 'error');
     }
-    
-    const updateReceive = () => {
-        const amount = parseFloat(amountInput?.value) || 0;
-        if (receiveEl) receiveEl.textContent = (amount - fee).toLocaleString() + ' TROLL';
-    };
-    
-    if (amountInput) {
-        amountInput.removeEventListener('input', updateReceive);
-        amountInput.addEventListener('input', updateReceive);
-    }
-}
-
-function showWithdrawModal() {
-    if (!currentUser.withdrawalUnlocked && !currentUser.premium) {
-        showToast(t('withdrawal.unlocked') ? 'Complete missions to unlock withdrawal!' : 'Complete missions first!', 'error');
-        return;
-    }
-    showModal('withdrawModal');
-    updateWithdrawInfo();
-}
-
-function showHistory() {
-    showModal('historyModal');
-    renderHistory('all');
-}
-
-function showNotifications() {
-    showModal('notificationsModal');
-    renderNotifications();
-}
-
-function showAdminPanel() {
-    if (!appConfig || currentUserId !== appConfig.adminId) {
-        showToast('Access denied', 'error');
-        return;
-    }
-    const panel = document.getElementById('adminPanel');
-    if (panel) panel.classList.remove('hidden');
-    loadAdminPanel();
-}
-
-function closeAdminPanel() {
-    const panel = document.getElementById('adminPanel');
-    if (panel) panel.classList.add('hidden');
 }
 
 function copyDepositAddress() {
     const addr = document.getElementById('depositAddress')?.textContent;
-    if (addr) {
+    if (addr && !addr.includes('Generating') && !addr.includes('Failed')) {
         navigator.clipboard.writeText(addr);
-        showToast('Address copied!', 'success');
+        showToast(t('deposit.copied'), 'success');
     }
 }
 
-function submitDeposit() {
-    const txId = document.getElementById('txIdInput')?.value;
-    if (!txId) {
-        showToast('Please enter Transaction ID', 'error');
+async function submitDepositRequest() {
+    const currency = document.getElementById('depositCurrencySelect').value;
+    const address = document.getElementById('depositAddress').textContent;
+    const txnId = document.getElementById('depositTxnId')?.value || null;
+    
+    if (!address || address.includes('Generating') || address.includes('Failed')) {
+        showToast('Please wait for address generation', 'error');
         return;
     }
-    showToast('Deposit submitted for verification', 'success');
-    closeModal('depositModal');
-    addNotification({
-        type: 'deposit',
-        title: '📥 Deposit Submitted',
-        message: 'Your deposit is being verified.'
+    
+    // تقدير المبلغ (سيقوم المشرف بتحديده لاحقاً)
+    const amount = 0; // سيتم تحديده من قبل المشرف
+    
+    const result = await apiCall('/deposit/submit-request', 'POST', {
+        userId: currentUserId,
+        userName: currentUser.userName,
+        currency: currency,
+        amount: amount,
+        address: address,
+        txnId: txnId
     });
+    
+    if (result.success) {
+        showToast(t('deposit.success'), 'success');
+        closeModal('depositModal');
+        
+        addNotification({
+            type: 'deposit',
+            title: '📥 Deposit Request Submitted',
+            message: `Your ${currency} deposit request is pending approval.`
+        });
+    } else {
+        showToast(result.error || 'Failed to submit deposit', 'error');
+    }
+}
+
+// ====== WITHDRAW MODAL ======
+function showWithdrawModal() {
+    if (!currentUser.withdrawalUnlocked && !currentUser.premium) {
+        showToast('Complete missions to unlock withdrawal!', 'error');
+        return;
+    }
+    
+    if (currentUser.withdrawBlocked) {
+        showToast('Your withdrawal access has been blocked. Contact support.', 'error');
+        return;
+    }
+    
+    showModal('withdrawModal');
+    updateWithdrawInfo();
+}
+
+function updateWithdrawInfo() {
+    const balance = currentUser.balances.TROLL || 0;
+    const amountInput = document.getElementById('withdrawAmount');
+    
+    if (amountInput) {
+        amountInput.placeholder = `Min 10,000 TROLL (${t('withdraw.available')}: ${balance.toLocaleString()})`;
+        amountInput.max = balance;
+    }
 }
 
 async function submitWithdraw() {
@@ -1387,51 +1659,49 @@ async function submitWithdraw() {
         return;
     }
     
-    showToast('Processing withdrawal...', 'info');
+    showToast('Processing...', 'info');
     
-    try {
-        const res = await apiCall('/withdraw/request', 'POST', {
-            userId: currentUserId,
-            userName: currentUser.userName,
-            currency: 'TROLL',
+    const res = await apiCall('/withdraw/request', 'POST', {
+        userId: currentUserId,
+        userName: currentUser.userName,
+        currency: 'TROLL',
+        amount: amount,
+        address: address
+    });
+    
+    if (res.success) {
+        currentUser.balances.TROLL -= amount;
+        if (!currentUser.transactions) currentUser.transactions = [];
+        currentUser.transactions.unshift({
+            type: 'withdraw',
             amount: amount,
+            currency: 'TROLL',
+            status: 'pending',
+            timestamp: new Date().toISOString(),
             address: address
         });
         
-        if (res.success) {
-            currentUser.balances.TROLL -= amount;
-            if (!currentUser.transactions) currentUser.transactions = [];
-            currentUser.transactions.unshift({
-                type: 'withdraw',
-                amount: amount,
-                currency: 'TROLL',
-                status: 'pending',
-                timestamp: new Date().toISOString(),
-                address: address
-            });
-            
-            saveUserData();
-            updateUI();
-            
-            showToast('✅ Withdrawal requested!', 'success');
-            closeModal('withdrawModal');
-            
-            addNotification({
-                type: 'withdraw',
-                title: '💸 Withdrawal Requested',
-                message: `Your withdrawal of ${amount.toLocaleString()} TROLL is being processed.`
-            });
-        } else {
-            showToast('Withdrawal failed: ' + (res.error || 'Unknown error'), 'error');
-        }
-    } catch (e) {
-        showToast('Network error. Please try again.', 'error');
+        saveUserData();
+        updateUI();
+        
+        showToast(t('withdraw.success'), 'success');
+        closeModal('withdrawModal');
+        
+        addNotification({
+            type: 'withdraw',
+            title: '💸 Withdrawal Requested',
+            message: `Your withdrawal of ${amount.toLocaleString()} TROLL is being processed.`
+        });
+    } else {
+        showToast(res.error || 'Withdrawal failed', 'error');
     }
 }
 
-// ============================================================================
-// SECTION 25: HISTORY FUNCTIONS
-// ============================================================================
+// ====== HISTORY MODAL ======
+function showHistory() {
+    showModal('historyModal');
+    renderHistory('all');
+}
 
 function renderHistory(filter = 'all') {
     const container = document.getElementById('historyList');
@@ -1441,7 +1711,7 @@ function renderHistory(filter = 'all') {
     if (filter !== 'all') transactions = transactions.filter(t => t.type === filter);
     
     if (transactions.length === 0) {
-        container.innerHTML = '<div class="empty-state"><i class="fa-regular fa-clock"></i><p>No transactions yet</p></div>';
+        container.innerHTML = `<div class="empty-state"><i class="fa-regular fa-clock"></i><p>${t('history.empty')}</p></div>`;
         return;
     }
     
@@ -1500,46 +1770,416 @@ function filterHistory(filter) {
     renderHistory(filter);
 }
 
+function showNotifications() {
+    showModal('notificationsModal');
+    renderNotifications();
+}
+
 // ============================================================================
-// SECTION 26: ADMIN PANEL FUNCTIONS
+// SECTION 25: ADMIN AUTHENTICATION
 // ============================================================================
 
-function loadAdminPanel() {
-    const content = document.getElementById('adminContent');
-    if (!content) return;
+function showAdminAuthModal() {
+    let modal = document.getElementById('adminAuthModal');
     
-    content.innerHTML = `
-        <div class="admin-search-container">
-            <input type="text" id="adminSearchInput" placeholder="${t('admin.search')}" style="flex:1; padding:12px; border-radius:8px; background:var(--bg-primary); border:1px solid var(--border-light); color:var(--text-primary);">
-            <button class="admin-action-btn add" onclick="adminSearch()" style="max-width:100px; padding:12px;"><i class="fa-regular fa-search"></i></button>
-        </div>
-        
-        <div style="margin: 20px 0;">
-            <h4 style="margin-bottom:10px; color:var(--text-secondary);">${t('admin.broadcast')}</h4>
-            <div class="broadcast-target-selector">
-                <button class="broadcast-target-btn active" onclick="selectBroadcastTarget('all')">${t('admin.targetAll')}</button>
-                <button class="broadcast-target-btn" onclick="selectBroadcastTarget('bot')">${t('admin.targetBot')}</button>
-                <button class="broadcast-target-btn" onclick="selectBroadcastTarget('app')">${t('admin.targetApp')}</button>
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'adminAuthModal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <button class="close-btn" onclick="closeModal('adminAuthModal')">&times;</button>
+                <div class="modal-icon">👑</div>
+                <h2>${t('admin.authenticate')}</h2>
+                <p class="modal-desc">Enter the admin password to continue</p>
+                
+                <div class="input-group">
+                    <label>${t('admin.password')}</label>
+                    <input type="password" id="adminPasswordInput" placeholder="••••••••" autocomplete="off">
+                </div>
+                
+                <div class="modal-actions">
+                    <button class="modal-action-btn primary" onclick="verifyAdminPassword()">
+                        <i class="fa-regular fa-check"></i> ${t('admin.verify')}
+                    </button>
+                    <button class="modal-action-btn secondary" onclick="closeModal('adminAuthModal')">
+                        <i class="fa-regular fa-times"></i> ${t('admin.cancel')}
+                    </button>
+                </div>
             </div>
-            <textarea id="broadcastMessage" placeholder="Enter your announcement message..." style="width:100%; padding:12px; border-radius:8px; background:var(--bg-primary); border:1px solid var(--border-light); color:var(--text-primary); margin:12px 0;" rows="4"></textarea>
-            <button class="admin-action-btn broadcast" onclick="sendBroadcast()" style="width:100%; padding:12px;">
-                <i class="fa-regular fa-bullhorn"></i> ${t('admin.broadcast')}
+        `;
+        document.body.appendChild(modal);
+        
+        document.getElementById('adminPasswordInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') verifyAdminPassword();
+        });
+    }
+    
+    modal.classList.add('show');
+    document.getElementById('adminPasswordInput').value = '';
+    document.getElementById('adminPasswordInput').focus();
+}
+
+async function verifyAdminPassword() {
+    const password = document.getElementById('adminPasswordInput').value;
+    
+    if (!password) {
+        showToast('Please enter password', 'error');
+        return;
+    }
+    
+    const result = await apiCall('/admin/verify', 'POST', { password });
+    
+    if (result.success) {
+        adminAuthenticated = true;
+        adminAuthToken = password;
+        closeModal('adminAuthModal');
+        showAdminPanel();
+        showToast('Authenticated successfully', 'success');
+    } else {
+        showToast('Invalid password', 'error');
+    }
+}
+
+// ============================================================================
+// SECTION 26: ADMIN PANEL
+// ============================================================================
+
+function showAdminPanel() {
+    if (!adminAuthenticated) {
+        showAdminAuthModal();
+        return;
+    }
+    
+    const panel = document.getElementById('adminPanel');
+    if (panel) panel.classList.remove('hidden');
+    
+    loadAdminDashboard();
+}
+
+function closeAdminPanel() {
+    const panel = document.getElementById('adminPanel');
+    if (panel) panel.classList.add('hidden');
+}
+
+async function loadAdminDashboard() {
+    const content = document.getElementById('adminContent');
+    content.innerHTML = `<div class="loading-spinner"><i class="fa-regular fa-spinner fa-spin"></i> Loading...</div>`;
+    
+    // تحميل الإحصائيات
+    try {
+        const statsRes = await apiCall('/admin/stats', 'GET', null, true);
+        if (statsRes.success) {
+            adminStats = statsRes.stats;
+        }
+    } catch (e) {}
+    
+    renderAdminDashboard();
+}
+
+function renderAdminDashboard() {
+    const content = document.getElementById('adminContent');
+    
+    let html = `
+        <div class="admin-dashboard">
+            <div class="admin-stats-grid">
+                <div class="admin-stat-card" onclick="showAdminSection('deposits')">
+                    <i class="fa-regular fa-circle-down"></i>
+                    <div class="stat-value">${adminStats.pendingDeposits || 0}</div>
+                    <div class="stat-label">${t('admin.pendingDeposits')}</div>
+                </div>
+                <div class="admin-stat-card" onclick="showAdminSection('withdrawals')">
+                    <i class="fa-regular fa-circle-up"></i>
+                    <div class="stat-value">${adminStats.pendingWithdrawals || 0}</div>
+                    <div class="stat-label">${t('admin.pendingWithdrawals')}</div>
+                </div>
+                <div class="admin-stat-card" onclick="showAdminSection('users')">
+                    <i class="fa-regular fa-users"></i>
+                    <div class="stat-value">${adminStats.totalUsers || 0}</div>
+                    <div class="stat-label">${t('admin.totalUsers')}</div>
+                </div>
+                <div class="admin-stat-card" onclick="showAdminSection('broadcast')">
+                    <i class="fa-regular fa-bullhorn"></i>
+                    <div class="stat-value">📢</div>
+                    <div class="stat-label">${t('admin.broadcast')}</div>
+                </div>
+            </div>
+            
+            <div id="adminSectionContent" class="admin-section-content">
+                <div class="admin-section-header">
+                    <h3>${t('admin.pendingDeposits')}</h3>
+                    <button class="refresh-btn" onclick="refreshAdminSection()">
+                        <i class="fa-regular fa-rotate-right"></i>
+                    </button>
+                </div>
+                <div id="adminListContainer" class="admin-list-container">
+                    <div class="loading-spinner"><i class="fa-regular fa-spinner fa-spin"></i> Loading...</div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    content.innerHTML = html;
+    
+    // تحميل الإيداعات المعلقة افتراضياً
+    loadPendingDeposits();
+}
+
+async function loadPendingDeposits() {
+    const container = document.getElementById('adminListContainer');
+    
+    try {
+        const res = await apiCall('/admin/pending-deposits', 'GET', null, true);
+        
+        if (res.success && res.deposits) {
+            pendingDeposits = res.deposits;
+            
+            if (pendingDeposits.length === 0) {
+                container.innerHTML = `<div class="empty-state"><i class="fa-regular fa-inbox"></i><p>No pending deposits</p></div>`;
+                return;
+            }
+            
+            let html = '';
+            pendingDeposits.forEach(deposit => {
+                html += `
+                    <div class="admin-transaction-card">
+                        <div class="admin-tx-header">
+                            <div class="admin-tx-type deposit">
+                                <i class="fa-regular fa-circle-down"></i>
+                                <span>DEPOSIT</span>
+                            </div>
+                            <span class="admin-tx-status pending">PENDING</span>
+                        </div>
+                        <div class="admin-tx-details">
+                            <div class="admin-tx-row">
+                                <span class="admin-tx-label">User:</span>
+                                <span class="admin-tx-value">${deposit.userName} (${deposit.userId})</span>
+                            </div>
+                            <div class="admin-tx-row">
+                                <span class="admin-tx-label">Currency:</span>
+                                <span class="admin-tx-value">${deposit.currency}</span>
+                            </div>
+                            <div class="admin-tx-row">
+                                <span class="admin-tx-label">Address:</span>
+                                <div class="admin-address-container">
+                                    <code>${deposit.address?.slice(0, 16)}...</code>
+                                    <button class="admin-copy-btn" onclick="copyToClipboard('${deposit.address}')">
+                                        <i class="fa-regular fa-copy"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            ${deposit.txnId ? `
+                            <div class="admin-tx-row">
+                                <span class="admin-tx-label">TXID:</span>
+                                <code>${deposit.txnId.slice(0, 16)}...</code>
+                            </div>` : ''}
+                            <div class="admin-tx-row">
+                                <span class="admin-tx-label">Time:</span>
+                                <span class="admin-tx-value">${new Date(deposit.createdAt?.seconds * 1000).toLocaleString()}</span>
+                            </div>
+                        </div>
+                        <div class="admin-tx-actions">
+                            <input type="number" id="amount_${deposit.id}" placeholder="Amount" class="admin-amount-input" step="0.000001">
+                            <button class="admin-approve-btn" onclick="approveDeposit('${deposit.id}', '${deposit.userId}', '${deposit.currency}')">
+                                <i class="fa-regular fa-check"></i> ${t('admin.approve')}
+                            </button>
+                            <button class="admin-reject-btn" onclick="rejectDeposit('${deposit.id}')">
+                                <i class="fa-regular fa-times"></i> ${t('admin.reject')}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+    } catch (e) {
+        container.innerHTML = `<div class="empty-state"><p>Error loading deposits</p></div>`;
+    }
+}
+
+async function loadPendingWithdrawals() {
+    const container = document.getElementById('adminListContainer');
+    
+    try {
+        const res = await apiCall('/admin/pending-withdrawals', 'GET', null, true);
+        
+        if (res.success && res.withdrawals) {
+            pendingWithdrawals = res.withdrawals;
+            
+            if (pendingWithdrawals.length === 0) {
+                container.innerHTML = `<div class="empty-state"><i class="fa-regular fa-inbox"></i><p>No pending withdrawals</p></div>`;
+                return;
+            }
+            
+            let html = '';
+            pendingWithdrawals.forEach(w => {
+                html += `
+                    <div class="admin-transaction-card">
+                        <div class="admin-tx-header">
+                            <div class="admin-tx-type withdraw">
+                                <i class="fa-regular fa-circle-up"></i>
+                                <span>WITHDRAWAL</span>
+                            </div>
+                            <span class="admin-tx-status pending">PENDING</span>
+                        </div>
+                        <div class="admin-tx-details">
+                            <div class="admin-tx-row">
+                                <span class="admin-tx-label">User:</span>
+                                <span class="admin-tx-value">${w.userName} (${w.userId})</span>
+                            </div>
+                            <div class="admin-tx-row">
+                                <span class="admin-tx-label">Amount:</span>
+                                <span class="admin-tx-value">${w.amount} ${w.currency}</span>
+                            </div>
+                            <div class="admin-tx-row">
+                                <span class="admin-tx-label">Address:</span>
+                                <div class="admin-address-container">
+                                    <code>${w.address?.slice(0, 16)}...</code>
+                                    <button class="admin-copy-btn" onclick="copyToClipboard('${w.address}')">
+                                        <i class="fa-regular fa-copy"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="admin-tx-row">
+                                <span class="admin-tx-label">Time:</span>
+                                <span class="admin-tx-value">${new Date(w.createdAt?.seconds * 1000).toLocaleString()}</span>
+                            </div>
+                        </div>
+                        <div class="admin-tx-actions">
+                            <button class="admin-approve-btn" onclick="approveWithdrawal('${w.id}')">
+                                <i class="fa-regular fa-check"></i> ${t('admin.approve')}
+                            </button>
+                            <button class="admin-reject-btn" onclick="rejectWithdrawal('${w.id}')">
+                                <i class="fa-regular fa-times"></i> ${t('admin.reject')}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+    } catch (e) {
+        container.innerHTML = `<div class="empty-state"><p>Error loading withdrawals</p></div>`;
+    }
+}
+
+function showAdminSection(section) {
+    const header = document.querySelector('.admin-section-header h3');
+    
+    if (section === 'deposits') {
+        if (header) header.textContent = t('admin.pendingDeposits');
+        loadPendingDeposits();
+    } else if (section === 'withdrawals') {
+        if (header) header.textContent = t('admin.pendingWithdrawals');
+        loadPendingWithdrawals();
+    } else if (section === 'users') {
+        if (header) header.textContent = t('admin.users');
+        showUserManagementInterface();
+    } else if (section === 'broadcast') {
+        if (header) header.textContent = t('admin.broadcast');
+        showBroadcastInterface();
+    }
+}
+
+function refreshAdminSection() {
+    const header = document.querySelector('.admin-section-header h3');
+    if (header?.textContent.includes('Deposit') || header?.textContent.includes('إيداع')) {
+        loadPendingDeposits();
+    } else if (header?.textContent.includes('Withdrawal') || header?.textContent.includes('سحب')) {
+        loadPendingWithdrawals();
+    }
+}
+
+// ====== APPROVE/REJECT FUNCTIONS ======
+async function approveDeposit(depositId, userId, currency) {
+    const amountInput = document.getElementById(`amount_${depositId}`);
+    const amount = parseFloat(amountInput?.value);
+    
+    if (!amount || amount <= 0) {
+        showToast('Please enter a valid amount', 'error');
+        return;
+    }
+    
+    // تحديث الرصيد يدوياً
+    const addRes = await apiCall('/admin/add-balance', 'POST', {
+        userId: userId,
+        currency: currency,
+        amount: amount
+    }, true);
+    
+    if (addRes.success) {
+        // تحديث حالة الإيداع
+        await apiCall('/admin/approve-deposit', 'POST', { depositId }, true);
+        showToast('Deposit approved and balance added!', 'success');
+        loadPendingDeposits();
+        
+        // تحديث الإحصائيات
+        const statsRes = await apiCall('/admin/stats', 'GET', null, true);
+        if (statsRes.success) adminStats = statsRes.stats;
+    } else {
+        showToast('Failed to add balance', 'error');
+    }
+}
+
+async function rejectDeposit(depositId) {
+    const reason = prompt(t('admin.reason') + ':');
+    if (!reason) return;
+    
+    const res = await apiCall('/admin/reject-deposit', 'POST', { depositId, reason }, true);
+    if (res.success) {
+        showToast('Deposit rejected', 'success');
+        loadPendingDeposits();
+    } else {
+        showToast('Failed to reject deposit', 'error');
+    }
+}
+
+async function approveWithdrawal(withdrawalId) {
+    const res = await apiCall('/admin/approve-withdrawal', 'POST', { withdrawalId }, true);
+    if (res.success) {
+        showToast('Withdrawal approved', 'success');
+        loadPendingWithdrawals();
+    } else {
+        showToast('Failed to approve', 'error');
+    }
+}
+
+async function rejectWithdrawal(withdrawalId) {
+    const reason = prompt(t('admin.reason') + ':');
+    if (!reason) return;
+    
+    const res = await apiCall('/admin/reject-withdrawal', 'POST', { withdrawalId, reason }, true);
+    if (res.success) {
+        showToast('Withdrawal rejected', 'success');
+        loadPendingWithdrawals();
+    } else {
+        showToast('Failed to reject', 'error');
+    }
+}
+
+// ====== USER MANAGEMENT ======
+function showUserManagementInterface() {
+    const container = document.getElementById('adminListContainer');
+    
+    container.innerHTML = `
+        <div class="admin-search-container">
+            <input type="text" id="adminUserSearchInput" placeholder="${t('admin.search')}" class="admin-search-input">
+            <button class="admin-action-btn" onclick="adminSearchUser()">
+                <i class="fa-regular fa-search"></i> ${t('admin.searchBtn')}
             </button>
         </div>
-        
-        <div id="adminUserResult" style="margin-top:20px;"></div>
-        <div id="broadcastResult"></div>
+        <div id="adminUserResult" class="admin-user-result"></div>
     `;
+    
+    document.getElementById('adminUserSearchInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') adminSearchUser();
+    });
 }
 
-function selectBroadcastTarget(target) {
-    selectedBroadcastTarget = target;
-    document.querySelectorAll('.broadcast-target-btn').forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
-}
-
-async function adminSearch() {
-    const input = document.getElementById('adminSearchInput');
+async function adminSearchUser() {
+    const input = document.getElementById('adminUserSearchInput');
     const term = input?.value.trim();
     const resultDiv = document.getElementById('adminUserResult');
     
@@ -1549,84 +2189,75 @@ async function adminSearch() {
     
     let userId = term;
     
+    // البحث بواسطة عنوان المحفظة
     if (term.startsWith('0x') || term.startsWith('G') || term.startsWith('T')) {
-        try {
-            const res = await apiCall('/admin/search-by-wallet', 'POST', { walletAddress: term });
-            if (res.success && res.user) {
-                userId = res.user.userId;
-            } else {
-                resultDiv.innerHTML = '<p style="color:var(--troll-red); text-align:center;">Wallet not found</p>';
-                return;
-            }
-        } catch (e) {
-            resultDiv.innerHTML = '<p style="color:var(--troll-red); text-align:center;">Error searching wallet</p>';
+        const res = await apiCall('/admin/search-by-wallet', 'POST', { walletAddress: term }, true);
+        if (res.success && res.user) {
+            userId = res.user.userId;
+        } else {
+            resultDiv.innerHTML = '<p style="color:var(--troll-red);text-align:center;">Wallet not found</p>';
             return;
         }
     }
     
-    try {
-        const res = await apiCall('/users/' + userId, 'GET');
+    // جلب بيانات المستخدم
+    const res = await apiCall('/users/' + userId, 'GET');
+    
+    if (res.success && res.data) {
+        const user = res.data;
+        currentManageUserId = user.userId;
         
-        if (res.success && res.data) {
-            const user = res.data;
-            currentManageUserId = user.userId;
-            
-            let balancesHtml = '';
-            if (user.balances) {
-                balancesHtml = Object.entries(user.balances)
-                    .filter(([_, v]) => v > 0)
-                    .map(([c, v]) => `
-                        <div class="admin-balance-item">
-                            <div class="currency">${c}</div>
-                            <div class="amount">${v.toLocaleString()}</div>
-                        </div>
-                    `).join('');
-            }
-            
-            if (!balancesHtml) {
-                balancesHtml = '<p style="color:var(--text-muted); grid-column:1/-1; text-align:center;">No balances</p>';
-            }
-            
-            resultDiv.innerHTML = `
-                <div class="admin-user-card">
-                    <div class="admin-user-header">
-                        <div class="admin-user-avatar">${user.avatar || '🧌'}</div>
-                        <div class="admin-user-info">
-                            <h4>${user.userName}</h4>
-                            <p>ID: ${user.userId}</p>
-                            <p>📊 Invites: ${user.inviteCount || 0} | 💰 Earned: ${(user.referralEarnings || 0).toLocaleString()} TROLL</p>
-                            <p>📅 Joined: ${user.createdAt ? new Date(user.createdAt.seconds * 1000).toLocaleDateString() : 'Unknown'}</p>
-                            ${user.premium ? '<p style="color:#FFD700;">👑 Premium User</p>' : ''}
-                            ${user.withdrawBlocked ? '<p style="color:var(--troll-red);">🚫 Withdrawals Blocked</p>' : ''}
-                        </div>
+        let balancesHtml = '';
+        if (user.balances) {
+            balancesHtml = Object.entries(user.balances)
+                .filter(([_, v]) => v > 0)
+                .map(([c, v]) => `
+                    <div class="admin-balance-item">
+                        <div class="currency">${c}</div>
+                        <div class="amount">${v.toLocaleString()}</div>
                     </div>
-                    
-                    <h4 style="margin:15px 0 10px;">💰 Balances</h4>
-                    <div class="admin-balance-grid">
-                        ${balancesHtml}
-                    </div>
-                    
-                    <div class="admin-actions" style="margin-top:15px;">
-                        <button class="admin-action-btn add" onclick="adminAddBalance('${user.userId}')">
-                            ➕ ${t('admin.addBalance')}
-                        </button>
-                        <button class="admin-action-btn remove" onclick="adminRemoveBalance('${user.userId}')">
-                            ➖ ${t('admin.removeBalance')}
-                        </button>
+                `).join('');
+        }
+        
+        resultDiv.innerHTML = `
+            <div class="admin-user-card">
+                <div class="admin-user-header">
+                    <div class="admin-user-avatar">${user.avatar || '🧌'}</div>
+                    <div class="admin-user-info">
+                        <h4>${user.userName}</h4>
+                        <p>ID: ${user.userId}</p>
+                        <p>📊 Invites: ${user.inviteCount || 0} | 💰 Earned: ${(user.referralEarnings || 0).toLocaleString()} TROLL</p>
+                        ${user.premium ? '<p style="color:#FFD700;">👑 Premium User</p>' : ''}
+                        ${user.withdrawBlocked ? '<p style="color:var(--troll-red);">🚫 Withdrawals Blocked</p>' : ''}
                     </div>
                 </div>
-            `;
-        } else {
-            resultDiv.innerHTML = '<p style="color:var(--troll-red); text-align:center;">User not found</p>';
-        }
-    } catch (e) {
-        resultDiv.innerHTML = '<p style="color:var(--troll-red); text-align:center;">Error loading user</p>';
+                
+                <h4 style="margin:15px 0 10px;">💰 Balances</h4>
+                <div class="admin-balance-grid">
+                    ${balancesHtml || '<p style="color:var(--text-muted);grid-column:1/-1;text-align:center;">No balances</p>'}
+                </div>
+                
+                <div class="admin-actions" style="margin-top:15px;">
+                    <button class="admin-action-btn add" onclick="showAddBalanceModal()">
+                        ➕ ${t('admin.addBalance')}
+                    </button>
+                    <button class="admin-action-btn remove" onclick="showRemoveBalanceModal()">
+                        ➖ ${t('admin.removeBalance')}
+                    </button>
+                    ${!user.withdrawBlocked ? `
+                    <button class="admin-action-btn block" onclick="blockUserWithdrawals()">
+                        🔒 ${t('admin.blockUser')}
+                    </button>` : ''}
+                </div>
+            </div>
+        `;
+    } else {
+        resultDiv.innerHTML = '<p style="color:var(--troll-red);text-align:center;">User not found</p>';
     }
 }
 
-async function adminAddBalance(userId) {
-    const targetId = userId || currentManageUserId;
-    if (!targetId) { showToast('No user selected', 'error'); return; }
+function showAddBalanceModal() {
+    if (!currentManageUserId) { showToast('No user selected', 'error'); return; }
     
     const currency = prompt('Currency (TROLL, SOL, BNB, ETH, TRON):', 'TROLL');
     if (!currency) return;
@@ -1634,34 +2265,11 @@ async function adminAddBalance(userId) {
     const amount = parseFloat(prompt(`Amount to ADD (${currency}):`, '0'));
     if (isNaN(amount) || amount <= 0) { showToast('Invalid amount', 'error'); return; }
     
-    showToast('Processing...', 'info');
-    
-    try {
-        const res = await apiCall('/admin/add-balance', 'POST', {
-            userId: targetId,
-            currency: currency.toUpperCase(),
-            amount: amount
-        });
-        
-        if (res.success) {
-            showToast(`✅ Added ${amount} ${currency.toUpperCase()}!`, 'success');
-            if (targetId === currentUserId) {
-                currentUser.balances[currency.toUpperCase()] = (currentUser.balances[currency.toUpperCase()] || 0) + amount;
-                saveUserData();
-                updateUI();
-            }
-            adminSearch();
-        } else {
-            showToast('Failed: ' + (res.error || 'Unknown error'), 'error');
-        }
-    } catch (e) {
-        showToast('Error: ' + e.message, 'error');
-    }
+    adminAddBalance(currentManageUserId, currency.toUpperCase(), amount);
 }
 
-async function adminRemoveBalance(userId) {
-    const targetId = userId || currentManageUserId;
-    if (!targetId) { showToast('No user selected', 'error'); return; }
+function showRemoveBalanceModal() {
+    if (!currentManageUserId) { showToast('No user selected', 'error'); return; }
     
     const currency = prompt('Currency (TROLL, SOL, BNB, ETH, TRON):', 'TROLL');
     if (!currency) return;
@@ -1669,74 +2277,177 @@ async function adminRemoveBalance(userId) {
     const amount = parseFloat(prompt(`Amount to REMOVE (${currency}):`, '0'));
     if (isNaN(amount) || amount <= 0) { showToast('Invalid amount', 'error'); return; }
     
-    const user = await apiCall('/users/' + targetId, 'GET');
-    if (user.success && user.data) {
-        const currentBalance = user.data.balances?.[currency.toUpperCase()] || 0;
-        if (amount > currentBalance) {
-            showToast(`User only has ${currentBalance} ${currency.toUpperCase()}`, 'error');
-            return;
-        }
-    }
+    adminRemoveBalance(currentManageUserId, currency.toUpperCase(), amount);
+}
+
+async function adminAddBalance(userId, currency, amount) {
+    const res = await apiCall('/admin/add-balance', 'POST', { userId, currency, amount }, true);
     
-    showToast('Processing...', 'info');
-    
-    try {
-        const res = await apiCall('/admin/remove-balance', 'POST', {
-            userId: targetId,
-            currency: currency.toUpperCase(),
-            amount: amount
-        });
-        
-        if (res.success) {
-            showToast(`✅ Removed ${amount} ${currency.toUpperCase()}!`, 'success');
-            if (targetId === currentUserId) {
-                currentUser.balances[currency.toUpperCase()] = (currentUser.balances[currency.toUpperCase()] || 0) - amount;
-                saveUserData();
-                updateUI();
-            }
-            adminSearch();
-        } else {
-            showToast('Failed: ' + (res.error || 'Unknown error'), 'error');
-        }
-    } catch (e) {
-        showToast('Error: ' + e.message, 'error');
+    if (res.success) {
+        showToast(`Added ${amount} ${currency}!`, 'success');
+        adminSearchUser();
+    } else {
+        showToast(res.error || 'Failed', 'error');
     }
 }
 
+async function adminRemoveBalance(userId, currency, amount) {
+    const res = await apiCall('/admin/remove-balance', 'POST', { userId, currency, amount }, true);
+    
+    if (res.success) {
+        showToast(`Removed ${amount} ${currency}!`, 'success');
+        adminSearchUser();
+    } else {
+        showToast(res.error || 'Failed', 'error');
+    }
+}
+
+async function blockUserWithdrawals() {
+    if (!currentManageUserId) return;
+    
+    if (!confirm('⚠️ PERMANENT ACTION: Block this user from withdrawals? This CANNOT be undone!')) return;
+    
+    const res = await apiCall('/admin/block-user', 'POST', { userId: currentManageUserId }, true);
+    
+    if (res.success) {
+        showToast('User permanently blocked from withdrawals', 'success');
+        adminSearchUser();
+    } else {
+        showToast('Failed to block user', 'error');
+    }
+}
+
+// ====== BROADCAST ======
+function showBroadcastInterface() {
+    const container = document.getElementById('adminListContainer');
+    
+    container.innerHTML = `
+        <div class="broadcast-container">
+            <div class="broadcast-target-selector">
+                <button class="broadcast-target-btn active" onclick="selectBroadcastTarget('all')">${t('admin.targetAll')}</button>
+                <button class="broadcast-target-btn" onclick="selectBroadcastTarget('bot')">${t('admin.targetBot')}</button>
+                <button class="broadcast-target-btn" onclick="selectBroadcastTarget('app')">${t('admin.targetApp')}</button>
+            </div>
+            <textarea id="broadcastMessageInput" placeholder="${t('admin.broadcastMessage')}" rows="5"></textarea>
+            <button class="admin-action-btn broadcast" onclick="sendBroadcast()">
+                <i class="fa-regular fa-bullhorn"></i> ${t('admin.send')}
+            </button>
+            <div id="broadcastResult"></div>
+        </div>
+    `;
+}
+
+function selectBroadcastTarget(target) {
+    selectedBroadcastTarget = target;
+    document.querySelectorAll('.broadcast-target-btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+}
+
 async function sendBroadcast() {
-    const message = document.getElementById('broadcastMessage')?.value.trim();
+    const message = document.getElementById('broadcastMessageInput')?.value.trim();
     if (!message) { showToast('Enter a message', 'error'); return; }
     
     const resultDiv = document.getElementById('broadcastResult');
-    resultDiv.innerHTML = '<div class="loading-spinner"><i class="fa-regular fa-spinner fa-spin"></i> Sending broadcast...</div>';
+    resultDiv.innerHTML = '<div class="loading-spinner"><i class="fa-regular fa-spinner fa-spin"></i> Sending...</div>';
+    
+    const res = await apiCall('/admin/broadcast', 'POST', {
+        message: message,
+        target: selectedBroadcastTarget
+    }, true);
+    
+    if (res.success) {
+        resultDiv.innerHTML = `<p style="color:var(--troll-green);">✅ Broadcast sent to ${res.notifiedCount} users!</p>`;
+        document.getElementById('broadcastMessageInput').value = '';
+        showToast('Broadcast sent!', 'success');
+    } else {
+        resultDiv.innerHTML = '<p style="color:var(--troll-red);">Failed to send broadcast</p>';
+    }
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text);
+    showToast(t('toast.copied'), 'success');
+}
+
+// ============================================================================
+// SECTION 27: PREMIUM FUNCTIONS
+// ============================================================================
+
+function showPremiumModal() { 
+    showModal('premiumModal'); 
+}
+
+async function buyPremium() {
+    if (!tonConnected) { 
+        showToast('Connect TON wallet first', 'error'); 
+        return; 
+    }
+    
+    showToast('Processing payment...', 'info');
     
     try {
-        const res = await apiCall('/admin/broadcast-app', 'POST', {
-            message: message,
-            target: selectedBroadcastTarget
-        });
+        const tx = { 
+            validUntil: Math.floor(Date.now() / 1000) + 300, 
+            messages: [{ address: appConfig.ownerWallet, amount: '5000000000' }] 
+        };
+        const result = await tonConnectUI.sendTransaction(tx);
         
-        if (res.success) {
-            resultDiv.innerHTML = `
-                <div class="broadcast-stats">
-                    <div class="broadcast-stat">
-                        <div class="number">✅</div>
-                        <div class="label">Broadcast Sent Successfully</div>
-                    </div>
-                </div>
-            `;
-            showToast('📢 Broadcast sent!', 'success');
-            document.getElementById('broadcastMessage').value = '';
-        } else {
-            resultDiv.innerHTML = '<p style="color:var(--troll-red);">Failed to send broadcast</p>';
+        if (result.boc) {
+            await apiCall('/buy-premium', 'POST', { userId: currentUserId, txHash: result.boc });
+            currentUser.premium = true;
+            currentUser.withdrawalUnlocked = true;
+            await saveUserData();
+            updateUI();
+            closeModal('premiumModal');
+            showToast(t('premium.unlocked'), 'success');
+            celebrateUnlock();
         }
-    } catch (e) {
-        resultDiv.innerHTML = '<p style="color:var(--troll-red);">Error sending broadcast</p>';
+    } catch (e) { 
+        showToast('Payment failed', 'error'); 
     }
 }
 
 // ============================================================================
-// SECTION 27: NAVIGATION
+// SECTION 28: TON CONNECT
+// ============================================================================
+
+async function initTONConnect() {
+    if (typeof TON_CONNECT_UI === 'undefined') return;
+    try {
+        tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+            manifestUrl: location.origin + '/tonconnect-manifest.json',
+            buttonRootId: 'tonConnectButton'
+        });
+        const restored = await tonConnectUI.connectionRestored;
+        if (restored && tonConnectUI.wallet) {
+            tonConnected = true;
+            tonWalletAddress = tonConnectUI.wallet.account.address;
+            updateSettingsUI();
+        }
+    } catch (e) { console.error('TON init error:', e); }
+}
+
+async function connectTONWallet() {
+    if (!tonConnectUI) return;
+    try {
+        await tonConnectUI.openModal();
+        const interval = setInterval(() => {
+            if (tonConnectUI.wallet) {
+                clearInterval(interval);
+                tonConnected = true;
+                tonWalletAddress = tonConnectUI.wallet.account.address;
+                currentUser.tonWallet = tonWalletAddress;
+                saveUserData();
+                updateSettingsUI();
+                showToast('TON Connected!', 'success');
+            }
+        }, 500);
+        setTimeout(() => clearInterval(interval), 30000);
+    } catch (e) { showToast('Connection failed', 'error'); }
+}
+
+// ============================================================================
+// SECTION 29: NAVIGATION
 // ============================================================================
 
 function showWallet() {
@@ -1771,67 +2482,7 @@ function showSettings() {
 }
 
 // ============================================================================
-// SECTION 28: TON CONNECT & PREMIUM
-// ============================================================================
-
-async function initTONConnect() {
-    if (typeof TON_CONNECT_UI === 'undefined') return;
-    try {
-        tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
-            manifestUrl: location.origin + '/tonconnect-manifest.json',
-            buttonRootId: 'tonConnectButton'
-        });
-        const restored = await tonConnectUI.connectionRestored;
-        if (restored && tonConnectUI.wallet) {
-            tonConnected = true;
-            tonWalletAddress = tonConnectUI.wallet.account.address;
-            updateSettingsUI();
-        }
-    } catch (e) { console.error('TON init error:', e); }
-}
-
-async function connectTONWallet() {
-    if (!tonConnectUI) return;
-    try {
-        await tonConnectUI.openModal();
-        const interval = setInterval(() => {
-            if (tonConnectUI.wallet) {
-                clearInterval(interval);
-                tonConnected = true;
-                tonWalletAddress = tonConnectUI.wallet.account.address;
-                currentUser.tonWallet = tonWalletAddress;
-                saveUserData();
-                updateSettingsUI();
-                showToast('✅ TON Connected!', 'success');
-            }
-        }, 500);
-        setTimeout(() => clearInterval(interval), 30000);
-    } catch (e) { showToast('Connection failed', 'error'); }
-}
-
-function showPremiumModal() { showModal('premiumModal'); }
-
-async function buyPremium() {
-    if (!tonConnected) { showToast('Connect TON wallet first', 'error'); return; }
-    showToast('Processing payment...', 'info');
-    try {
-        const tx = { validUntil: Math.floor(Date.now() / 1000) + 300, messages: [{ address: appConfig.ownerWallet, amount: '5000000000' }] };
-        const result = await tonConnectUI.sendTransaction(tx);
-        if (result.boc) {
-            await apiCall('/buy-premium', 'POST', { userId: currentUserId, txHash: result.boc });
-            currentUser.premium = true;
-            currentUser.withdrawalUnlocked = true;
-            await saveUserData();
-            updateUI();
-            closeModal('premiumModal');
-            showToast('🎉 Premium Unlocked!', 'success');
-            celebrateUnlock();
-        }
-    } catch (e) { showToast('Payment failed', 'error'); }
-}
-
-// ============================================================================
-// SECTION 29: HELPERS
+// SECTION 30: HELPERS
 // ============================================================================
 
 function showAssetDetails(symbol) {
@@ -1861,9 +2512,6 @@ function toggleLanguage() {
     const langDisplay = document.getElementById('currentLangDisplay');
     if (langDisplay) langDisplay.textContent = currentLanguage === 'en' ? 'English' : 'العربية';
     
-    const themeToggle = document.getElementById('themeToggle');
-    if (themeToggle) themeToggle.checked = currentTheme === 'dark';
-    
     updateUI();
     if (currentPage === 'airdrop') { renderMissionsUI(); renderMilestones(); }
     if (currentPage === 'settings') updateSettingsUI();
@@ -1879,7 +2527,7 @@ function toggleTheme() {
 }
 
 function logout() {
-    if (confirm(t('settings.logout') + '?')) {
+    if (confirm(t('logout.confirm'))) {
         localStorage.clear();
         location.reload();
     }
@@ -1913,11 +2561,11 @@ function showToast(message, type = 'success') {
 }
 
 // ============================================================================
-// SECTION 30: INITIALIZATION
+// SECTION 31: INITIALIZATION
 // ============================================================================
 
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Troll Army - Legendary Complete v25.0 Final');
+    console.log('🚀 Troll Army - Professional Edition v26.0');
     
     document.documentElement.setAttribute('data-theme', currentTheme);
     if (currentLanguage === 'ar') {
@@ -1944,11 +2592,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     setInterval(fetchLivePrices, 300000);
     setInterval(updateMissionsProgress, 30000);
     
-    console.log('✅ Troll Army Legendary Complete - All Systems Ready!');
+    console.log('✅ Troll Army Professional Edition - Ready!');
 });
 
 // ============================================================================
-// SECTION 31: GLOBAL EXPORTS
+// SECTION 32: GLOBAL EXPORTS
 // ============================================================================
 
 window.showWallet = showWallet;
@@ -1959,13 +2607,13 @@ window.showWithdrawModal = showWithdrawModal;
 window.showPremiumModal = showPremiumModal;
 window.showHistory = showHistory;
 window.showNotifications = showNotifications;
-window.showAdminPanel = showAdminPanel;
+window.showSolanaWalletModal = showSolanaWalletModal;
+window.submitSolanaWallet = submitSolanaWallet;
 window.closeModal = closeModal;
-window.closeAdminPanel = closeAdminPanel;
 window.copyInviteLink = copyInviteLink;
 window.shareInviteLink = shareInviteLink;
 window.copyDepositAddress = copyDepositAddress;
-window.submitDeposit = submitDeposit;
+window.submitDepositRequest = submitDepositRequest;
 window.submitWithdraw = submitWithdraw;
 window.claimMilestone = claimMilestone;
 window.buyPremium = buyPremium;
@@ -1978,15 +2626,29 @@ window.connectTONWallet = connectTONWallet;
 window.showComingSoon = showComingSoon;
 window.showAssetDetails = showAssetDetails;
 window.showCryptoDetails = showCryptoDetails;
-window.showSolanaWalletModal = showSolanaWalletModal;
 window.filterHistory = filterHistory;
 window.markNotificationRead = markNotificationRead;
 window.clearReadNotifications = clearReadNotifications;
 window.clearAllNotifications = clearAllNotifications;
-window.adminSearch = adminSearch;
+
+// Admin exports
+window.verifyAdminPassword = verifyAdminPassword;
+window.showAdminPanel = showAdminPanel;
+window.closeAdminPanel = closeAdminPanel;
+window.showAdminSection = showAdminSection;
+window.refreshAdminSection = refreshAdminSection;
+window.approveDeposit = approveDeposit;
+window.rejectDeposit = rejectDeposit;
+window.approveWithdrawal = approveWithdrawal;
+window.rejectWithdrawal = rejectWithdrawal;
+window.adminSearchUser = adminSearchUser;
+window.showAddBalanceModal = showAddBalanceModal;
+window.showRemoveBalanceModal = showRemoveBalanceModal;
 window.adminAddBalance = adminAddBalance;
 window.adminRemoveBalance = adminRemoveBalance;
-window.sendBroadcast = sendBroadcast;
+window.blockUserWithdrawals = blockUserWithdrawals;
 window.selectBroadcastTarget = selectBroadcastTarget;
+window.sendBroadcast = sendBroadcast;
+window.copyToClipboard = copyToClipboard;
 
-console.log('✅✅✅ TROLL ARMY - LEGENDARY COMPLETE v25.0 FINAL READY! ✅✅✅');
+console.log('✅✅✅ TROLL ARMY - PROFESSIONAL EDITION v26.0 READY! ✅✅✅');
