@@ -159,7 +159,7 @@ function isAdmin(req) {
     return isValid;
 }
 
-// ====== COINPAYMENTS - الحل النهائي الصحيح باستخدام URLSearchParams ======
+// ====== COINPAYMENTS - تم تصحيح أسماء العملات ======
 async function generateCoinPaymentsAddress(userId, currency) {
     if (!COINPAYMENTS_PUBLIC || !COINPAYMENTS_PRIVATE) {
         console.log('⚠️ CoinPayments keys not configured');
@@ -167,11 +167,11 @@ async function generateCoinPaymentsAddress(userId, currency) {
     }
     
     try {
-        // تحويل العملة إلى الصيغة التي يفهمها CoinPayments
-        const cpCurrency = currency === 'BNB' ? 'BNB' : 
-                          currency === 'SOL' ? 'SOL2' :  // SOL2 هو الرمز الصحيح لـ Solana في CoinPayments
-                          currency === 'ETH' ? 'ETH' : 
-                          currency === 'TRX' ? 'TRX' : currency;
+        // 🔥 تحويل العملة إلى الصيغة الصحيحة التي يفهمها CoinPayments
+        const cpCurrency = currency === 'BNB' ? 'BNB.BSC' :    // BNB على شبكة BSC
+                          currency === 'SOL' ? 'SOL' :        // Solana Native
+                          currency === 'ETH' ? 'ETH' :        // Ethereum
+                          currency === 'TRX' ? 'TRX' : currency; // TRON
         
         console.log(`🔄 Generating callback address for ${userId} with currency ${cpCurrency}`);
         
@@ -782,7 +782,7 @@ app.post('/api/buy-premium', async (req, res) => {
     }
 });
 
-// ====== DEPOSIT API - الحل النهائي ======
+// ====== DEPOSIT API ======
 app.post('/api/deposit/generate', async (req, res) => {
     console.log('📥 Deposit generate called:', req.body);
     try {
@@ -822,7 +822,7 @@ app.post('/api/deposit/generate', async (req, res) => {
         
         console.log('🆕 Calling CoinPayments for', userId, currency);
         
-        // استدعاء CoinPayments API مع الحل النهائي
+        // استدعاء CoinPayments API
         const address = await generateCoinPaymentsAddress(userId, currency);
         
         if (!address) {
@@ -1433,7 +1433,7 @@ app.get('/', (req, res) => {
 // 🚀 Start Server
 // ============================================================
 app.listen(PORT, () => {
-    console.log(`\n🧌 Troll Army Server - PROFESSIONAL EDITION v28.0 (URLSearchParams FIX)`);
+    console.log(`\n🧌 Troll Army Server - PROFESSIONAL EDITION v29.0 (COIN NAMES FIXED)`);
     console.log(`📍 Port: ${PORT}`);
     console.log(`🔥 Firebase: ${db ? '✅ Connected' : '❌ Disconnected'}`);
     console.log(`👑 Admin ID: ${ADMIN_ID || '❌ Not configured'}`);
@@ -1442,5 +1442,5 @@ app.listen(PORT, () => {
     console.log(`🌐 App URL: ${APP_URL}`);
     console.log(`\n✅ Server ready for production!\n`);
     console.log(`📢 Broadcast system: Works via notifications (not just bot messages)`);
-    console.log(`💳 Deposit system: Uses get_callback_address with URLSearchParams (NO trailing &)`);
+    console.log(`💳 Deposit system: BNB=BNB.BSC, SOL=SOL, ETH=ETH, TRX=TRX`);
 });
