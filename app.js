@@ -1,6 +1,6 @@
 // ============================================================================
-// TROLL ARMY - LEGENDARY VERSION 25.0
-// All Features + Enhancements + RTL + Notifications + Admin Panel
+// TROLL ARMY - LEGENDARY COMPLETE VERSION 25.0 FINAL
+// All Features + CoinPayments + Admin Panel + Notifications + RTL + Theme
 // ============================================================================
 
 // ============================================================================
@@ -8,6 +8,11 @@
 // ============================================================================
 
 const tg = window.Telegram?.WebApp;
+if (tg) {
+    tg.ready();
+    tg.expand();
+    console.log("✅ Telegram WebApp initialized");
+}
 
 // ============================================================================
 // SECTION 2: GLOBAL STATE
@@ -26,6 +31,8 @@ let cryptoPrices = {};
 let currentLanguage = localStorage.getItem('language') || 'en';
 let currentTheme = localStorage.getItem('theme') || 'dark';
 let unreadNotifications = 0;
+let currentManageUserId = null;
+let selectedBroadcastTarget = 'all';
 
 // ============================================================================
 // SECTION 3: CONFIGURATION
@@ -159,13 +166,13 @@ const translations = {
         'mission.waitDays': 'Reveals in {days} days',
         'premium.unlocked': 'Premium Unlocked!',
         'withdrawal.unlocked': 'Withdrawal Unlocked!',
-        'deposit.title': 'Deposit TROLL',
+        'deposit.title': 'Deposit Crypto',
         'deposit.address': 'Your Deposit Address',
         'deposit.network': 'Network',
         'deposit.minAmount': 'Minimum Deposit',
-        'deposit.warning': 'Only send TROLL tokens to this address. Other tokens will be lost.',
+        'deposit.warning': 'Only send the correct token to this address.',
         'withdraw.title': 'Withdraw TROLL',
-        'withdraw.amount': 'Amount',
+        'withdraw.amount': 'Amount (min 10,000 TROLL)',
         'withdraw.address': 'Solana Wallet Address',
         'withdraw.fee': 'Network Fee',
         'withdraw.receive': 'You will receive',
@@ -177,20 +184,18 @@ const translations = {
         'notifications.title': 'Notifications',
         'notifications.clearRead': 'Clear Read',
         'notifications.clearAll': 'Clear All',
+        'notifications.empty': 'No notifications',
         'settings.language': 'Language',
         'settings.theme': 'Theme',
         'settings.logout': 'Logout',
         'admin.panel': 'Admin Panel',
-        'admin.search': 'Search by User ID or Wallet Address',
+        'admin.search': 'Search by User ID or Wallet',
         'admin.addBalance': 'Add Balance',
         'admin.removeBalance': 'Remove Balance',
         'admin.broadcast': 'Broadcast',
-        'admin.broadcastTarget': 'Send to',
         'admin.targetAll': 'All Users',
         'admin.targetBot': 'Bot Only',
-        'admin.targetApp': 'App Only',
-        'admin.sent': 'Sent',
-        'admin.failed': 'Failed'
+        'admin.targetApp': 'App Only'
     },
     ar: {
         'nav.vault': 'الخزينة',
@@ -209,13 +214,13 @@ const translations = {
         'mission.waitDays': 'ستكشف بعد {days} يوم',
         'premium.unlocked': 'تم تفعيل البريميوم!',
         'withdrawal.unlocked': 'تم فتح السحب!',
-        'deposit.title': 'إيداع TROLL',
+        'deposit.title': 'إيداع العملات',
         'deposit.address': 'عنوان الإيداع',
         'deposit.network': 'الشبكة',
         'deposit.minAmount': 'الحد الأدنى',
-        'deposit.warning': 'أرسل فقط عملات TROLL إلى هذا العنوان. العملات الأخرى ستفقد.',
+        'deposit.warning': 'أرسل فقط العملة الصحيحة إلى هذا العنوان.',
         'withdraw.title': 'سحب TROLL',
-        'withdraw.amount': 'المبلغ',
+        'withdraw.amount': 'المبلغ (الحد الأدنى 10,000 TROLL)',
         'withdraw.address': 'عنوان محفظة Solana',
         'withdraw.fee': 'رسوم الشبكة',
         'withdraw.receive': 'سوف تستلم',
@@ -227,20 +232,18 @@ const translations = {
         'notifications.title': 'الإشعارات',
         'notifications.clearRead': 'حذف المقروء',
         'notifications.clearAll': 'حذف الكل',
+        'notifications.empty': 'لا توجد إشعارات',
         'settings.language': 'اللغة',
         'settings.theme': 'المظهر',
         'settings.logout': 'تسجيل الخروج',
         'admin.panel': 'لوحة المشرف',
-        'admin.search': 'بحث بمعرف المستخدم أو عنوان المحفظة',
+        'admin.search': 'بحث بمعرف المستخدم أو المحفظة',
         'admin.addBalance': 'إضافة رصيد',
         'admin.removeBalance': 'خصم رصيد',
         'admin.broadcast': 'بث رسالة',
-        'admin.broadcastTarget': 'إرسال إلى',
         'admin.targetAll': 'جميع المستخدمين',
         'admin.targetBot': 'البوت فقط',
-        'admin.targetApp': 'التطبيق فقط',
-        'admin.sent': 'تم الإرسال',
-        'admin.failed': 'فشل'
+        'admin.targetApp': 'التطبيق فقط'
     }
 };
 
@@ -512,7 +515,7 @@ async function processReferral(refCode) {
             
             addNotification({
                 type: 'referral',
-                title: 'New Referral!',
+                title: '🎉 New Referral!',
                 message: `+${CONFIG.REFERRAL_BONUS} TROLL from referral!`
             });
             
@@ -618,10 +621,10 @@ function updateUI() {
     const avatarEl = document.getElementById('userAvatar');
     if (avatarEl) {
         if (currentUser.premium) {
-            avatarEl.innerHTML = getTrollFaceSVG();
+            avatarEl.innerHTML = getPremiumAvatarSVG();
             avatarEl.classList.add('avatar-premium');
         } else {
-            avatarEl.textContent = currentUser.avatar || '🧌';
+            avatarEl.innerHTML = getDefaultAvatarSVG();
         }
     }
     
@@ -661,21 +664,36 @@ function updateTotalBalance() {
     if (usdEl) usdEl.textContent = (trollBalance * trollPrice).toFixed(2);
 }
 
-function getTrollFaceSVG() {
-    return '<svg viewBox="0 0 100 100" width="40" height="40">' +
-        '<defs><radialGradient id="g"><stop offset="0%" stop-color="#FFD700"/><stop offset="100%" stop-color="#DAA520"/></radialGradient></defs>' +
-        '<circle cx="50" cy="50" r="48" fill="url(#g)"/>' +
-        '<path d="M28 68 Q50 88,78 58 Q82 52,75 48 Q58 70,28 62Z" fill="#2C1810"/>' +
-        '<ellipse cx="35" cy="40" rx="8" ry="10" fill="#FFF"/><circle cx="38" cy="40" r="3"/>' +
-        '<ellipse cx="65" cy="40" rx="8" ry="10" fill="#FFF"/><circle cx="62" cy="42" r="3"/>' +
-        '</svg>';
+function getDefaultAvatarSVG() {
+    return `<svg viewBox="0 0 100 100" width="40" height="40" xmlns="http://www.w3.org/2000/svg">
+        <defs><radialGradient id="avGrad" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#FFE44D"/><stop offset="100%" stop-color="#FFD700"/></radialGradient></defs>
+        <circle cx="50" cy="50" r="48" fill="url(#avGrad)" stroke="#E6C200" stroke-width="2"/>
+        <path d="M 28 65 Q 45 85, 70 60 Q 78 50, 72 45 Q 55 65, 28 58 Z" fill="#2C1810"/>
+        <ellipse cx="35" cy="40" rx="9" ry="11" fill="white" stroke="#2C1810" stroke-width="1.5"/><circle cx="38" cy="40" r="4" fill="#2C1810"/>
+        <ellipse cx="65" cy="42" rx="9" ry="8" fill="white" stroke="#2C1810" stroke-width="1.5"/><circle cx="62" cy="43" r="3.5" fill="#2C1810"/>
+        <path d="M 24 28 Q 35 20, 46 28" stroke="#2C1810" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M 54 30 Q 65 24, 76 30" stroke="#2C1810" stroke-width="3" fill="none" stroke-linecap="round"/>
+    </svg>`;
+}
+
+function getPremiumAvatarSVG() {
+    return `<svg viewBox="0 0 100 100" width="40" height="40" xmlns="http://www.w3.org/2000/svg">
+        <defs><radialGradient id="premGrad" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#FFE44D"/><stop offset="100%" stop-color="#FFD700"/></radialGradient></defs>
+        <circle cx="50" cy="50" r="48" fill="url(#premGrad)" stroke="#FFD700" stroke-width="3"/>
+        <path d="M 28 65 Q 45 85, 70 60 Q 78 50, 72 45 Q 55 65, 28 58 Z" fill="#2C1810"/>
+        <ellipse cx="35" cy="40" rx="9" ry="11" fill="white" stroke="#2C1810" stroke-width="1.5"/><circle cx="38" cy="40" r="4" fill="#FF0000"/>
+        <ellipse cx="65" cy="42" rx="9" ry="8" fill="white" stroke="#2C1810" stroke-width="1.5"/><circle cx="62" cy="43" r="3.5" fill="#FF0000"/>
+        <path d="M 24 28 Q 35 20, 46 28" stroke="#2C1810" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M 54 30 Q 65 24, 76 30" stroke="#2C1810" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M 30 18 L 38 8 L 50 16 L 62 8 L 70 18 Z" fill="#FFD700" stroke="#DAA520" stroke-width="1.5"/>
+        <circle cx="40" cy="12" r="2.5" fill="#FF0000"/><circle cx="50" cy="18" r="2.5" fill="#00FF00"/><circle cx="60" cy="12" r="2.5" fill="#0000FF"/>
+    </svg>`;
 }
 
 function updateSettingsUI() {
     const avatarEl = document.getElementById('settingsAvatar');
     if (avatarEl) {
-        if (currentUser.premium) avatarEl.innerHTML = getTrollFaceSVG();
-        else avatarEl.textContent = currentUser.avatar || '🧌';
+        avatarEl.innerHTML = currentUser.premium ? getPremiumAvatarSVG() : getDefaultAvatarSVG();
     }
     
     document.getElementById('settingsUserName').textContent = currentUser.userName || 'User';
@@ -1066,7 +1084,7 @@ async function claimMilestone(referrals) {
     
     addNotification({
         type: 'milestone',
-        title: 'Milestone Claimed!',
+        title: '🏆 Milestone Claimed!',
         message: `+${milestone.reward.toLocaleString()} TROLL claimed!`
     });
     
@@ -1187,7 +1205,7 @@ function clearReadNotifications() {
 
 function clearAllNotifications() {
     if (!currentUser.notifications || currentUser.notifications.length === 0) return;
-    if (confirm('Delete all notifications?')) {
+    if (confirm(t('notifications.clearAll') + '?')) {
         currentUser.notifications = [];
         unreadNotifications = 0;
         updateNotificationBadge();
@@ -1218,7 +1236,7 @@ async function loadBroadcasts() {
                 
                 db.collection('broadcasts').doc(doc.id).update({
                     readBy: firebase.firestore.FieldValue.arrayUnion(currentUserId)
-                });
+                }).catch(() => {});
             }
         });
     } catch (e) { console.error('Load broadcasts error:', e); }
@@ -1255,7 +1273,7 @@ function showDepositModal() {
             document.getElementById('depositMinAmount').textContent = data.minDeposit || '10,000';
             
             const qrDiv = document.getElementById('depositQR');
-            if (qrDiv) {
+            if (qrDiv && typeof QRCode !== 'undefined') {
                 qrDiv.innerHTML = '';
                 new QRCode(qrDiv, {
                     text: data.address,
@@ -1266,13 +1284,36 @@ function showDepositModal() {
                     correctLevel: QRCode.CorrectLevel.H
                 });
             }
+        } else {
+            showToast('Failed to generate address', 'error');
         }
     });
 }
 
+function updateWithdrawInfo() {
+    const balance = currentUser.balances.TROLL || 0;
+    const fee = 0; // No fee for TROLL withdrawals
+    const amountInput = document.getElementById('withdrawAmount');
+    const receiveEl = document.getElementById('withdrawReceiveAmount');
+    
+    if (amountInput) {
+        amountInput.placeholder = `Min 10,000 TROLL (Available: ${balance.toLocaleString()})`;
+    }
+    
+    const updateReceive = () => {
+        const amount = parseFloat(amountInput?.value) || 0;
+        if (receiveEl) receiveEl.textContent = (amount - fee).toLocaleString() + ' TROLL';
+    };
+    
+    if (amountInput) {
+        amountInput.removeEventListener('input', updateReceive);
+        amountInput.addEventListener('input', updateReceive);
+    }
+}
+
 function showWithdrawModal() {
     if (!currentUser.withdrawalUnlocked && !currentUser.premium) {
-        showToast('Complete missions to unlock withdrawal!', 'error');
+        showToast(t('withdrawal.unlocked') ? 'Complete missions to unlock withdrawal!' : 'Complete missions first!', 'error');
         return;
     }
     showModal('withdrawModal');
@@ -1290,9 +1331,13 @@ function showNotifications() {
 }
 
 function showAdminPanel() {
+    if (!appConfig || currentUserId !== appConfig.adminId) {
+        showToast('Access denied', 'error');
+        return;
+    }
     const panel = document.getElementById('adminPanel');
     if (panel) panel.classList.remove('hidden');
-    loadAdminData();
+    loadAdminPanel();
 }
 
 function closeAdminPanel() {
@@ -1309,26 +1354,79 @@ function copyDepositAddress() {
 }
 
 function submitDeposit() {
+    const txId = document.getElementById('txIdInput')?.value;
+    if (!txId) {
+        showToast('Please enter Transaction ID', 'error');
+        return;
+    }
     showToast('Deposit submitted for verification', 'success');
     closeModal('depositModal');
+    addNotification({
+        type: 'deposit',
+        title: '📥 Deposit Submitted',
+        message: 'Your deposit is being verified.'
+    });
 }
 
-function submitWithdraw() {
-    const amount = document.getElementById('withdrawAmount')?.value;
-    const address = document.getElementById('withdrawAddress')?.value;
-    if (!amount || amount < 10000) { showToast('Min 10,000 TROLL', 'error'); return; }
-    if (!address) { showToast('Enter wallet address', 'error'); return; }
+async function submitWithdraw() {
+    const amount = parseFloat(document.getElementById('withdrawAmount')?.value);
+    const address = document.getElementById('withdrawAddress')?.value.trim();
     
-    showToast('Withdrawal requested!', 'success');
-    closeModal('withdrawModal');
+    if (!amount || amount < 10000) {
+        showToast('Minimum withdrawal is 10,000 TROLL', 'error');
+        return;
+    }
     
-    addNotification({
-        type: 'withdraw',
-        title: 'Withdrawal Requested',
-        message: `Your withdrawal of ${amount} TROLL is being processed.`
-    });
+    if (amount > (currentUser.balances.TROLL || 0)) {
+        showToast('Insufficient balance', 'error');
+        return;
+    }
     
-    celebrateUnlock();
+    if (!address || address.length < 32) {
+        showToast('Enter a valid Solana wallet address', 'error');
+        return;
+    }
+    
+    showToast('Processing withdrawal...', 'info');
+    
+    try {
+        const res = await apiCall('/withdraw/request', 'POST', {
+            userId: currentUserId,
+            userName: currentUser.userName,
+            currency: 'TROLL',
+            amount: amount,
+            address: address
+        });
+        
+        if (res.success) {
+            currentUser.balances.TROLL -= amount;
+            if (!currentUser.transactions) currentUser.transactions = [];
+            currentUser.transactions.unshift({
+                type: 'withdraw',
+                amount: amount,
+                currency: 'TROLL',
+                status: 'pending',
+                timestamp: new Date().toISOString(),
+                address: address
+            });
+            
+            saveUserData();
+            updateUI();
+            
+            showToast('✅ Withdrawal requested!', 'success');
+            closeModal('withdrawModal');
+            
+            addNotification({
+                type: 'withdraw',
+                title: '💸 Withdrawal Requested',
+                message: `Your withdrawal of ${amount.toLocaleString()} TROLL is being processed.`
+            });
+        } else {
+            showToast('Withdrawal failed: ' + (res.error || 'Unknown error'), 'error');
+        }
+    } catch (e) {
+        showToast('Network error. Please try again.', 'error');
+    }
 }
 
 // ============================================================================
@@ -1362,10 +1460,12 @@ function renderHistory(filter = 'all') {
         
         if (tx.type === 'withdraw') {
             icon = 'fa-circle-up'; typeClass = 'withdraw'; typeText = 'Withdrawal'; amountClass = 'negative'; amountPrefix = '-';
-        } else if (tx.type === 'referral') {
+        } else if (tx.type === 'referral' || tx.type === 'referral_bonus') {
             icon = 'fa-users'; typeClass = 'referral'; typeText = 'Referral Bonus';
         } else if (tx.type === 'milestone') {
             icon = 'fa-trophy'; typeClass = 'referral'; typeText = 'Milestone';
+        } else if (tx.type === 'admin_add') {
+            icon = 'fa-crown'; typeClass = 'deposit'; typeText = 'Admin Credit';
         }
         
         let statusClass = 'completed';
@@ -1383,9 +1483,10 @@ function renderHistory(filter = 'all') {
                     <span class="history-status-badge ${statusClass}">${statusText}</span>
                 </div>
                 <div class="history-details">
-                    <span class="history-amount ${amountClass}">${amountPrefix}${tx.amount} ${tx.currency || 'TROLL'}</span>
+                    <span class="history-amount ${amountClass}">${amountPrefix}${tx.amount.toLocaleString()} ${tx.currency || 'TROLL'}</span>
                     <span class="history-date">${formattedDate}</span>
                 </div>
+                ${tx.address ? `<div class="history-address">${tx.address.slice(0, 8)}...${tx.address.slice(-8)}</div>` : ''}
             </div>
         `;
     });
@@ -1403,36 +1504,33 @@ function filterHistory(filter) {
 // SECTION 26: ADMIN PANEL FUNCTIONS
 // ============================================================================
 
-async function loadAdminData() {
+function loadAdminPanel() {
     const content = document.getElementById('adminContent');
     if (!content) return;
     
     content.innerHTML = `
         <div class="admin-search-container">
-            <input type="text" id="adminSearchInput" placeholder="${t('admin.search')}">
-            <button class="admin-action-btn add" onclick="adminSearch()" style="max-width:100px;">
-                <i class="fa-regular fa-search"></i>
+            <input type="text" id="adminSearchInput" placeholder="${t('admin.search')}" style="flex:1; padding:12px; border-radius:8px; background:var(--bg-primary); border:1px solid var(--border-light); color:var(--text-primary);">
+            <button class="admin-action-btn add" onclick="adminSearch()" style="max-width:100px; padding:12px;"><i class="fa-regular fa-search"></i></button>
+        </div>
+        
+        <div style="margin: 20px 0;">
+            <h4 style="margin-bottom:10px; color:var(--text-secondary);">${t('admin.broadcast')}</h4>
+            <div class="broadcast-target-selector">
+                <button class="broadcast-target-btn active" onclick="selectBroadcastTarget('all')">${t('admin.targetAll')}</button>
+                <button class="broadcast-target-btn" onclick="selectBroadcastTarget('bot')">${t('admin.targetBot')}</button>
+                <button class="broadcast-target-btn" onclick="selectBroadcastTarget('app')">${t('admin.targetApp')}</button>
+            </div>
+            <textarea id="broadcastMessage" placeholder="Enter your announcement message..." style="width:100%; padding:12px; border-radius:8px; background:var(--bg-primary); border:1px solid var(--border-light); color:var(--text-primary); margin:12px 0;" rows="4"></textarea>
+            <button class="admin-action-btn broadcast" onclick="sendBroadcast()" style="width:100%; padding:12px;">
+                <i class="fa-regular fa-bullhorn"></i> ${t('admin.broadcast')}
             </button>
         </div>
         
-        <div class="broadcast-target-selector">
-            <button class="broadcast-target-btn active" onclick="selectBroadcastTarget('all')">${t('admin.targetAll')}</button>
-            <button class="broadcast-target-btn" onclick="selectBroadcastTarget('bot')">${t('admin.targetBot')}</button>
-            <button class="broadcast-target-btn" onclick="selectBroadcastTarget('app')">${t('admin.targetApp')}</button>
-        </div>
-        
-        <textarea id="broadcastMessage" placeholder="Message to broadcast..." style="width:100%; padding:12px; border-radius:8px; background:var(--bg-primary); border:1px solid var(--border-light); color:var(--text-primary); margin-bottom:12px;" rows="3"></textarea>
-        
-        <button class="admin-action-btn broadcast" onclick="sendBroadcast()" style="width:100%; margin-bottom:20px;">
-            <i class="fa-regular fa-bullhorn"></i> ${t('admin.broadcast')}
-        </button>
-        
-        <div id="adminUserResult"></div>
+        <div id="adminUserResult" style="margin-top:20px;"></div>
         <div id="broadcastResult"></div>
     `;
 }
-
-let selectedBroadcastTarget = 'all';
 
 function selectBroadcastTarget(target) {
     selectedBroadcastTarget = target;
@@ -1442,7 +1540,7 @@ function selectBroadcastTarget(target) {
 
 async function adminSearch() {
     const input = document.getElementById('adminSearchInput');
-    const term = input.value.trim();
+    const term = input?.value.trim();
     const resultDiv = document.getElementById('adminUserResult');
     
     if (!term) { showToast('Enter User ID or Wallet Address', 'error'); return; }
@@ -1454,8 +1552,16 @@ async function adminSearch() {
     if (term.startsWith('0x') || term.startsWith('G') || term.startsWith('T')) {
         try {
             const res = await apiCall('/admin/search-by-wallet', 'POST', { walletAddress: term });
-            if (res.success) { userId = res.user.userId; }
-        } catch (e) {}
+            if (res.success && res.user) {
+                userId = res.user.userId;
+            } else {
+                resultDiv.innerHTML = '<p style="color:var(--troll-red); text-align:center;">Wallet not found</p>';
+                return;
+            }
+        } catch (e) {
+            resultDiv.innerHTML = '<p style="color:var(--troll-red); text-align:center;">Error searching wallet</p>';
+            return;
+        }
     }
     
     try {
@@ -1463,6 +1569,23 @@ async function adminSearch() {
         
         if (res.success && res.data) {
             const user = res.data;
+            currentManageUserId = user.userId;
+            
+            let balancesHtml = '';
+            if (user.balances) {
+                balancesHtml = Object.entries(user.balances)
+                    .filter(([_, v]) => v > 0)
+                    .map(([c, v]) => `
+                        <div class="admin-balance-item">
+                            <div class="currency">${c}</div>
+                            <div class="amount">${v.toLocaleString()}</div>
+                        </div>
+                    `).join('');
+            }
+            
+            if (!balancesHtml) {
+                balancesHtml = '<p style="color:var(--text-muted); grid-column:1/-1; text-align:center;">No balances</p>';
+            }
             
             resultDiv.innerHTML = `
                 <div class="admin-user-card">
@@ -1471,22 +1594,25 @@ async function adminSearch() {
                         <div class="admin-user-info">
                             <h4>${user.userName}</h4>
                             <p>ID: ${user.userId}</p>
-                            <p>Invites: ${user.inviteCount || 0}</p>
+                            <p>📊 Invites: ${user.inviteCount || 0} | 💰 Earned: ${(user.referralEarnings || 0).toLocaleString()} TROLL</p>
+                            <p>📅 Joined: ${user.createdAt ? new Date(user.createdAt.seconds * 1000).toLocaleDateString() : 'Unknown'}</p>
+                            ${user.premium ? '<p style="color:#FFD700;">👑 Premium User</p>' : ''}
+                            ${user.withdrawBlocked ? '<p style="color:var(--troll-red);">🚫 Withdrawals Blocked</p>' : ''}
                         </div>
                     </div>
                     
+                    <h4 style="margin:15px 0 10px;">💰 Balances</h4>
                     <div class="admin-balance-grid">
-                        ${Object.entries(user.balances || {}).filter(([_, v]) => v > 0).map(([c, v]) => `
-                            <div class="admin-balance-item">
-                                <div class="currency">${c}</div>
-                                <div class="amount">${v.toLocaleString()}</div>
-                            </div>
-                        `).join('')}
+                        ${balancesHtml}
                     </div>
                     
-                    <div class="admin-actions">
-                        <button class="admin-action-btn add" onclick="adminAddBalance('${user.userId}')">${t('admin.addBalance')}</button>
-                        <button class="admin-action-btn remove" onclick="adminRemoveBalance('${user.userId}')">${t('admin.removeBalance')}</button>
+                    <div class="admin-actions" style="margin-top:15px;">
+                        <button class="admin-action-btn add" onclick="adminAddBalance('${user.userId}')">
+                            ➕ ${t('admin.addBalance')}
+                        </button>
+                        <button class="admin-action-btn remove" onclick="adminRemoveBalance('${user.userId}')">
+                            ➖ ${t('admin.removeBalance')}
+                        </button>
                     </div>
                 </div>
             `;
@@ -1499,37 +1625,90 @@ async function adminSearch() {
 }
 
 async function adminAddBalance(userId) {
+    const targetId = userId || currentManageUserId;
+    if (!targetId) { showToast('No user selected', 'error'); return; }
+    
     const currency = prompt('Currency (TROLL, SOL, BNB, ETH, TRON):', 'TROLL');
     if (!currency) return;
-    const amount = parseFloat(prompt('Amount:', '0'));
+    
+    const amount = parseFloat(prompt(`Amount to ADD (${currency}):`, '0'));
     if (isNaN(amount) || amount <= 0) { showToast('Invalid amount', 'error'); return; }
     
-    const res = await apiCall('/admin/add-balance', 'POST', { userId, currency, amount });
-    if (res.success) {
-        showToast(`Added ${amount} ${currency}!`, 'success');
-        adminSearch();
+    showToast('Processing...', 'info');
+    
+    try {
+        const res = await apiCall('/admin/add-balance', 'POST', {
+            userId: targetId,
+            currency: currency.toUpperCase(),
+            amount: amount
+        });
+        
+        if (res.success) {
+            showToast(`✅ Added ${amount} ${currency.toUpperCase()}!`, 'success');
+            if (targetId === currentUserId) {
+                currentUser.balances[currency.toUpperCase()] = (currentUser.balances[currency.toUpperCase()] || 0) + amount;
+                saveUserData();
+                updateUI();
+            }
+            adminSearch();
+        } else {
+            showToast('Failed: ' + (res.error || 'Unknown error'), 'error');
+        }
+    } catch (e) {
+        showToast('Error: ' + e.message, 'error');
     }
 }
 
 async function adminRemoveBalance(userId) {
+    const targetId = userId || currentManageUserId;
+    if (!targetId) { showToast('No user selected', 'error'); return; }
+    
     const currency = prompt('Currency (TROLL, SOL, BNB, ETH, TRON):', 'TROLL');
     if (!currency) return;
-    const amount = parseFloat(prompt('Amount:', '0'));
+    
+    const amount = parseFloat(prompt(`Amount to REMOVE (${currency}):`, '0'));
     if (isNaN(amount) || amount <= 0) { showToast('Invalid amount', 'error'); return; }
     
-    const res = await apiCall('/admin/remove-balance', 'POST', { userId, currency, amount });
-    if (res.success) {
-        showToast(`Removed ${amount} ${currency}!`, 'success');
-        adminSearch();
+    const user = await apiCall('/users/' + targetId, 'GET');
+    if (user.success && user.data) {
+        const currentBalance = user.data.balances?.[currency.toUpperCase()] || 0;
+        if (amount > currentBalance) {
+            showToast(`User only has ${currentBalance} ${currency.toUpperCase()}`, 'error');
+            return;
+        }
+    }
+    
+    showToast('Processing...', 'info');
+    
+    try {
+        const res = await apiCall('/admin/remove-balance', 'POST', {
+            userId: targetId,
+            currency: currency.toUpperCase(),
+            amount: amount
+        });
+        
+        if (res.success) {
+            showToast(`✅ Removed ${amount} ${currency.toUpperCase()}!`, 'success');
+            if (targetId === currentUserId) {
+                currentUser.balances[currency.toUpperCase()] = (currentUser.balances[currency.toUpperCase()] || 0) - amount;
+                saveUserData();
+                updateUI();
+            }
+            adminSearch();
+        } else {
+            showToast('Failed: ' + (res.error || 'Unknown error'), 'error');
+        }
+    } catch (e) {
+        showToast('Error: ' + e.message, 'error');
     }
 }
 
 async function sendBroadcast() {
     const message = document.getElementById('broadcastMessage')?.value.trim();
-    if (!message) { showToast('Enter message', 'error'); return; }
+    if (!message) { showToast('Enter a message', 'error'); return; }
     
     const resultDiv = document.getElementById('broadcastResult');
-    resultDiv.innerHTML = '<div class="loading-spinner"><i class="fa-regular fa-spinner fa-spin"></i> Sending...</div>';
+    resultDiv.innerHTML = '<div class="loading-spinner"><i class="fa-regular fa-spinner fa-spin"></i> Sending broadcast...</div>';
     
     try {
         const res = await apiCall('/admin/broadcast-app', 'POST', {
@@ -1542,12 +1721,14 @@ async function sendBroadcast() {
                 <div class="broadcast-stats">
                     <div class="broadcast-stat">
                         <div class="number">✅</div>
-                        <div class="label">Broadcast Sent</div>
+                        <div class="label">Broadcast Sent Successfully</div>
                     </div>
                 </div>
             `;
-            showToast('Broadcast sent!', 'success');
+            showToast('📢 Broadcast sent!', 'success');
             document.getElementById('broadcastMessage').value = '';
+        } else {
+            resultDiv.innerHTML = '<p style="color:var(--troll-red);">Failed to send broadcast</p>';
         }
     } catch (e) {
         resultDiv.innerHTML = '<p style="color:var(--troll-red);">Error sending broadcast</p>';
@@ -1604,6 +1785,7 @@ async function initTONConnect() {
         if (restored && tonConnectUI.wallet) {
             tonConnected = true;
             tonWalletAddress = tonConnectUI.wallet.account.address;
+            updateSettingsUI();
         }
     } catch (e) { console.error('TON init error:', e); }
 }
@@ -1631,13 +1813,13 @@ function showPremiumModal() { showModal('premiumModal'); }
 
 async function buyPremium() {
     if (!tonConnected) { showToast('Connect TON wallet first', 'error'); return; }
-    showToast('Processing...', 'info');
+    showToast('Processing payment...', 'info');
     try {
         const tx = { validUntil: Math.floor(Date.now() / 1000) + 300, messages: [{ address: appConfig.ownerWallet, amount: '5000000000' }] };
         const result = await tonConnectUI.sendTransaction(tx);
         if (result.boc) {
+            await apiCall('/buy-premium', 'POST', { userId: currentUserId, txHash: result.boc });
             currentUser.premium = true;
-            currentUser.avatar = '😏';
             currentUser.withdrawalUnlocked = true;
             await saveUserData();
             updateUI();
@@ -1654,13 +1836,15 @@ async function buyPremium() {
 
 function showAssetDetails(symbol) {
     const balance = currentUser.balances[symbol] || 0;
-    showToast(symbol + ': ' + balance.toLocaleString(), 'info');
+    const price = cryptoPrices[symbol]?.price || 0;
+    const value = balance * price;
+    showToast(`${symbol}: ${balance.toLocaleString()} ($${value.toFixed(2)})`, 'info');
 }
 
 function showCryptoDetails(symbol) {
     const data = cryptoPrices[symbol] || { price: 0, change: 0 };
     const changeSymbol = data.change >= 0 ? '+' : '';
-    showToast(symbol + ': $' + data.price.toFixed(6) + ' (' + changeSymbol + data.change.toFixed(1) + '%)', 'info');
+    showToast(`${symbol}: $${data.price.toFixed(6)} (${changeSymbol}${data.change.toFixed(1)}%)`, 'info');
 }
 
 function refreshPrices() {
@@ -1673,8 +1857,17 @@ function toggleLanguage() {
     localStorage.setItem('language', currentLanguage);
     document.body.classList.toggle('rtl', currentLanguage === 'ar');
     document.documentElement.dir = currentLanguage === 'ar' ? 'rtl' : 'ltr';
-    document.getElementById('currentLangDisplay').textContent = currentLanguage === 'en' ? 'English' : 'العربية';
+    
+    const langDisplay = document.getElementById('currentLangDisplay');
+    if (langDisplay) langDisplay.textContent = currentLanguage === 'en' ? 'English' : 'العربية';
+    
+    const themeToggle = document.getElementById('themeToggle');
+    if (themeToggle) themeToggle.checked = currentTheme === 'dark';
+    
     updateUI();
+    if (currentPage === 'airdrop') { renderMissionsUI(); renderMilestones(); }
+    if (currentPage === 'settings') updateSettingsUI();
+    
     showToast(currentLanguage === 'en' ? 'Language: English' : 'اللغة: العربية', 'success');
 }
 
@@ -1692,19 +1885,30 @@ function logout() {
     }
 }
 
-function openSupport() { window.open('https://t.me/Troll_Customer_Support', '_blank'); }
-function showComingSoon(feature) { showToast(feature + ' coming soon!', 'info'); }
+function openSupport() {
+    const username = appConfig?.supportUsername || 'Troll_Customer_Support';
+    window.open(`https://t.me/${username}`, '_blank');
+}
+
+function showComingSoon(feature) {
+    showToast(feature + ' coming soon!', 'info');
+}
 
 function showToast(message, type = 'success') {
     const toast = document.getElementById('toast');
     const msgEl = document.getElementById('toastMessage');
     if (!toast || !msgEl) return;
+    
     msgEl.textContent = message;
     toast.classList.remove('hidden');
+    
     const icon = toast.querySelector('i');
     if (icon) {
-        icon.className = type === 'error' ? 'fa-solid fa-circle-exclamation' : 'fa-solid fa-circle-check';
+        if (type === 'error') icon.className = 'fa-solid fa-circle-exclamation';
+        else if (type === 'info') icon.className = 'fa-solid fa-circle-info';
+        else icon.className = 'fa-solid fa-circle-check';
     }
+    
     setTimeout(() => toast.classList.add('hidden'), 3000);
 }
 
@@ -1713,16 +1917,24 @@ function showToast(message, type = 'success') {
 // ============================================================================
 
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Troll Army - Legendary Version 25.0');
+    console.log('🚀 Troll Army - Legendary Complete v25.0 Final');
     
     document.documentElement.setAttribute('data-theme', currentTheme);
     if (currentLanguage === 'ar') {
         document.body.classList.add('rtl');
         document.documentElement.dir = 'rtl';
     }
-    document.getElementById('currentLangDisplay').textContent = currentLanguage === 'en' ? 'English' : 'العربية';
     
-    setTimeout(() => document.getElementById('splashScreen')?.classList.add('hidden'), 2000);
+    const langDisplay = document.getElementById('currentLangDisplay');
+    if (langDisplay) langDisplay.textContent = currentLanguage === 'en' ? 'English' : 'العربية';
+    
+    const themeToggle = document.getElementById('themeToggle');
+    if (themeToggle) themeToggle.checked = currentTheme === 'dark';
+    
+    setTimeout(() => {
+        const splash = document.getElementById('splashScreen');
+        if (splash) splash.classList.add('hidden');
+    }, 2000);
     
     await loadConfig();
     await initTONConnect();
@@ -1731,6 +1943,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     setInterval(fetchLivePrices, 300000);
     setInterval(updateMissionsProgress, 30000);
+    
+    console.log('✅ Troll Army Legendary Complete - All Systems Ready!');
 });
 
 // ============================================================================
@@ -1766,6 +1980,7 @@ window.showAssetDetails = showAssetDetails;
 window.showCryptoDetails = showCryptoDetails;
 window.showSolanaWalletModal = showSolanaWalletModal;
 window.filterHistory = filterHistory;
+window.markNotificationRead = markNotificationRead;
 window.clearReadNotifications = clearReadNotifications;
 window.clearAllNotifications = clearAllNotifications;
 window.adminSearch = adminSearch;
@@ -1774,4 +1989,4 @@ window.adminRemoveBalance = adminRemoveBalance;
 window.sendBroadcast = sendBroadcast;
 window.selectBroadcastTarget = selectBroadcastTarget;
 
-console.log('✅✅✅ Troll Army - LEGENDARY VERSION 25.0 READY! ✅✅✅');
+console.log('✅✅✅ TROLL ARMY - LEGENDARY COMPLETE v25.0 FINAL READY! ✅✅✅');
