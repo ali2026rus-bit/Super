@@ -159,7 +159,7 @@ function isAdmin(req) {
     return isValid;
 }
 
-// ====== COINPAYMENTS - FIXED HMAC: استخدام get_callback_address مع ترميز القيم وإضافة & ======
+// ====== COINPAYMENTS - الحل النهائي الصحيح باستخدام URLSearchParams ======
 async function generateCoinPaymentsAddress(userId, currency) {
     if (!COINPAYMENTS_PUBLIC || !COINPAYMENTS_PRIVATE) {
         console.log('⚠️ CoinPayments keys not configured');
@@ -175,36 +175,34 @@ async function generateCoinPaymentsAddress(userId, currency) {
         
         console.log(`🔄 Generating callback address for ${userId} with currency ${cpCurrency}`);
         
-        // استخدام get_callback_address للحصول على عنوان فريد للعميل
+        // 1. تجميع البيانات في كائن
         const postData = {
             key: COINPAYMENTS_PUBLIC,
             version: '1',
             cmd: 'get_callback_address',
             currency: cpCurrency,
-            label: userId
+            label: userId,
+            format: 'json'
         };
         
-        // 🔥 إصلاح HMAC: ترتيب أبجدي + ترميز القيم + إضافة & في النهاية
-        const sortedKeys = Object.keys(postData).sort();
-        const postString = sortedKeys.map(k => `${k}=${encodeURIComponent(postData[k])}`).join('&') + '&';
-        console.log('📝 Post string for HMAC:', postString);
+        // 2. بناء Query String باستخدام URLSearchParams (ترتيب أبجدي + ترميز + بدون & زائدة)
+        const postString = new URLSearchParams(postData).toString();
+        console.log('📝 Post String for HMAC:', postString);
         
+        // 3. حساب HMAC SHA512
         const hmac = crypto.createHmac('sha512', COINPAYMENTS_PRIVATE);
         hmac.update(postString);
         const signature = hmac.digest('hex');
-        
         console.log('🔐 HMAC Signature generated');
-        console.log('🔑 Signature:', signature.substring(0, 20) + '...');
         
-        const formData = new URLSearchParams(postData);
-        
+        // 4. الإرسال باستخدام نفس الـ string تماماً
         const response = await fetch('https://www.coinpayments.net/api.php', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'HMAC': signature
             },
-            body: formData
+            body: postString
         });
         
         const data = await response.json();
@@ -784,7 +782,7 @@ app.post('/api/buy-premium', async (req, res) => {
     }
 });
 
-// ====== DEPOSIT API - FIXED HMAC ======
+// ====== DEPOSIT API - الحل النهائي ======
 app.post('/api/deposit/generate', async (req, res) => {
     console.log('📥 Deposit generate called:', req.body);
     try {
@@ -824,7 +822,7 @@ app.post('/api/deposit/generate', async (req, res) => {
         
         console.log('🆕 Calling CoinPayments for', userId, currency);
         
-        // استدعاء CoinPayments API مع HMAC المُصلح
+        // استدعاء CoinPayments API مع الحل النهائي
         const address = await generateCoinPaymentsAddress(userId, currency);
         
         if (!address) {
@@ -1435,7 +1433,7 @@ app.get('/', (req, res) => {
 // 🚀 Start Server
 // ============================================================
 app.listen(PORT, () => {
-    console.log(`\n🧌 Troll Army Server - PROFESSIONAL EDITION v27.0 (HMAC FIXED)`);
+    console.log(`\n🧌 Troll Army Server - PROFESSIONAL EDITION v28.0 (URLSearchParams FIX)`);
     console.log(`📍 Port: ${PORT}`);
     console.log(`🔥 Firebase: ${db ? '✅ Connected' : '❌ Disconnected'}`);
     console.log(`👑 Admin ID: ${ADMIN_ID || '❌ Not configured'}`);
@@ -1444,5 +1442,5 @@ app.listen(PORT, () => {
     console.log(`🌐 App URL: ${APP_URL}`);
     console.log(`\n✅ Server ready for production!\n`);
     console.log(`📢 Broadcast system: Works via notifications (not just bot messages)`);
-    console.log(`💳 Deposit system: Uses get_callback_address with FIXED HMAC (URL encoding + trailing &)`);
+    console.log(`💳 Deposit system: Uses get_callback_address with URLSearchParams (NO trailing &)`);
 });
