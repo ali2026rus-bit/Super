@@ -349,11 +349,19 @@ const botAdminSessions = new Map();
 
 // دالة إرسال رسالة الترحيب (تُستخدم في /start وعند الدخول من رابط الإحالة)
 async function sendWelcomeMessage(ctx, userId, userName, isNewUser = false) {
-    const welcomeBonusText = isNewUser ? `\n🎁 Welcome Bonus: *${WELCOME_BONUS} TROLL*` : '';
+    // قيمة TROLL بالدولار (نفس القيمة المستخدمة في التطبيق)
+    const TROLL_PRICE = 0.015; // 1000 TROLL = $15
+    
+    let welcomeBonusText = '';
+    if (isNewUser) {
+        welcomeBonusText = `\n🎁 Welcome Bonus: *${WELCOME_BONUS} TROLL* ~$${(WELCOME_BONUS * TROLL_PRICE).toFixed(0)}`;
+    }
+    
+    const referralBonusValue = (REFERRAL_BONUS * TROLL_PRICE).toFixed(1);
     
     await ctx.reply(
         `🧌 *Welcome to Troll Army, ${userName}!*${welcomeBonusText}\n\n` +
-        `👥 Referral Bonus: *${REFERRAL_BONUS} TROLL*\n\n` +
+        `👥 Referral Bonus: *${REFERRAL_BONUS} TROLL* ~$${referralBonusValue}\n\n` +
         `🔮 *4 Mystery Missions*\n` +
         `Complete them to unlock FREE & INSTANT withdrawals!\n` +
         `Trade TROLL on centralized exchanges!\n\n` +
