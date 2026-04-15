@@ -1,6 +1,6 @@
 // ============================================================================
-// TROLL ARMY - PROFESSIONAL EDITION v26.1
-// Enhanced: Fixed Solana Wallet + Translation + Deposit + Withdraw Locked Modal
+// TROLL ARMY - PROFESSIONAL EDITION v27.0
+// Complete Rewrite - Fixed Notifications + Admin Session + All Features
 // ============================================================================
 
 // ============================================================================
@@ -92,6 +92,7 @@ const MEME_COINS = [
     { symbol: 'WIF', name: 'Dogwifhat' }
 ];
 
+// العملات المدعومة للإيداع
 const DEPOSIT_CURRENCIES = [
     { symbol: 'BNB', name: 'BNB (BSC/BEP-20)' },
     { symbol: 'SOL', name: 'Solana' },
@@ -99,6 +100,7 @@ const DEPOSIT_CURRENCIES = [
     { symbol: 'TRX', name: 'TRON' }
 ];
 
+// الحدود الدنيا للإيداع
 const DEPOSIT_MINIMUMS = {
     BNB: 0.01,
     SOL: 0.01,
@@ -207,14 +209,6 @@ const translations = {
         'premium.note': 'Payment processed securely via Telegram Wallet',
         'withdrawal.unlocked': 'Withdrawal Unlocked!',
         'withdrawal.locked': 'Withdrawal Locked',
-        'withdrawal.locked.title': '🔒 Withdrawal Locked',
-        'withdrawal.locked.close': 'You\'re almost there! Complete {count} more mission(s) to unlock withdrawal.',
-        'withdrawal.locked.missionsRemaining': 'Missions Remaining',
-        'withdrawal.locked.mission1': 'Mission 1: Connect Solana Wallet',
-        'withdrawal.locked.mission2': 'Mission 2: Earn 12,500 TROLL from referrals',
-        'withdrawal.locked.mission3': 'Mission 3: Get 12 new referrals',
-        'withdrawal.locked.mission4': 'Mission 4: Hold 0.025 BNB or 0.25 SOL',
-        'withdrawal.locked.gotIt': 'Got it!',
         'deposit.title': 'Deposit Crypto',
         'deposit.selectCurrency': 'Select Currency',
         'deposit.address': 'Your Deposit Address',
@@ -224,6 +218,9 @@ const translations = {
         'deposit.copy': 'Copy',
         'deposit.copied': 'Address copied!',
         'deposit.scan': 'Scan QR Code',
+        'deposit.confirm': 'I have sent the deposit',
+        'deposit.txnId': 'Transaction ID (optional)',
+        'deposit.submit': 'Submit Deposit Request',
         'deposit.success': 'Deposit request submitted!',
         'withdraw.title': 'Withdraw TROLL',
         'withdraw.amount': 'Amount (min 10,000 TROLL)',
@@ -249,7 +246,7 @@ const translations = {
         'settings.notifications': 'Notifications',
         'settings.language': 'Language',
         'settings.logout': 'Logout',
-        'settings.version': 'Troll Army v26.1',
+        'settings.version': 'Troll Army v27.0',
         'settings.tge': 'TGE: May 2026',
         'settings.notSet': 'Not set',
         'settings.connected': 'Connected',
@@ -296,8 +293,7 @@ const translations = {
         'toast.error': 'Error!',
         'toast.info': 'Information',
         'guest.mode': 'Guest Mode - Connect Telegram for full access',
-        'logout.confirm': 'Are you sure you want to logout?',
-        'close': 'Close'
+        'logout.confirm': 'Are you sure you want to logout?'
     },
     ar: {
         'nav.wallet': 'المحفظة',
@@ -334,14 +330,6 @@ const translations = {
         'premium.note': 'تتم معالجة الدفع بشكل آمن عبر محفظة تيليجرام',
         'withdrawal.unlocked': 'تم فتح السحب!',
         'withdrawal.locked': 'السحب مقفل',
-        'withdrawal.locked.title': '🔒 السحب مقفل',
-        'withdrawal.locked.close': 'أنت قريب جداً! تبقى لك {count} مهمة/مهمات لتتمكن من السحب.',
-        'withdrawal.locked.missionsRemaining': 'المهام المتبقية',
-        'withdrawal.locked.mission1': 'المهمة 1: ربط محفظة Solana',
-        'withdrawal.locked.mission2': 'المهمة 2: اربح 12,500 TROLL من الإحالات',
-        'withdrawal.locked.mission3': 'المهمة 3: احصل على 12 إحالة جديدة',
-        'withdrawal.locked.mission4': 'المهمة 4: احتفظ بـ 0.025 BNB أو 0.25 SOL',
-        'withdrawal.locked.gotIt': 'حسناً!',
         'deposit.title': 'إيداع العملات',
         'deposit.selectCurrency': 'اختر العملة',
         'deposit.address': 'عنوان الإيداع',
@@ -351,6 +339,9 @@ const translations = {
         'deposit.copy': 'نسخ',
         'deposit.copied': 'تم نسخ العنوان!',
         'deposit.scan': 'مسح رمز QR',
+        'deposit.confirm': 'لقد قمت بالإيداع',
+        'deposit.txnId': 'رقم المعاملة (اختياري)',
+        'deposit.submit': 'تقديم طلب الإيداع',
         'deposit.success': 'تم تقديم طلب الإيداع!',
         'withdraw.title': 'سحب TROLL',
         'withdraw.amount': 'المبلغ (الحد الأدنى 10,000 TROLL)',
@@ -376,7 +367,7 @@ const translations = {
         'settings.notifications': 'الإشعارات',
         'settings.language': 'اللغة',
         'settings.logout': 'تسجيل الخروج',
-        'settings.version': 'Troll Army v26.1',
+        'settings.version': 'Troll Army v27.0',
         'settings.tge': 'TGE: مايو 2026',
         'settings.notSet': 'غير محدد',
         'settings.connected': 'متصل',
@@ -423,8 +414,7 @@ const translations = {
         'toast.error': 'خطأ!',
         'toast.info': 'معلومة',
         'guest.mode': 'وضع الزائر - قم بربط تيليجرام للوصول الكامل',
-        'logout.confirm': 'هل أنت متأكد من تسجيل الخروج؟',
-        'close': 'إغلاق'
+        'logout.confirm': 'هل أنت متأكد من تسجيل الخروج؟'
     }
 };
 
@@ -435,7 +425,50 @@ function t(key, params = {}) {
 }
 
 // ============================================================================
-// SECTION 10: API CALL
+// SECTION 10: ADMIN SESSION PERSISTENCE
+// ============================================================================
+
+function saveAdminSession() {
+    if (adminAuthenticated && adminAuthToken) {
+        const sessionData = {
+            authenticated: true,
+            token: adminAuthToken,
+            expiry: Date.now() + (24 * 60 * 60 * 1000) // 24 ساعة
+        };
+        localStorage.setItem('troll_admin_session', JSON.stringify(sessionData));
+        console.log('✅ Admin session saved');
+    }
+}
+
+function loadAdminSession() {
+    try {
+        const saved = localStorage.getItem('troll_admin_session');
+        if (saved) {
+            const session = JSON.parse(saved);
+            if (session.expiry > Date.now()) {
+                adminAuthenticated = session.authenticated;
+                adminAuthToken = session.token;
+                console.log('✅ Admin session restored');
+                return true;
+            } else {
+                localStorage.removeItem('troll_admin_session');
+            }
+        }
+    } catch (e) {
+        console.error('Error loading admin session:', e);
+    }
+    return false;
+}
+
+function clearAdminSession() {
+    localStorage.removeItem('troll_admin_session');
+    adminAuthenticated = false;
+    adminAuthToken = null;
+    console.log('🔒 Admin session cleared');
+}
+
+// ============================================================================
+// SECTION 11: API CALL
 // ============================================================================
 
 async function apiCall(endpoint, method = 'GET', body = null, requiresAuth = false) {
@@ -461,7 +494,7 @@ async function apiCall(endpoint, method = 'GET', body = null, requiresAuth = fal
 }
 
 // ============================================================================
-// SECTION 11: LOAD CONFIG
+// SECTION 12: LOAD CONFIG
 // ============================================================================
 
 async function loadConfig() {
@@ -481,7 +514,7 @@ async function loadConfig() {
 }
 
 // ============================================================================
-// SECTION 12: COINGECKO LIVE PRICES
+// SECTION 13: COINGECKO LIVE PRICES
 // ============================================================================
 
 let lastPriceFetch = 0;
@@ -552,7 +585,7 @@ async function fetchLivePrices(force = false) {
 }
 
 // ============================================================================
-// SECTION 13: TELEGRAM USER DETECTION
+// SECTION 14: TELEGRAM USER DETECTION
 // ============================================================================
 
 async function waitForTelegramUserData(maxAttempts = 15, delayMs = 200) {
@@ -616,7 +649,7 @@ function getReferralFromUrl() {
 }
 
 // ============================================================================
-// SECTION 14: USER INITIALIZATION
+// SECTION 15: USER INITIALIZATION (مع دمج الإشعارات)
 // ============================================================================
 
 async function initUser() {
@@ -646,8 +679,36 @@ async function initUser() {
             currentUserId = data.userId;
             isGuest = false;
             
+            // ✅ دمج الإشعارات المحلية مع إشعارات Firebase
+            const localData = localStorage.getItem('troll_user_data');
+            if (localData) {
+                try {
+                    const localUser = JSON.parse(localData);
+                    if (localUser.notifications && localUser.notifications.length > 0) {
+                        const localNotifMap = new Map();
+                        localUser.notifications.forEach(n => localNotifMap.set(n.id, n));
+                        
+                        currentUser.notifications = currentUser.notifications.map(n => {
+                            const localNotif = localNotifMap.get(n.id);
+                            if (localNotif && localNotif.read) {
+                                return { ...n, read: true };
+                            }
+                            return n;
+                        });
+                        
+                        const firebaseIds = new Set(currentUser.notifications.map(n => n.id));
+                        const missingNotifs = localUser.notifications.filter(n => !firebaseIds.has(n.id));
+                        currentUser.notifications = [...missingNotifs, ...currentUser.notifications];
+                        
+                        console.log('✅ Notifications merged: Firebase + Local');
+                    }
+                } catch (e) {
+                    console.error('Error merging notifications:', e);
+                }
+            }
+            
             localStorage.setItem('troll_user_id', data.userId);
-            localStorage.setItem('troll_user_data', JSON.stringify(data.userData));
+            localStorage.setItem('troll_user_data', JSON.stringify(currentUser));
             
             const refCode = getReferralFromUrl();
             if (refCode && refCode !== currentUserId) {
@@ -657,8 +718,8 @@ async function initUser() {
             hideAllScreens();
             showMainApp();
             updateUI();
-            translateStaticTexts();
             checkAdmin();
+            loadAdminSession(); // ✅ استعادة جلسة المشرف
             loadBroadcasts();
             updateNotificationBadge();
             
@@ -673,7 +734,7 @@ async function initUser() {
 }
 
 // ============================================================================
-// SECTION 15: REFERRAL PROCESSING
+// SECTION 16: REFERRAL PROCESSING
 // ============================================================================
 
 async function processReferral(refCode) {
@@ -704,7 +765,7 @@ async function processReferral(refCode) {
 }
 
 // ============================================================================
-// SECTION 16: GUEST USER
+// SECTION 17: GUEST USER
 // ============================================================================
 
 async function createGuestUser() {
@@ -746,12 +807,11 @@ async function createGuestUser() {
     hideAllScreens();
     showMainApp();
     updateUI();
-    translateStaticTexts();
     showToast(t('guest.mode'), 'info');
 }
 
 // ============================================================================
-// SECTION 17: UI HELPERS
+// SECTION 18: UI HELPERS
 // ============================================================================
 
 function hideAllScreens() {
@@ -783,7 +843,7 @@ function checkAdmin() {
 }
 
 // ============================================================================
-// SECTION 18: MAIN UI UPDATE
+// SECTION 19: MAIN UI UPDATE
 // ============================================================================
 
 function updateUI() {
@@ -889,104 +949,7 @@ function getReferralLink() {
 }
 
 // ============================================================================
-// SECTION 18.5: TRANSLATE STATIC TEXTS (NEW FUNCTION)
-// ============================================================================
-
-function translateStaticTexts() {
-    // Navigation items
-    document.querySelectorAll('[data-tab]').forEach(el => {
-        const tab = el.getAttribute('data-tab');
-        const span = el.querySelector('span');
-        if (span) {
-            if (tab === 'wallet') span.textContent = t('nav.wallet');
-            else if (tab === 'airdrop') span.textContent = t('nav.airdrop');
-            else if (tab === 'settings') span.textContent = t('nav.settings');
-        }
-    });
-    
-    // Balance card
-    const balanceLabel = document.querySelector('.balance-label');
-    if (balanceLabel) balanceLabel.textContent = t('wallet.totalBalance');
-    
-    // Action buttons
-    const actionSpans = document.querySelectorAll('.action-btn span');
-    if (actionSpans.length >= 4) {
-        actionSpans[0].textContent = t('wallet.deposit');
-        actionSpans[1].textContent = t('wallet.withdraw');
-        actionSpans[2].textContent = t('wallet.history');
-    }
-    
-    // Section headers
-    const headers = document.querySelectorAll('.section-header h4');
-    headers.forEach(h4 => {
-        const icon = h4.querySelector('i');
-        if (icon?.classList.contains('fa-wallet')) {
-            h4.innerHTML = `<i class="fa-regular fa-wallet"></i> ${t('wallet.myAssets')}`;
-        } else if (icon?.classList.contains('fa-chart-line')) {
-            h4.innerHTML = `<i class="fa-regular fa-chart-line"></i> ${t('wallet.topCryptos')}`;
-        } else if (icon?.classList.contains('fa-face-smile')) {
-            h4.innerHTML = `<i class="fa-regular fa-face-smile"></i> ${t('wallet.memeCoins')}`;
-        }
-    });
-    
-    // Airdrop section
-    const airdropTitle = document.querySelector('#airdropSection h2');
-    if (airdropTitle) airdropTitle.textContent = t('airdrop.missions');
-    
-    const statCards = document.querySelectorAll('.stat-card span:first-child');
-    if (statCards.length >= 2) {
-        statCards[0].innerHTML = `<i class="fa-regular fa-users"></i> ${t('airdrop.totalInvites')}`;
-        statCards[1].innerHTML = `<i class="fa-regular fa-coins"></i> ${t('airdrop.earned')}`;
-    }
-    
-    const linkLabel = document.querySelector('.referral-link-card label');
-    if (linkLabel) linkLabel.innerHTML = `<i class="fa-regular fa-link"></i> ${t('airdrop.yourLink')}`;
-    
-    const shareBtn = document.querySelector('.share-btn');
-    if (shareBtn) shareBtn.innerHTML = `<i class="fa-brands fa-telegram"></i> ${t('airdrop.share')}`;
-    
-    const bonusText = document.querySelector('.referral-bonus-text');
-    if (bonusText) bonusText.textContent = `🎁 ${t('airdrop.bonus')}`;
-    
-    const ranksTitle = document.querySelector('.milestones-section h4');
-    if (ranksTitle) ranksTitle.innerHTML = `<i class="fa-regular fa-trophy"></i> ${t('airdrop.milestones')}`;
-    
-    // Settings items
-    const settingsItems = document.querySelectorAll('.settings-item');
-    settingsItems.forEach(item => {
-        const icon = item.querySelector('i:first-child');
-        const span = item.querySelector('span:first-of-type');
-        
-        if (icon?.classList.contains('fa-wallet') && span) span.textContent = t('settings.solanaWallet');
-        else if (icon?.classList.contains('fa-link') && span) span.textContent = t('settings.tonConnect');
-        else if (icon?.classList.contains('fa-moon') && span) span.textContent = t('settings.darkMode');
-        else if (icon?.classList.contains('fa-bell') && span) span.textContent = t('settings.notifications');
-        else if (icon?.classList.contains('fa-language') && span) span.textContent = t('settings.language');
-        else if (icon?.classList.contains('fa-sign-out') && span) span.textContent = t('settings.logout');
-    });
-    
-    // Premium item
-    const premiumTitle = document.querySelector('.premium-item .settings-item-left h4');
-    if (premiumTitle) premiumTitle.textContent = t('settings.premium');
-    
-    // App info
-    const versionEl = document.querySelector('.app-info p:first-child');
-    if (versionEl) versionEl.innerHTML = `<i class="fa-regular fa-code"></i> ${t('settings.version')}`;
-    
-    const tgeEl = document.querySelector('.app-info p:last-child');
-    if (tgeEl) tgeEl.innerHTML = `<i class="fa-regular fa-calendar"></i> ${t('settings.tge')}`;
-    
-    // Current wallet display
-    const notSetEl = document.getElementById('currentSolanaWallet');
-    if (notSetEl && notSetEl.textContent === 'Not set') {
-        notSetEl.textContent = t('settings.notSet');
-    } else if (notSetEl && notSetEl.textContent === 'غير محدد') {
-        notSetEl.textContent = t('settings.notSet');
-    }
-}
-
-// ============================================================================
-// SECTION 19: RENDER FUNCTIONS
+// SECTION 20: RENDER FUNCTIONS
 // ============================================================================
 
 function renderAssets() {
@@ -1208,7 +1171,7 @@ function renderMilestones() {
 }
 
 // ============================================================================
-// SECTION 20: DATA PERSISTENCE
+// SECTION 21: DATA PERSISTENCE
 // ============================================================================
 
 async function saveUserData() {
@@ -1219,7 +1182,7 @@ async function saveUserData() {
 }
 
 // ============================================================================
-// SECTION 21: MISSIONS PROGRESS
+// SECTION 22: MISSIONS PROGRESS
 // ============================================================================
 
 async function updateMissionsProgress() {
@@ -1300,130 +1263,76 @@ function celebrateUnlock() {
 }
 
 // ============================================================================
-// SECTION 22: USER ACTIONS
+// SECTION 23: USER ACTIONS
 // ============================================================================
 
-// ====== SOLANA WALLET MODAL (FIXED) ======
+// ====== SOLANA WALLET MODAL (احترافية) ======
 function showSolanaWalletModal() {
-    console.log('🔑 showSolanaWalletModal called');
-    
     let modal = document.getElementById('solanaWalletModal');
-    console.log('Modal element found:', !!modal);
     
-    // إذا كان المودال موجوداً مسبقاً في HTML
-    if (modal) {
-        // تحديث النصوص
-        const title = modal.querySelector('h2');
-        const desc = modal.querySelector('.modal-desc');
-        const input = modal.querySelector('#solanaWalletInput');
-        const saveBtn = modal.querySelector('#saveSolanaWalletBtn');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'solanaWalletModal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <button class="close-btn" onclick="closeModal('solanaWalletModal')">&times;</button>
+                <div class="modal-icon">🔑</div>
+                <h2 id="solanaModalTitle">${t('solanaWallet.title')}</h2>
+                <p class="modal-desc" id="solanaModalDesc">${t('solanaWallet.desc')}</p>
+                
+                <div class="input-group">
+                    <label>Solana Wallet Address</label>
+                    <input type="text" id="solanaWalletInput" placeholder="${t('solanaWallet.placeholder')}" autocomplete="off">
+                    <div id="solanaWalletValidation" class="validation-hint"></div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button class="modal-action-btn primary" id="saveSolanaWalletBtn" onclick="submitSolanaWallet()" disabled>
+                        <i class="fa-regular fa-save"></i> ${t('solanaWallet.save')}
+                    </button>
+                    <button class="modal-action-btn secondary" onclick="closeModal('solanaWalletModal')">
+                        <i class="fa-regular fa-times"></i> ${t('solanaWallet.cancel')}
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
         
-        if (title) title.textContent = t('solanaWallet.title');
-        if (desc) desc.textContent = t('solanaWallet.desc');
-        if (input) input.placeholder = t('solanaWallet.placeholder');
-        if (saveBtn) {
-            saveBtn.innerHTML = `<i class="fa-regular fa-save"></i> ${t('solanaWallet.save')}`;
-            saveBtn.disabled = true;
-        }
+        const input = document.getElementById('solanaWalletInput');
+        const validation = document.getElementById('solanaWalletValidation');
+        const saveBtn = document.getElementById('saveSolanaWalletBtn');
         
-        // إظهار المودال
-        modal.classList.add('show');
-        if (input) {
-            input.value = '';
-            input.focus();
-        }
+        input.addEventListener('input', function() {
+            const value = this.value.trim();
+            if (value.length >= 32 && value.length <= 44) {
+                validation.textContent = '✓ ' + t('solanaWallet.valid');
+                validation.className = 'validation-hint valid';
+                saveBtn.disabled = false;
+            } else {
+                validation.textContent = t('solanaWallet.invalid');
+                validation.className = 'validation-hint invalid';
+                saveBtn.disabled = true;
+            }
+        });
         
-        // إخفاء رسالة التحقق
-        const validation = modal.querySelector('#solanaWalletValidation');
-        if (validation) validation.textContent = '';
-        
-        // ربط أحداث التحقق إذا لم تكن مربوطة
-        if (input && !input.hasAttribute('data-listener')) {
-            input.setAttribute('data-listener', 'true');
-            const saveBtnEl = saveBtn;
-            const validationEl = validation;
-            
-            input.addEventListener('input', function() {
-                const value = this.value.trim();
-                if (value.length >= 32 && value.length <= 44) {
-                    if (validationEl) {
-                        validationEl.textContent = '✓ ' + t('solanaWallet.valid');
-                        validationEl.className = 'validation-hint valid';
-                    }
-                    if (saveBtnEl) saveBtnEl.disabled = false;
-                } else {
-                    if (validationEl) {
-                        validationEl.textContent = t('solanaWallet.invalid');
-                        validationEl.className = 'validation-hint invalid';
-                    }
-                    if (saveBtnEl) saveBtnEl.disabled = true;
-                }
-            });
-            
-            input.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter' && saveBtnEl && !saveBtnEl.disabled) {
-                    submitSolanaWallet();
-                }
-            });
-        }
-        
-        return;
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !saveBtn.disabled) {
+                submitSolanaWallet();
+            }
+        });
     }
     
-    // إذا لم يكن موجوداً، ننشئه (حالة نادرة)
-    modal = document.createElement('div');
-    modal.id = 'solanaWalletModal';
-    modal.className = 'modal';
-    modal.innerHTML = `
-        <div class="modal-content">
-            <button class="close-btn" onclick="closeModal('solanaWalletModal')">&times;</button>
-            <div class="modal-icon">🔑</div>
-            <h2 id="solanaModalTitle">${t('solanaWallet.title')}</h2>
-            <p class="modal-desc" id="solanaModalDesc">${t('solanaWallet.desc')}</p>
-            
-            <div class="input-group">
-                <label>Solana Wallet Address</label>
-                <input type="text" id="solanaWalletInput" placeholder="${t('solanaWallet.placeholder')}" autocomplete="off">
-                <div id="solanaWalletValidation" class="validation-hint"></div>
-            </div>
-            
-            <div class="modal-actions">
-                <button class="modal-action-btn primary" id="saveSolanaWalletBtn" onclick="submitSolanaWallet()" disabled>
-                    <i class="fa-regular fa-save"></i> ${t('solanaWallet.save')}
-                </button>
-                <button class="modal-action-btn secondary" onclick="closeModal('solanaWalletModal')">
-                    <i class="fa-regular fa-times"></i> ${t('solanaWallet.cancel')}
-                </button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-    
-    const input = document.getElementById('solanaWalletInput');
-    const validation = document.getElementById('solanaWalletValidation');
-    const saveBtn = document.getElementById('saveSolanaWalletBtn');
-    
-    input.addEventListener('input', function() {
-        const value = this.value.trim();
-        if (value.length >= 32 && value.length <= 44) {
-            validation.textContent = '✓ ' + t('solanaWallet.valid');
-            validation.className = 'validation-hint valid';
-            saveBtn.disabled = false;
-        } else {
-            validation.textContent = t('solanaWallet.invalid');
-            validation.className = 'validation-hint invalid';
-            saveBtn.disabled = true;
-        }
-    });
-    
-    input.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter' && !saveBtn.disabled) {
-            submitSolanaWallet();
-        }
-    });
+    document.getElementById('solanaModalTitle').textContent = t('solanaWallet.title');
+    document.getElementById('solanaModalDesc').textContent = t('solanaWallet.desc');
+    document.getElementById('solanaWalletInput').placeholder = t('solanaWallet.placeholder');
+    document.getElementById('saveSolanaWalletBtn').innerHTML = `<i class="fa-regular fa-save"></i> ${t('solanaWallet.save')}`;
     
     modal.classList.add('show');
-    input.focus();
+    document.getElementById('solanaWalletInput').value = '';
+    document.getElementById('solanaWalletInput').focus();
+    document.getElementById('solanaWalletValidation').textContent = '';
+    document.getElementById('saveSolanaWalletBtn').disabled = true;
 }
 
 function submitSolanaWallet() {
@@ -1488,7 +1397,7 @@ async function claimMilestone(referrals) {
 }
 
 // ============================================================================
-// SECTION 23: NOTIFICATIONS SYSTEM
+// SECTION 24: NOTIFICATIONS SYSTEM
 // ============================================================================
 
 function addNotification(notification) {
@@ -1639,7 +1548,7 @@ async function loadBroadcasts() {
 }
 
 // ============================================================================
-// SECTION 24: MODAL FUNCTIONS
+// SECTION 25: MODAL FUNCTIONS
 // ============================================================================
 
 function closeModal(id) {
@@ -1652,68 +1561,50 @@ function showModal(id) {
     if (modal) modal.classList.add('show');
 }
 
-// ====== DEPOSIT MODAL (SIMPLIFIED - NO TXN ID, NO SUBMIT BUTTON) ======
+// ====== DEPOSIT MODAL ======
 function showDepositModal() {
     const modal = document.getElementById('depositModal');
     if (!modal) return;
     
-    // تنظيف المحتوى القديم وإعادة بنائه
-    const modalContent = modal.querySelector('.modal-content');
-    
-    // الاحتفاظ بزر الإغلاق والأيقونة والعنوان فقط
-    const closeBtn = modalContent.querySelector('.close-btn');
-    const modalIcon = modalContent.querySelector('.modal-icon');
-    const title = modalContent.querySelector('h2');
-    const desc = modalContent.querySelector('.modal-desc');
-    
-    // مسح كل شيء بعد الوصف
-    const elementsToRemove = [];
-    let nextEl = desc.nextElementSibling;
-    while (nextEl) {
-        elementsToRemove.push(nextEl);
-        nextEl = nextEl.nextElementSibling;
-    }
-    elementsToRemove.forEach(el => el.remove());
-    
-    // تحديث النصوص
-    if (title) title.textContent = t('deposit.title');
-    if (desc) desc.textContent = 'Select currency to generate your unique deposit address';
-    
-    // بناء محتوى الإيداع الجديد (بدون TXN ID وبدون زر Submit)
-    const depositHtml = `
-        <div class="input-group">
-            <label>${t('deposit.selectCurrency')}</label>
-            <select id="depositCurrencySelect" class="currency-select">
-                ${DEPOSIT_CURRENCIES.map(c => `<option value="${c.symbol}">${c.name}</option>`).join('')}
-            </select>
-        </div>
-        <div id="depositAddressContainer" style="display:none;">
-            <div class="deposit-address-container">
-                <label>${t('deposit.address')}</label>
-                <div class="address-box">
-                    <code id="depositAddress">Loading...</code>
-                    <button onclick="copyDepositAddress()">
-                        <i class="fa-regular fa-copy"></i> ${t('deposit.copy')}
-                    </button>
+    let currencySelect = document.getElementById('depositCurrencySelect');
+    if (!currencySelect) {
+        const container = modal.querySelector('.modal-content');
+        const selectHtml = `
+            <div class="input-group">
+                <label>${t('deposit.selectCurrency')}</label>
+                <select id="depositCurrencySelect" class="currency-select">
+                    ${DEPOSIT_CURRENCIES.map(c => `<option value="${c.symbol}">${c.name}</option>`).join('')}
+                </select>
+            </div>
+            <div id="depositAddressContainer" style="display:none;">
+                <div class="deposit-address-container">
+                    <label>${t('deposit.address')}</label>
+                    <div class="address-box">
+                        <code id="depositAddress">Loading...</code>
+                        <button onclick="copyDepositAddress()">
+                            <i class="fa-regular fa-copy"></i>
+                        </button>
+                    </div>
                 </div>
+                <div class="deposit-info">
+                    <div class="info-row"><i class="fa-regular fa-circle-check"></i> <span id="depositNetwork">-</span></div>
+                    <div class="info-row"><i class="fa-regular fa-coins"></i> <span id="depositMinAmount">-</span></div>
+                    <div class="info-row"><i class="fa-regular fa-shield"></i> <span>${t('deposit.warning')}</span></div>
+                </div>
+                <div class="input-group">
+                    <label>${t('deposit.txnId')}</label>
+                    <input type="text" id="depositTxnId" placeholder="0x...">
+                </div>
+                <button class="modal-action-btn" onclick="submitDepositRequest()">
+                    <i class="fa-regular fa-paper-plane"></i> ${t('deposit.submit')}
+                </button>
             </div>
-            <div class="deposit-info">
-                <div class="info-row"><i class="fa-regular fa-circle-check"></i> <span id="depositNetwork">-</span></div>
-                <div class="info-row"><i class="fa-regular fa-coins"></i> <span id="depositMinAmount">-</span></div>
-                <div class="info-row"><i class="fa-regular fa-shield"></i> <span>${t('deposit.warning')}</span></div>
-            </div>
-            <p style="text-align: center; color: var(--troll-yellow); font-size: 0.875rem; margin-top: 15px;">
-                ⏳ Your deposit will be detected automatically. Please wait for confirmation.
-            </p>
-        </div>
-    `;
-    
-    desc.insertAdjacentHTML('afterend', depositHtml);
-    
-    // إضافة مستمع لتغيير العملة
-    const currencySelect = document.getElementById('depositCurrencySelect');
-    if (currencySelect) {
-        currencySelect.addEventListener('change', generateDepositAddress);
+        `;
+        
+        const closeBtn = container.querySelector('.close-btn');
+        closeBtn.insertAdjacentHTML('beforebegin', selectHtml);
+        
+        document.getElementById('depositCurrencySelect').addEventListener('change', generateDepositAddress);
     }
     
     modal.classList.add('show');
@@ -1752,77 +1643,45 @@ function copyDepositAddress() {
     }
 }
 
-// ====== WITHDRAW LOCKED MODAL (NEW - PROFESSIONAL) ======
-function showWithdrawLockedModal() {
-    // حساب المهام المتبقية
-    const m = currentUser.withdrawalMissions;
-    const missionsStatus = [
-        { id: 1, completed: m.mission1.completed, title: t('withdrawal.locked.mission1') },
-        { id: 2, completed: m.mission2.completed, title: t('withdrawal.locked.mission2') },
-        { id: 3, completed: m.mission3.completed, title: t('withdrawal.locked.mission3') },
-        { id: 4, completed: m.mission4.completed, title: t('withdrawal.locked.mission4') }
-    ];
+async function submitDepositRequest() {
+    const currency = document.getElementById('depositCurrencySelect').value;
+    const address = document.getElementById('depositAddress').textContent;
+    const txnId = document.getElementById('depositTxnId')?.value || null;
     
-    const remainingMissions = missionsStatus.filter(m => !m.completed);
-    const remainingCount = remainingMissions.length;
-    
-    // إنشاء أو تحديث المودال
-    let modal = document.getElementById('withdrawLockedModal');
-    
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'withdrawLockedModal';
-        modal.className = 'modal';
-        modal.innerHTML = `
-            <div class="modal-content withdraw-locked-content">
-                <button class="close-btn" onclick="closeModal('withdrawLockedModal')">&times;</button>
-                <div class="modal-icon">🔒</div>
-                <h2 id="withdrawLockedTitle">${t('withdrawal.locked.title')}</h2>
-                <p id="withdrawLockedMessage" class="modal-desc"></p>
-                
-                <div class="missions-remaining-list" id="missionsRemainingList"></div>
-                
-                <div class="modal-actions" style="margin-top: 20px;">
-                    <button class="modal-action-btn primary" onclick="closeModal('withdrawLockedModal')">
-                        <i class="fa-regular fa-check"></i> ${t('withdrawal.locked.gotIt')}
-                    </button>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(modal);
+    if (!address || address.includes('Generating') || address.includes('Failed')) {
+        showToast('Please wait for address generation', 'error');
+        return;
     }
     
-    // تحديث النصوص
-    document.getElementById('withdrawLockedTitle').textContent = t('withdrawal.locked.title');
-    document.getElementById('withdrawLockedMessage').textContent = t('withdrawal.locked.close', { count: remainingCount });
+    const amount = 0;
     
-    // بناء قائمة المهام المتبقية
-    const listContainer = document.getElementById('missionsRemainingList');
-    let listHtml = `<h4 style="margin-bottom: 15px; color: var(--troll-yellow);">${t('withdrawal.locked.missionsRemaining')} (${remainingCount}/4)</h4>`;
-    
-    missionsStatus.forEach(mission => {
-        const statusIcon = mission.completed ? '✅' : '❌';
-        const statusClass = mission.completed ? 'completed' : 'pending';
-        listHtml += `
-            <div class="mission-remaining-item ${statusClass}" style="display: flex; align-items: center; gap: 10px; padding: 10px; background: var(--bg-card); border-radius: 8px; margin-bottom: 8px;">
-                <span style="font-size: 1.2rem;">${statusIcon}</span>
-                <span style="flex: 1; color: ${mission.completed ? 'var(--troll-green)' : 'var(--text-secondary)'};">${mission.title}</span>
-            </div>
-        `;
+    const result = await apiCall('/deposit/submit-request', 'POST', {
+        userId: currentUserId,
+        userName: currentUser.userName,
+        currency: currency,
+        amount: amount,
+        address: address,
+        txnId: txnId
     });
     
-    listContainer.innerHTML = listHtml;
-    
-    // إظهار المودال
-    modal.classList.add('show');
+    if (result.success) {
+        showToast(t('deposit.success'), 'success');
+        closeModal('depositModal');
+        
+        addNotification({
+            type: 'deposit',
+            title: '📥 Deposit Request Submitted',
+            message: `Your ${currency} deposit request is pending approval.`
+        });
+    } else {
+        showToast(result.error || 'Failed to submit deposit', 'error');
+    }
 }
 
-// ====== WITHDRAW MODAL (UPDATED) ======
+// ====== WITHDRAW MODAL ======
 function showWithdrawModal() {
-    // التحقق من حالة السحب
     if (!currentUser.withdrawalUnlocked && !currentUser.premium) {
-        // إظهار النافذة الاحترافية بدلاً من Toast
-        showWithdrawLockedModal();
+        showToast('Complete missions to unlock withdrawal!', 'error');
         return;
     }
     
@@ -1981,7 +1840,7 @@ function showNotifications() {
 }
 
 // ============================================================================
-// SECTION 25: ADMIN AUTHENTICATION
+// SECTION 26: ADMIN AUTHENTICATION
 // ============================================================================
 
 function showAdminAuthModal() {
@@ -2038,6 +1897,7 @@ async function verifyAdminPassword() {
     if (result.success) {
         adminAuthenticated = true;
         adminAuthToken = password;
+        saveAdminSession(); // ✅ حفظ الجلسة
         closeModal('adminAuthModal');
         showAdminPanel();
         showToast('Authenticated successfully', 'success');
@@ -2047,13 +1907,18 @@ async function verifyAdminPassword() {
 }
 
 // ============================================================================
-// SECTION 26: ADMIN PANEL
+// SECTION 27: ADMIN PANEL
 // ============================================================================
 
 function showAdminPanel() {
+    // ✅ محاولة استعادة الجلسة
     if (!adminAuthenticated) {
-        showAdminAuthModal();
-        return;
+        if (loadAdminSession()) {
+            console.log('✅ Admin session loaded from storage');
+        } else {
+            showAdminAuthModal();
+            return;
+        }
     }
     
     const panel = document.getElementById('adminPanel');
@@ -2124,7 +1989,6 @@ function renderAdminDashboard() {
     `;
     
     content.innerHTML = html;
-    
     loadPendingDeposits();
 }
 
@@ -2295,6 +2159,7 @@ function refreshAdminSection() {
     }
 }
 
+// ====== APPROVE/REJECT FUNCTIONS ======
 async function approveDeposit(depositId, userId, currency) {
     const amountInput = document.getElementById(`amount_${depositId}`);
     const amount = parseFloat(amountInput?.value);
@@ -2358,6 +2223,7 @@ async function rejectWithdrawal(withdrawalId) {
     }
 }
 
+// ====== USER MANAGEMENT ======
 function showUserManagementInterface() {
     const container = document.getElementById('adminListContainer');
     
@@ -2477,6 +2343,9 @@ function showRemoveBalanceModal() {
 }
 
 async function adminAddBalance(userId, currency, amount) {
+    console.log('💰 Admin adding balance:', userId, currency, amount);
+    console.log('🔑 Admin token:', adminAuthToken ? 'Present' : 'Missing');
+    
     const res = await apiCall('/admin/add-balance', 'POST', { userId, currency, amount }, true);
     
     if (res.success) {
@@ -2488,6 +2357,9 @@ async function adminAddBalance(userId, currency, amount) {
 }
 
 async function adminRemoveBalance(userId, currency, amount) {
+    console.log('💰 Admin removing balance:', userId, currency, amount);
+    console.log('🔑 Admin token:', adminAuthToken ? 'Present' : 'Missing');
+    
     const res = await apiCall('/admin/remove-balance', 'POST', { userId, currency, amount }, true);
     
     if (res.success) {
@@ -2513,6 +2385,7 @@ async function blockUserWithdrawals() {
     }
 }
 
+// ====== BROADCAST ======
 function showBroadcastInterface() {
     const container = document.getElementById('adminListContainer');
     
@@ -2565,7 +2438,7 @@ function copyToClipboard(text) {
 }
 
 // ============================================================================
-// SECTION 27: PREMIUM FUNCTIONS
+// SECTION 28: PREMIUM FUNCTIONS
 // ============================================================================
 
 function showPremiumModal() { 
@@ -2603,7 +2476,7 @@ async function buyPremium() {
 }
 
 // ============================================================================
-// SECTION 28: TON CONNECT
+// SECTION 29: TON CONNECT
 // ============================================================================
 
 async function initTONConnect() {
@@ -2642,7 +2515,7 @@ async function connectTONWallet() {
 }
 
 // ============================================================================
-// SECTION 29: NAVIGATION
+// SECTION 30: NAVIGATION
 // ============================================================================
 
 function showWallet() {
@@ -2677,7 +2550,7 @@ function showSettings() {
 }
 
 // ============================================================================
-// SECTION 30: HELPERS
+// SECTION 31: HELPERS
 // ============================================================================
 
 function showAssetDetails(symbol) {
@@ -2701,30 +2574,14 @@ function refreshPrices() {
 function toggleLanguage() {
     currentLanguage = currentLanguage === 'en' ? 'ar' : 'en';
     localStorage.setItem('language', currentLanguage);
-    
-    // RTL
     document.body.classList.toggle('rtl', currentLanguage === 'ar');
     document.documentElement.dir = currentLanguage === 'ar' ? 'rtl' : 'ltr';
     
-    // تحديث عرض اللغة
     const langDisplay = document.getElementById('currentLangDisplay');
     if (langDisplay) langDisplay.textContent = currentLanguage === 'en' ? 'English' : 'العربية';
     
-    // ترجمة جميع النصوص الثابتة
-    translateStaticTexts();
-    
-    // تحديث الواجهة
     updateUI();
-    
-    if (currentPage === 'airdrop') { 
-        renderMissionsUI(); 
-        renderMilestones(); 
-    }
-    if (currentPage === 'wallet') {
-        renderAssets();
-        renderTopCryptos();
-        renderMemeCoins();
-    }
+    if (currentPage === 'airdrop') { renderMissionsUI(); renderMilestones(); }
     if (currentPage === 'settings') updateSettingsUI();
     
     showToast(currentLanguage === 'en' ? 'Language: English' : 'اللغة: العربية', 'success');
@@ -2739,6 +2596,7 @@ function toggleTheme() {
 
 function logout() {
     if (confirm(t('logout.confirm'))) {
+        clearAdminSession(); // ✅ مسح جلسة المشرف
         localStorage.clear();
         location.reload();
     }
@@ -2772,11 +2630,13 @@ function showToast(message, type = 'success') {
 }
 
 // ============================================================================
-// SECTION 31: INITIALIZATION
+// SECTION 32: INITIALIZATION
 // ============================================================================
 
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Troll Army - Professional Edition v26.1');
+    console.log('🚀 Troll Army - Professional Edition v27.0');
+    console.log('✅ Notifications merged (Firebase + Local) - Zero Listeners');
+    console.log('✅ Admin session persistence enabled');
     
     document.documentElement.setAttribute('data-theme', currentTheme);
     if (currentLanguage === 'ar') {
@@ -2807,7 +2667,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // ============================================================================
-// SECTION 32: GLOBAL EXPORTS
+// SECTION 33: GLOBAL EXPORTS
 // ============================================================================
 
 window.showWallet = showWallet;
@@ -2824,6 +2684,7 @@ window.closeModal = closeModal;
 window.copyInviteLink = copyInviteLink;
 window.shareInviteLink = shareInviteLink;
 window.copyDepositAddress = copyDepositAddress;
+window.submitDepositRequest = submitDepositRequest;
 window.submitWithdraw = submitWithdraw;
 window.claimMilestone = claimMilestone;
 window.buyPremium = buyPremium;
@@ -2861,4 +2722,5 @@ window.selectBroadcastTarget = selectBroadcastTarget;
 window.sendBroadcast = sendBroadcast;
 window.copyToClipboard = copyToClipboard;
 
-console.log('✅✅✅ TROLL ARMY - PROFESSIONAL EDITION v26.1 READY! ✅✅✅');
+console.log('✅✅✅ TROLL ARMY - PROFESSIONAL EDITION v27.0 READY! ✅✅✅');
+console.log('📢 Features: Notifications Merged | Admin Session Persistence | Zero Listeners');
