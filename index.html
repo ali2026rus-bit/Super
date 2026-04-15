@@ -366,7 +366,7 @@
 
             <!-- App Info -->
             <div class="app-info">
-                <p><i class="fa-regular fa-code"></i> Troll Army v26.0</p>
+                <p><i class="fa-regular fa-code"></i> Troll Army v26.1</p>
                 <p><i class="fa-regular fa-calendar"></i> TGE: May 2026</p>
             </div>
         </div>
@@ -390,13 +390,14 @@
 
     <!-- ====== MODALS ====== -->
     
-    <!-- Deposit Modal -->
+    <!-- Deposit Modal (Simplified - No TXN ID, No Submit Button) -->
     <div id="depositModal" class="modal">
         <div class="modal-content">
             <button class="close-btn" onclick="closeModal('depositModal')">&times;</button>
             <div class="modal-icon">📥</div>
             <h2>Deposit Crypto</h2>
             <p class="modal-desc">Select currency to generate your unique deposit address</p>
+            <!-- المحتوى الديناميكي سيتم حقنه من app.js -->
         </div>
     </div>
 
@@ -431,6 +432,26 @@
                 
                 <button class="modal-action-btn" onclick="submitWithdraw()">
                     <i class="fa-regular fa-paper-plane"></i> Request Withdrawal
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Withdraw Locked Modal (NEW - Professional) -->
+    <div id="withdrawLockedModal" class="modal">
+        <div class="modal-content withdraw-locked-content">
+            <button class="close-btn" onclick="closeModal('withdrawLockedModal')">&times;</button>
+            <div class="modal-icon">🔒</div>
+            <h2 id="withdrawLockedTitle">Withdrawal Locked</h2>
+            <p id="withdrawLockedMessage" class="modal-desc">You're almost there! Complete the remaining missions to unlock withdrawal.</p>
+            
+            <div class="missions-remaining-list" id="missionsRemainingList">
+                <!-- سيتم ملؤها ديناميكياً من app.js -->
+            </div>
+            
+            <div class="modal-actions" style="margin-top: 20px;">
+                <button class="modal-action-btn primary" onclick="closeModal('withdrawLockedModal')">
+                    <i class="fa-regular fa-check"></i> Got it!
                 </button>
             </div>
         </div>
