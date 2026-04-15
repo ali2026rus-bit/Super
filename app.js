@@ -1,6 +1,7 @@
 // ============================================================================
 // TROLL ARMY - PROFESSIONAL EDITION v27.0
-// Complete Rewrite - Fixed Notifications + Admin Session + All Features
+// Complete Rewrite - Fixed Notifications System
+// All Original Features Preserved
 // ============================================================================
 
 // ============================================================================
@@ -92,7 +93,6 @@ const MEME_COINS = [
     { symbol: 'WIF', name: 'Dogwifhat' }
 ];
 
-// العملات المدعومة للإيداع
 const DEPOSIT_CURRENCIES = [
     { symbol: 'BNB', name: 'BNB (BSC/BEP-20)' },
     { symbol: 'SOL', name: 'Solana' },
@@ -100,7 +100,6 @@ const DEPOSIT_CURRENCIES = [
     { symbol: 'TRX', name: 'TRON' }
 ];
 
-// الحدود الدنيا للإيداع
 const DEPOSIT_MINIMUMS = {
     BNB: 0.01,
     SOL: 0.01,
@@ -433,7 +432,7 @@ function saveAdminSession() {
         const sessionData = {
             authenticated: true,
             token: adminAuthToken,
-            expiry: Date.now() + (24 * 60 * 60 * 1000) // 24 ساعة
+            expiry: Date.now() + (24 * 60 * 60 * 1000)
         };
         localStorage.setItem('troll_admin_session', JSON.stringify(sessionData));
         console.log('✅ Admin session saved');
@@ -649,7 +648,7 @@ function getReferralFromUrl() {
 }
 
 // ============================================================================
-// SECTION 15: USER INITIALIZATION (مع دمج الإشعارات)
+// SECTION 15: USER INITIALIZATION (WITH NOTIFICATIONS MERGE)
 // ============================================================================
 
 async function initUser() {
@@ -719,7 +718,7 @@ async function initUser() {
             showMainApp();
             updateUI();
             checkAdmin();
-            loadAdminSession(); // ✅ استعادة جلسة المشرف
+            loadAdminSession();
             loadBroadcasts();
             updateNotificationBadge();
             
@@ -1266,7 +1265,6 @@ function celebrateUnlock() {
 // SECTION 23: USER ACTIONS
 // ============================================================================
 
-// ====== SOLANA WALLET MODAL (احترافية) ======
 function showSolanaWalletModal() {
     let modal = document.getElementById('solanaWalletModal');
     
@@ -1397,7 +1395,7 @@ async function claimMilestone(referrals) {
 }
 
 // ============================================================================
-// SECTION 24: NOTIFICATIONS SYSTEM
+// SECTION 24: NOTIFICATIONS SYSTEM (FULLY FIXED)
 // ============================================================================
 
 function addNotification(notification) {
@@ -1418,6 +1416,8 @@ function addNotification(notification) {
     
     localStorage.setItem('troll_user_data', JSON.stringify(currentUser));
     updateNotificationBadge();
+    
+    console.log('✅ Notification added:', newNotification.title);
 }
 
 function updateNotificationBadge() {
@@ -1455,8 +1455,28 @@ function renderNotifications() {
     notifications.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     
     notifications.forEach(n => {
-        const date = new Date(n.timestamp);
-        const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        // ✅ إصلاح تنسيق التاريخ
+        let date;
+        if (n.timestamp?.toDate) {
+            date = n.timestamp.toDate();
+        } else if (n.timestamp?.seconds) {
+            date = new Date(n.timestamp.seconds * 1000);
+        } else if (typeof n.timestamp === 'string') {
+            date = new Date(n.timestamp);
+        } else {
+            date = new Date();
+        }
+        
+        if (isNaN(date.getTime())) {
+            date = new Date();
+        }
+        
+        const formattedDate = date.toLocaleString(currentLanguage === 'ar' ? 'ar-SA' : 'en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
         
         let iconClass = 'fa-bell';
         let iconColor = 'info';
@@ -1476,7 +1496,9 @@ function renderNotifications() {
                     <span class="notification-title">${n.title}</span>
                     <span class="notification-time">${formattedDate}</span>
                 </div>
-                <div class="notification-message">${n.message}</div>
+                <div class="notification-message" style="direction: ${currentLanguage === 'ar' ? 'rtl' : 'ltr'}; text-align: ${currentLanguage === 'ar' ? 'right' : 'left'}; word-break: break-word;">
+                    ${n.message}
+                </div>
             </div>
         `;
     });
@@ -1544,7 +1566,9 @@ async function loadBroadcasts() {
                 }).catch(() => {});
             }
         });
-    } catch (e) {}
+    } catch (e) {
+        console.error('Load broadcasts error:', e);
+    }
 }
 
 // ============================================================================
@@ -1561,7 +1585,6 @@ function showModal(id) {
     if (modal) modal.classList.add('show');
 }
 
-// ====== DEPOSIT MODAL ======
 function showDepositModal() {
     const modal = document.getElementById('depositModal');
     if (!modal) return;
@@ -1678,7 +1701,6 @@ async function submitDepositRequest() {
     }
 }
 
-// ====== WITHDRAW MODAL ======
 function showWithdrawModal() {
     if (!currentUser.withdrawalUnlocked && !currentUser.premium) {
         showToast('Complete missions to unlock withdrawal!', 'error');
@@ -1761,7 +1783,6 @@ async function submitWithdraw() {
     }
 }
 
-// ====== HISTORY MODAL ======
 function showHistory() {
     showModal('historyModal');
     renderHistory('all');
@@ -1897,7 +1918,7 @@ async function verifyAdminPassword() {
     if (result.success) {
         adminAuthenticated = true;
         adminAuthToken = password;
-        saveAdminSession(); // ✅ حفظ الجلسة
+        saveAdminSession();
         closeModal('adminAuthModal');
         showAdminPanel();
         showToast('Authenticated successfully', 'success');
@@ -1911,7 +1932,6 @@ async function verifyAdminPassword() {
 // ============================================================================
 
 function showAdminPanel() {
-    // ✅ محاولة استعادة الجلسة
     if (!adminAuthenticated) {
         if (loadAdminSession()) {
             console.log('✅ Admin session loaded from storage');
@@ -2159,7 +2179,6 @@ function refreshAdminSection() {
     }
 }
 
-// ====== APPROVE/REJECT FUNCTIONS ======
 async function approveDeposit(depositId, userId, currency) {
     const amountInput = document.getElementById(`amount_${depositId}`);
     const amount = parseFloat(amountInput?.value);
@@ -2223,7 +2242,6 @@ async function rejectWithdrawal(withdrawalId) {
     }
 }
 
-// ====== USER MANAGEMENT ======
 function showUserManagementInterface() {
     const container = document.getElementById('adminListContainer');
     
@@ -2344,7 +2362,6 @@ function showRemoveBalanceModal() {
 
 async function adminAddBalance(userId, currency, amount) {
     console.log('💰 Admin adding balance:', userId, currency, amount);
-    console.log('🔑 Admin token:', adminAuthToken ? 'Present' : 'Missing');
     
     const res = await apiCall('/admin/add-balance', 'POST', { userId, currency, amount }, true);
     
@@ -2358,7 +2375,6 @@ async function adminAddBalance(userId, currency, amount) {
 
 async function adminRemoveBalance(userId, currency, amount) {
     console.log('💰 Admin removing balance:', userId, currency, amount);
-    console.log('🔑 Admin token:', adminAuthToken ? 'Present' : 'Missing');
     
     const res = await apiCall('/admin/remove-balance', 'POST', { userId, currency, amount }, true);
     
@@ -2385,7 +2401,6 @@ async function blockUserWithdrawals() {
     }
 }
 
-// ====== BROADCAST ======
 function showBroadcastInterface() {
     const container = document.getElementById('adminListContainer');
     
@@ -2596,7 +2611,7 @@ function toggleTheme() {
 
 function logout() {
     if (confirm(t('logout.confirm'))) {
-        clearAdminSession(); // ✅ مسح جلسة المشرف
+        clearAdminSession();
         localStorage.clear();
         location.reload();
     }
@@ -2635,8 +2650,8 @@ function showToast(message, type = 'success') {
 
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('🚀 Troll Army - Professional Edition v27.0');
-    console.log('✅ Notifications merged (Firebase + Local) - Zero Listeners');
-    console.log('✅ Admin session persistence enabled');
+    console.log('✅ Notifications System: Fully Fixed');
+    console.log('✅ Admin Session: Persistence Enabled');
     
     document.documentElement.setAttribute('data-theme', currentTheme);
     if (currentLanguage === 'ar') {
@@ -2723,4 +2738,4 @@ window.sendBroadcast = sendBroadcast;
 window.copyToClipboard = copyToClipboard;
 
 console.log('✅✅✅ TROLL ARMY - PROFESSIONAL EDITION v27.0 READY! ✅✅✅');
-console.log('📢 Features: Notifications Merged | Admin Session Persistence | Zero Listeners');
+console.log('📢 Notifications: Merged (Firebase + Local) | Admin Session: Persisted');
