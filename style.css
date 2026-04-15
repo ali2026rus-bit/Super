@@ -2837,24 +2837,26 @@ input:checked + .toggle-slider:before {
     background: var(--troll-green);
 }
 /* ============================================================
-   🔔 NOTIFICATION MESSAGE FIX - منع تكدس النصوص
+   🔔 NOTIFICATION TITLE FIX - إظهار النص كاملاً
    ============================================================ */
 
-.notification-message {
-    word-break: break-word !important;
-    overflow-wrap: break-word !important;
+.notification-title {
     white-space: normal !important;
-    line-height: 1.5 !important;
-    max-width: 100% !important;
-    padding-right: 8px !important;
+    word-break: break-word !important;
+    overflow: visible !important;
+    line-height: 1.4 !important;
+    flex: 1;
+    min-width: 0;  /* يسمح بتقليص العنصر */
 }
 
-/* دعم اللغة العربية */
-[dir="rtl"] .notification-message {
-    margin-left: 0 !important;
-    margin-right: 40px !important;
-    text-align: right !important;
-    direction: rtl !important;
+.notification-header {
+    align-items: flex-start !important;
+    flex-wrap: wrap !important;
+}
+
+/* للغة العربية */
+[dir="rtl"] .notification-title {
+    text-align: right;
 }
 /* ============================================================
    END OF STYLESHEET
