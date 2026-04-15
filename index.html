@@ -138,7 +138,7 @@
             </div>
             <div class="header-actions">
                 <button class="icon-btn" onclick="openSupport()">
-                    <i class="fa-regular fa-headset"></i>
+                    <i class="fa-solid fa-headset"></i>
                 </button>
                 <button class="icon-btn" id="notificationBtn" onclick="showNotifications()">
                     <i class="fa-regular fa-bell"></i>
@@ -160,19 +160,19 @@
                 </div>
                 <div class="action-buttons">
                     <button class="action-btn" onclick="showDepositModal()">
-                        <i class="fa-regular fa-arrow-down"></i>
+                        <i class="fa-solid fa-arrow-down"></i>
                         <span>Deposit</span>
                     </button>
                     <button class="action-btn" onclick="showWithdrawModal()">
-                        <i class="fa-regular fa-arrow-up"></i>
+                        <i class="fa-solid fa-arrow-up"></i>
                         <span>Withdraw</span>
                     </button>
                     <button class="action-btn" onclick="showHistory()">
-                        <i class="fa-regular fa-clock"></i>
+                        <i class="fa-solid fa-clock-rotate-left"></i>
                         <span>History</span>
                     </button>
                     <button class="action-btn" onclick="showComingSoon('Swap')">
-                        <i class="fa-regular fa-arrow-right-arrow-left"></i>
+                        <i class="fa-solid fa-arrow-right-arrow-left"></i>
                         <span>Swap</span>
                     </button>
                 </div>
@@ -191,7 +191,7 @@
                 <div class="section-header">
                     <h4><i class="fa-regular fa-chart-line"></i> Top Cryptocurrencies</h4>
                     <button class="refresh-btn" onclick="refreshPrices()">
-                        <i class="fa-regular fa-rotate-right"></i>
+                        <i class="fa-solid fa-rotate-right"></i>
                     </button>
                 </div>
                 <div id="topCryptoList" class="top-crypto-list"></div>
@@ -366,23 +366,32 @@
 
             <!-- App Info -->
             <div class="app-info">
-                <p><i class="fa-regular fa-code"></i> Troll Army v26.1</p>
+                <p><i class="fa-regular fa-code"></i> Troll Army v26.0</p>
                 <p><i class="fa-regular fa-calendar"></i> TGE: May 2026</p>
             </div>
         </div>
 
         <!-- ====== BOTTOM NAVIGATION ====== -->
-        <div id="bottomNav" class="bottom-nav" style="display: none;">
-            <button class="nav-item active" data-tab="wallet" onclick="showWallet()">
-                <i class="fa-regular fa-wallet"></i>
+        <div id="bottomNav" class="bottom-nav-pro" style="display: none;">
+            <button class="nav-item-pro active" data-tab="wallet" onclick="showWallet()">
+                <div class="nav-icon-pro">
+                    <i class="fa-solid fa-wallet"></i>
+                    <div class="nav-glow-pro"></div>
+                </div>
                 <span>Wallet</span>
             </button>
-            <button class="nav-item" data-tab="airdrop" onclick="showAirdrop()">
-                <i class="fa-regular fa-parachute-box"></i>
+            <button class="nav-item-pro" data-tab="airdrop" onclick="showAirdrop()">
+                <div class="nav-icon-pro">
+                    <i class="fa-solid fa-gift"></i>
+                    <div class="nav-glow-pro"></div>
+                </div>
                 <span>Airdrop</span>
             </button>
-            <button class="nav-item" data-tab="settings" onclick="showSettings()">
-                <i class="fa-regular fa-gear"></i>
+            <button class="nav-item-pro" data-tab="settings" onclick="showSettings()">
+                <div class="nav-icon-pro">
+                    <i class="fa-solid fa-gear"></i>
+                    <div class="nav-glow-pro"></div>
+                </div>
                 <span>Settings</span>
             </button>
         </div>
@@ -390,14 +399,13 @@
 
     <!-- ====== MODALS ====== -->
     
-    <!-- Deposit Modal (Simplified - No TXN ID, No Submit Button) -->
+    <!-- Deposit Modal -->
     <div id="depositModal" class="modal">
         <div class="modal-content">
             <button class="close-btn" onclick="closeModal('depositModal')">&times;</button>
             <div class="modal-icon">📥</div>
             <h2>Deposit Crypto</h2>
             <p class="modal-desc">Select currency to generate your unique deposit address</p>
-            <!-- المحتوى الديناميكي سيتم حقنه من app.js -->
         </div>
     </div>
 
@@ -432,26 +440,6 @@
                 
                 <button class="modal-action-btn" onclick="submitWithdraw()">
                     <i class="fa-regular fa-paper-plane"></i> Request Withdrawal
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Withdraw Locked Modal (NEW - Professional) -->
-    <div id="withdrawLockedModal" class="modal">
-        <div class="modal-content withdraw-locked-content">
-            <button class="close-btn" onclick="closeModal('withdrawLockedModal')">&times;</button>
-            <div class="modal-icon">🔒</div>
-            <h2 id="withdrawLockedTitle">Withdrawal Locked</h2>
-            <p id="withdrawLockedMessage" class="modal-desc">You're almost there! Complete the remaining missions to unlock withdrawal.</p>
-            
-            <div class="missions-remaining-list" id="missionsRemainingList">
-                <!-- سيتم ملؤها ديناميكياً من app.js -->
-            </div>
-            
-            <div class="modal-actions" style="margin-top: 20px;">
-                <button class="modal-action-btn primary" onclick="closeModal('withdrawLockedModal')">
-                    <i class="fa-regular fa-check"></i> Got it!
                 </button>
             </div>
         </div>
