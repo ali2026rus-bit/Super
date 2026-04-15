@@ -324,7 +324,93 @@ button {
 }
 
 /* ============================================================
-   05. SPLASH SCREEN
+   05. PREMIUM AVATAR LEGENDARY EFFECTS
+   ============================================================ */
+
+/* التأثير الأساسي للـ Premium Avatar */
+.avatar-premium {
+    position: relative;
+    animation: premiumFloat 3s ease-in-out infinite !important;
+    box-shadow: 0 0 30px var(--troll-gold-glow), 0 0 60px rgba(255, 215, 0, 0.3) !important;
+    border-color: var(--troll-gold) !important;
+    background: var(--gradient-premium) !important;
+}
+
+/* حركة الطفو السحرية */
+@keyframes premiumFloat {
+    0% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-6px);
+    }
+    100% {
+        transform: translateY(0px);
+    }
+}
+
+/* الهالة الذهبية النابضة */
+.avatar-premium::before {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    background: radial-gradient(circle, var(--troll-gold-glow) 0%, transparent 70%);
+    border-radius: 50%;
+    opacity: 0.6;
+    animation: premiumHalo 2s ease-in-out infinite;
+    z-index: -1;
+}
+
+@keyframes premiumHalo {
+    0%, 100% {
+        opacity: 0.3;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.8;
+        transform: scale(1.1);
+    }
+}
+
+/* تأثير النجوم المتطايرة */
+.avatar-premium::after {
+    content: '✨';
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    font-size: 14px;
+    opacity: 0;
+    animation: premiumSparkle 2.5s ease-in-out infinite;
+}
+
+@keyframes premiumSparkle {
+    0%, 100% {
+        opacity: 0;
+        transform: scale(0.5) rotate(0deg);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.2) rotate(180deg);
+    }
+}
+
+/* نبض الإضاءة المستمر */
+@keyframes premiumPulse {
+    0%, 100% {
+        filter: drop-shadow(0 0 5px gold) drop-shadow(0 0 10px orange);
+    }
+    50% {
+        filter: drop-shadow(0 0 15px gold) drop-shadow(0 0 25px orange);
+    }
+}
+
+.avatar-premium svg,
+.avatar-premium img {
+    animation: premiumPulse 2s ease-in-out infinite;
+}
+
+/* ============================================================
+   06. SPLASH SCREEN
    ============================================================ */
 
 .splash-screen {
@@ -400,7 +486,7 @@ button {
 }
 
 /* ============================================================
-   06. ONBOARDING SCREEN
+   07. ONBOARDING SCREEN
    ============================================================ */
 
 .onboarding-screen {
@@ -511,7 +597,7 @@ button {
 }
 
 /* ============================================================
-   07. MAIN APP CONTAINER
+   08. MAIN APP CONTAINER
    ============================================================ */
 
 .app-container {
@@ -524,7 +610,7 @@ button {
 }
 
 /* ============================================================
-   08. HEADER & USER INFO
+   09. HEADER & USER INFO
    ============================================================ */
 
 .header {
@@ -554,7 +640,7 @@ button {
     border: 2px solid var(--border-medium);
     transition: all var(--transition-base);
     position: relative;
-    overflow: hidden;
+    overflow: visible;
     flex-shrink: 0;
 }
 
@@ -565,17 +651,11 @@ button {
     background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
     opacity: 0;
     transition: opacity var(--transition-base);
+    border-radius: 50%;
 }
 
 .avatar:hover::before {
     opacity: 1;
-}
-
-.avatar-premium {
-    background: var(--gradient-premium) !important;
-    border-color: var(--troll-yellow);
-    box-shadow: var(--shadow-glow-gold);
-    animation: pulseGlow 2s infinite;
 }
 
 .user-details h3 {
@@ -661,7 +741,7 @@ button {
 }
 
 /* ============================================================
-   09. BALANCE CARD
+   10. BALANCE CARD
    ============================================================ */
 
 .balance-card {
@@ -727,7 +807,7 @@ button {
 }
 
 /* ============================================================
-   10. ACTION BUTTONS (ENHANCED)
+   11. ACTION BUTTONS (ENHANCED)
    ============================================================ */
 
 .action-buttons {
@@ -794,7 +874,7 @@ button {
 }
 
 /* ============================================================
-   11. ASSETS & CRYPTO LISTS
+   12. ASSETS & CRYPTO LISTS
    ============================================================ */
 
 .assets-section,
@@ -936,7 +1016,7 @@ button {
 }
 
 /* ============================================================
-   12. BOTTOM NAVIGATION (PROFESSIONAL)
+   13. BOTTOM NAVIGATION (PROFESSIONAL)
    ============================================================ */
 
 .bottom-nav-pro {
@@ -1061,7 +1141,7 @@ button {
 }
 
 /* ============================================================
-   13. WALLET SECTION
+   14. WALLET SECTION
    ============================================================ */
 
 #walletSection.section {
@@ -1073,42 +1153,40 @@ button {
 }
 
 /* ============================================================
-   14. AIRDROP SECTION (MYSTERY MISSIONS)
+   15. AIRDROP SECTION (PROFESSIONAL COMPRESSED)
    ============================================================ */
 
 .airdrop-header {
     text-align: center;
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: var(--spacing-md);
 }
 
-.troll-face-large {
-    font-size: 80px;
-    margin-bottom: var(--spacing-md);
-    filter: drop-shadow(0 0 30px var(--troll-green-glow));
-    animation: float 3s ease-in-out infinite;
+.airdrop-header .troll-face-large {
+    margin-bottom: var(--spacing-xs);
 }
 
 .airdrop-header h2 {
-    margin-bottom: var(--spacing-xs);
+    margin-bottom: 2px;
 }
 
 .airdrop-header p {
     color: var(--text-secondary);
+    font-size: 0.75rem;
 }
 
-/* Stats Grid */
+/* Stats Grid - Compressed */
 .stats-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: var(--spacing-md);
-    margin-bottom: var(--spacing-lg);
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
 }
 
 .stat-card {
     background: var(--bg-card);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-lg);
-    padding: var(--spacing-lg);
+    padding: var(--spacing-md);
     text-align: center;
     backdrop-filter: blur(10px);
 }
@@ -1119,48 +1197,57 @@ button {
     justify-content: center;
     gap: var(--spacing-xs);
     color: var(--text-secondary);
-    font-size: 0.875rem;
-    margin-bottom: var(--spacing-sm);
+    font-size: 0.75rem;
+    margin-bottom: var(--spacing-xs);
 }
 
 .stat-card span:last-child {
-    font-size: 2rem;
+    font-size: 1.5rem;
     font-weight: 700;
     color: var(--troll-green);
 }
 
-/* Withdrawal Lock Card */
+/* Withdrawal Lock Card - Compressed */
 .withdrawal-lock-card {
     background: linear-gradient(135deg, rgba(231, 76, 60, 0.1), rgba(241, 196, 15, 0.05));
     border: 1px solid rgba(231, 76, 60, 0.3);
     border-radius: var(--radius-lg);
-    padding: var(--spacing-lg);
-    margin-bottom: var(--spacing-lg);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
     backdrop-filter: blur(10px);
 }
 
 .lock-header {
     display: flex;
     align-items: center;
-    gap: var(--spacing-sm);
+    gap: var(--spacing-xs);
     color: var(--troll-red);
-    margin-bottom: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
     font-weight: 600;
 }
 
+.lock-header i {
+    font-size: 0.9rem;
+}
+
+.lock-header span {
+    font-size: 0.85rem;
+}
+
+/* Missions List - Compressed */
 .missions-list-vertical {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-md);
+    gap: var(--spacing-sm);
 }
 
 .mission-card {
     background: var(--bg-card);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-lg);
-    padding: var(--spacing-md);
+    padding: var(--spacing-sm);
     display: flex;
-    gap: var(--spacing-md);
+    gap: var(--spacing-sm);
     transition: all var(--transition-base);
 }
 
@@ -1174,9 +1261,9 @@ button {
 }
 
 .mission-icon {
-    font-size: 2rem;
-    width: 50px;
-    height: 50px;
+    font-size: 1.3rem;
+    width: 40px;
+    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1189,21 +1276,24 @@ button {
 }
 
 .mission-content h4 {
-    margin-bottom: var(--spacing-xs);
+    font-size: 0.85rem;
+    margin-bottom: 2px;
 }
 
 .mission-content p {
-    margin-bottom: var(--spacing-sm);
+    font-size: 0.7rem;
+    margin-bottom: var(--spacing-xs);
+    color: var(--text-secondary);
 }
 
 .mission-action-btn {
     background: var(--gradient-primary);
     border: none;
     border-radius: var(--radius-md);
-    padding: var(--spacing-sm) var(--spacing-md);
+    padding: 4px var(--spacing-md);
     color: white;
     font-weight: 600;
-    font-size: 0.875rem;
+    font-size: 0.7rem;
     cursor: pointer;
     transition: all var(--transition-base);
 }
@@ -1214,16 +1304,16 @@ button {
 }
 
 .mission-hint {
-    font-size: 0.8125rem;
+    font-size: 0.65rem;
     color: var(--troll-yellow);
-    margin-top: var(--spacing-sm);
+    margin-top: 2px;
 }
 
 .progress-bar.small {
-    height: 6px;
+    height: 4px;
     background: var(--bg-primary);
     border-radius: var(--radius-full);
-    margin: var(--spacing-sm) 0;
+    margin: var(--spacing-xs) 0;
     overflow: hidden;
 }
 
@@ -1235,38 +1325,39 @@ button {
 
 .premium-unlocked-card {
     text-align: center;
-    padding: var(--spacing-xl);
+    padding: var(--spacing-lg);
 }
 
 .premium-icon-large {
-    font-size: 60px;
-    margin-bottom: var(--spacing-md);
+    font-size: 48px;
+    margin-bottom: var(--spacing-sm);
     filter: drop-shadow(0 0 20px gold);
 }
 
-/* Referral Link Card */
+/* Referral Link Card - Compressed */
 .referral-link-card {
     background: var(--bg-card);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-lg);
-    padding: var(--spacing-lg);
-    margin-bottom: var(--spacing-lg);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
     backdrop-filter: blur(10px);
 }
 
 .referral-link-card label {
     display: flex;
     align-items: center;
-    gap: var(--spacing-sm);
-    margin-bottom: var(--spacing-md);
+    gap: var(--spacing-xs);
+    margin-bottom: var(--spacing-xs);
     color: var(--text-secondary);
     font-weight: 500;
+    font-size: 0.75rem;
 }
 
 .link-container {
     display: flex;
     gap: var(--spacing-sm);
-    margin-bottom: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
 }
 
 .link-container input {
@@ -1274,9 +1365,9 @@ button {
     background: var(--bg-primary);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-md);
-    padding: var(--spacing-md);
+    padding: var(--spacing-sm);
     color: var(--text-primary);
-    font-size: 0.875rem;
+    font-size: 0.7rem;
     font-family: var(--font-mono);
     outline: none;
 }
@@ -1289,7 +1380,7 @@ button {
     background: var(--troll-green);
     border: none;
     border-radius: var(--radius-md);
-    padding: 0 var(--spacing-lg);
+    padding: 0 var(--spacing-md);
     color: white;
     font-weight: 600;
     cursor: pointer;
@@ -1306,7 +1397,7 @@ button {
     background: #0088cc;
     border: none;
     border-radius: var(--radius-md);
-    padding: var(--spacing-md);
+    padding: var(--spacing-sm);
     color: white;
     font-weight: 600;
     cursor: pointer;
@@ -1315,6 +1406,7 @@ button {
     justify-content: center;
     gap: var(--spacing-sm);
     transition: all var(--transition-base);
+    font-size: 0.75rem;
 }
 
 .share-btn:hover {
@@ -1327,29 +1419,31 @@ button {
     text-align: center;
     color: var(--troll-yellow);
     font-weight: 600;
-    margin-top: var(--spacing-md);
+    margin-top: var(--spacing-sm);
     margin-bottom: 0;
+    font-size: 0.7rem;
 }
 
-/* Milestones Section */
+/* Milestones Section - Compressed */
 .milestones-section {
-    margin-top: var(--spacing-lg);
+    margin-top: var(--spacing-md);
 }
 
 .milestones-section h4 {
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
-    margin-bottom: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
     color: var(--troll-yellow);
+    font-size: 0.85rem;
 }
 
 .milestone-item {
     background: var(--bg-card);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-lg);
-    padding: var(--spacing-lg);
-    margin-bottom: var(--spacing-md);
+    padding: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
     backdrop-filter: blur(10px);
     transition: all var(--transition-base);
 }
@@ -1362,8 +1456,9 @@ button {
 .milestone-header {
     display: flex;
     justify-content: space-between;
-    margin-bottom: var(--spacing-md);
+    margin-bottom: var(--spacing-xs);
     font-weight: 600;
+    font-size: 0.75rem;
 }
 
 .milestone-header span:last-child {
@@ -1371,10 +1466,10 @@ button {
 }
 
 .progress-bar {
-    height: 8px;
+    height: 4px;
     background: var(--bg-primary);
     border-radius: var(--radius-full);
-    margin-bottom: var(--spacing-sm);
+    margin-bottom: var(--spacing-xs);
     overflow: hidden;
 }
 
@@ -1399,9 +1494,9 @@ button {
 }
 
 .progress-text {
-    font-size: 0.8125rem;
+    font-size: 0.65rem;
     color: var(--text-muted);
-    margin-bottom: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
 }
 
 .claim-btn {
@@ -1409,9 +1504,10 @@ button {
     background: var(--gradient-primary);
     border: none;
     border-radius: var(--radius-md);
-    padding: var(--spacing-md);
+    padding: var(--spacing-sm);
     color: white;
     font-weight: 600;
+    font-size: 0.7rem;
     cursor: pointer;
     transition: all var(--transition-base);
 }
@@ -1423,7 +1519,7 @@ button {
 }
 
 /* ============================================================
-   15. SETTINGS SECTION
+   16. SETTINGS SECTION
    ============================================================ */
 
 .profile-card {
@@ -1592,7 +1688,7 @@ input:checked + .toggle-slider:before {
 }
 
 /* ============================================================
-   16. MODALS (ALL MODALS)
+   17. MODALS (ALL MODALS)
    ============================================================ */
 
 .modal {
@@ -2029,13 +2125,39 @@ input:checked + .toggle-slider:before {
     margin-top: var(--spacing-xs);
 }
 
-/* ----- Notifications Modal (FIXED - No Stacking) ----- */
+/* ============================================================
+   18. NOTIFICATIONS MODAL (FULLY FIXED - WITH SCROLL)
+   ============================================================ */
+
+#notificationsModal {
+    align-items: flex-start;
+    justify-content: center;
+}
+
+#notificationsModal .modal-content {
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#notificationsModal .modal-content > .modal-icon,
+#notificationsModal .modal-content > h2,
+#notificationsModal .modal-content > .modal-desc,
+#notificationsModal .modal-content > div:first-of-type {
+    flex-shrink: 0;
+}
+
 .notifications-list {
+    flex: 1;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-right: 6px;
+    margin-top: 8px;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     gap: var(--spacing-sm);
-    max-height: 350px;
-    overflow-y: auto;
 }
 
 .notification-item {
@@ -2046,8 +2168,9 @@ input:checked + .toggle-slider:before {
     cursor: pointer;
     transition: all var(--transition-base);
     position: relative;
-    overflow: hidden;
+    overflow: visible;
     word-break: break-word;
+    flex-shrink: 0;
 }
 
 .notification-item::before {
@@ -2060,6 +2183,7 @@ input:checked + .toggle-slider:before {
     background: var(--troll-green);
     opacity: 0;
     transition: opacity var(--transition-base);
+    border-radius: var(--radius-full) 0 0 var(--radius-full);
 }
 
 .notification-item.unread::before {
@@ -2159,8 +2283,23 @@ input:checked + .toggle-slider:before {
     margin-bottom: var(--spacing-xs);
 }
 
+/* تنسيق السكرول الجميل للإشعارات */
+.notifications-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.notifications-list::-webkit-scrollbar-track {
+    background: var(--bg-primary);
+    border-radius: 10px;
+}
+
+.notifications-list::-webkit-scrollbar-thumb {
+    background: var(--troll-green);
+    border-radius: 10px;
+}
+
 /* ============================================================
-   17. ADMIN PANEL
+   19. ADMIN PANEL
    ============================================================ */
 
 .admin-panel {
@@ -2556,7 +2695,7 @@ input:checked + .toggle-slider:before {
 }
 
 /* ============================================================
-   18. TOAST NOTIFICATIONS
+   20. TOAST NOTIFICATIONS
    ============================================================ */
 
 .toast {
@@ -2596,7 +2735,7 @@ input:checked + .toggle-slider:before {
 }
 
 /* ============================================================
-   19. UTILITY CLASSES
+   21. UTILITY CLASSES
    ============================================================ */
 
 .hidden {
@@ -2701,7 +2840,7 @@ input:checked + .toggle-slider:before {
 }
 
 /* ============================================================
-   20. RTL SUPPORT (ARABIC)
+   22. RTL SUPPORT (ARABIC)
    ============================================================ */
 
 [dir="rtl"] {
@@ -2728,6 +2867,7 @@ input:checked + .toggle-slider:before {
 [dir="rtl"] .notification-item::before {
     left: auto;
     right: 0;
+    border-radius: 0 var(--radius-full) var(--radius-full) 0;
 }
 
 [dir="rtl"] .notification-item:hover {
@@ -2752,8 +2892,17 @@ input:checked + .toggle-slider:before {
     flex-direction: row-reverse;
 }
 
+[dir="rtl"] .notifications-list {
+    padding-right: 0;
+    padding-left: 6px;
+}
+
+[dir="rtl"] .notification-title {
+    text-align: right;
+}
+
 /* ============================================================
-   21. RESPONSIVE DESIGN
+   23. RESPONSIVE DESIGN
    ============================================================ */
 
 @media (max-width: 480px) {
@@ -2827,7 +2976,7 @@ input:checked + .toggle-slider:before {
 }
 
 /* ============================================================
-   CUSTOM SCROLLBAR
+   24. CUSTOM SCROLLBAR
    ============================================================ */
 
 ::-webkit-scrollbar {
@@ -2849,65 +2998,6 @@ input:checked + .toggle-slider:before {
     background: var(--troll-green);
 }
 
-/* ============================================================
-   🔔 NOTIFICATION TITLE FIX - إظهار النص كاملاً
-   ============================================================ */
-
-.notification-title {
-    white-space: normal !important;
-    word-break: break-word !important;
-    overflow: visible !important;
-    line-height: 1.4 !important;
-    flex: 1;
-    min-width: 0;
-}
-
-.notification-header {
-    align-items: flex-start !important;
-    flex-wrap: wrap !important;
-}
-
-/* للغة العربية */
-[dir="rtl"] .notification-title {
-    text-align: right;
-}
-/* ============================================================
-   FIX: NOTIFICATIONS SCROLL - إضافة سكرول لقائمة الإشعارات
-   ============================================================ */
-
-#notificationsModal .modal-content {
-    max-height: 80vh;
-    display: flex;
-    flex-direction: column;
-}
-
-#notificationsModal .modal-content h2,
-#notificationsModal .modal-content .modal-icon,
-#notificationsModal .modal-content .modal-desc {
-    flex-shrink: 0;
-}
-
-.notifications-list {
-    max-height: 400px !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    padding-right: 4px;
-}
-
-/* تنسيق السكرول الجميل */
-.notifications-list::-webkit-scrollbar {
-    width: 4px;
-}
-
-.notifications-list::-webkit-scrollbar-track {
-    background: var(--bg-primary);
-    border-radius: 10px;
-}
-
-.notifications-list::-webkit-scrollbar-thumb {
-    background: var(--troll-green);
-    border-radius: 10px;
-}
 /* ============================================================
    END OF STYLESHEET
    ============================================================ */
