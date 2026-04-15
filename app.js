@@ -1,7 +1,12 @@
 // ============================================================================
-// TROLL ARMY - PROFESSIONAL EDITION v27.0
-// Complete Rewrite - Fixed Notifications System
-// All Original Features Preserved
+// TROLL ARMY - PROFESSIONAL EDITION v28.0
+// COMPLETE REWRITE WITH:
+// - Fixed Add Wallet Button & Settings Solana Wallet Link
+// - Professional Withdrawal Modal (Deposit-style)
+// - Fixed Notifications (No more stacking/cards issues)
+// - Removed Transaction ID from Deposit Modal
+// - Professional i18n (English default, Arabic full support)
+// ALL ORIGINAL FEATURES PRESERVED
 // ============================================================================
 
 // ============================================================================
@@ -169,7 +174,7 @@ function getDefaultMissions() {
 }
 
 // ============================================================================
-// SECTION 9: TRANSLATIONS (i18n)
+// SECTION 9: TRANSLATIONS (i18n) - PROFESSIONAL
 // ============================================================================
 
 const translations = {
@@ -208,6 +213,15 @@ const translations = {
         'premium.note': 'Payment processed securely via Telegram Wallet',
         'withdrawal.unlocked': 'Withdrawal Unlocked!',
         'withdrawal.locked': 'Withdrawal Locked',
+        'withdrawal.locked.title': '🔒 Withdrawal Locked',
+        'withdrawal.locked.message': 'Complete the remaining mystery missions to unlock withdrawal.',
+        'withdrawal.missions.left': 'missions left to complete',
+        'withdrawal.go.to.missions': 'Go to Missions',
+        'withdrawal.available.title': '💸 Withdraw TROLL',
+        'withdrawal.amount': 'Amount (min 10,000 TROLL)',
+        'withdrawal.address': 'Solana Wallet Address',
+        'withdrawal.available.balance': 'Available',
+        'withdrawal.submit': 'Request Withdrawal',
         'deposit.title': 'Deposit Crypto',
         'deposit.selectCurrency': 'Select Currency',
         'deposit.address': 'Your Deposit Address',
@@ -218,15 +232,8 @@ const translations = {
         'deposit.copied': 'Address copied!',
         'deposit.scan': 'Scan QR Code',
         'deposit.confirm': 'I have sent the deposit',
-        'deposit.txnId': 'Transaction ID (optional)',
         'deposit.submit': 'Submit Deposit Request',
         'deposit.success': 'Deposit request submitted!',
-        'withdraw.title': 'Withdraw TROLL',
-        'withdraw.amount': 'Amount (min 10,000 TROLL)',
-        'withdraw.address': 'Solana Wallet Address',
-        'withdraw.available': 'Available',
-        'withdraw.submit': 'Request Withdrawal',
-        'withdraw.success': 'Withdrawal requested!',
         'history.title': 'Transaction History',
         'history.all': 'All',
         'history.deposits': 'Deposits',
@@ -245,7 +252,7 @@ const translations = {
         'settings.notifications': 'Notifications',
         'settings.language': 'Language',
         'settings.logout': 'Logout',
-        'settings.version': 'Troll Army v27.0',
+        'settings.version': 'Troll Army v28.0',
         'settings.tge': 'TGE: May 2026',
         'settings.notSet': 'Not set',
         'settings.connected': 'Connected',
@@ -329,6 +336,15 @@ const translations = {
         'premium.note': 'تتم معالجة الدفع بشكل آمن عبر محفظة تيليجرام',
         'withdrawal.unlocked': 'تم فتح السحب!',
         'withdrawal.locked': 'السحب مقفل',
+        'withdrawal.locked.title': '🔒 السحب مقفل',
+        'withdrawal.locked.message': 'أكمل المهام الغامضة المتبقية لفتح السحب.',
+        'withdrawal.missions.left': 'مهمة متبقية للإكمال',
+        'withdrawal.go.to.missions': 'اذهب إلى المهام',
+        'withdrawal.available.title': '💸 سحب TROLL',
+        'withdrawal.amount': 'المبلغ (الحد الأدنى 10,000 TROLL)',
+        'withdrawal.address': 'عنوان محفظة Solana',
+        'withdrawal.available.balance': 'المتاح',
+        'withdrawal.submit': 'طلب السحب',
         'deposit.title': 'إيداع العملات',
         'deposit.selectCurrency': 'اختر العملة',
         'deposit.address': 'عنوان الإيداع',
@@ -339,15 +355,8 @@ const translations = {
         'deposit.copied': 'تم نسخ العنوان!',
         'deposit.scan': 'مسح رمز QR',
         'deposit.confirm': 'لقد قمت بالإيداع',
-        'deposit.txnId': 'رقم المعاملة (اختياري)',
         'deposit.submit': 'تقديم طلب الإيداع',
         'deposit.success': 'تم تقديم طلب الإيداع!',
-        'withdraw.title': 'سحب TROLL',
-        'withdraw.amount': 'المبلغ (الحد الأدنى 10,000 TROLL)',
-        'withdraw.address': 'عنوان محفظة Solana',
-        'withdraw.available': 'المتاح',
-        'withdraw.submit': 'طلب السحب',
-        'withdraw.success': 'تم تقديم طلب السحب!',
         'history.title': 'سجل المعاملات',
         'history.all': 'الكل',
         'history.deposits': 'إيداعات',
@@ -366,7 +375,7 @@ const translations = {
         'settings.notifications': 'الإشعارات',
         'settings.language': 'اللغة',
         'settings.logout': 'تسجيل الخروج',
-        'settings.version': 'Troll Army v27.0',
+        'settings.version': 'Troll Army v28.0',
         'settings.tge': 'TGE: مايو 2026',
         'settings.notSet': 'غير محدد',
         'settings.connected': 'متصل',
@@ -678,7 +687,7 @@ async function initUser() {
             currentUserId = data.userId;
             isGuest = false;
             
-            // ✅ دمج الإشعارات المحلية مع إشعارات Firebase
+            // Merge local notifications with Firebase notifications
             const localData = localStorage.getItem('troll_user_data');
             if (localData) {
                 try {
@@ -1262,12 +1271,15 @@ function celebrateUnlock() {
 }
 
 // ============================================================================
-// SECTION 23: USER ACTIONS
+// SECTION 23: SOLANA WALLET MODAL (FIXED - WORKS FROM BOTH MISSIONS AND SETTINGS)
 // ============================================================================
 
 function showSolanaWalletModal() {
+    console.log('🔐 Opening Solana Wallet Modal');
+    
     let modal = document.getElementById('solanaWalletModal');
     
+    // Create modal if it doesn't exist
     if (!modal) {
         modal = document.createElement('div');
         modal.id = 'solanaWalletModal';
@@ -1301,40 +1313,53 @@ function showSolanaWalletModal() {
         const validation = document.getElementById('solanaWalletValidation');
         const saveBtn = document.getElementById('saveSolanaWalletBtn');
         
-        input.addEventListener('input', function() {
-            const value = this.value.trim();
-            if (value.length >= 32 && value.length <= 44) {
-                validation.textContent = '✓ ' + t('solanaWallet.valid');
-                validation.className = 'validation-hint valid';
-                saveBtn.disabled = false;
-            } else {
-                validation.textContent = t('solanaWallet.invalid');
-                validation.className = 'validation-hint invalid';
-                saveBtn.disabled = true;
-            }
-        });
-        
-        input.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter' && !saveBtn.disabled) {
-                submitSolanaWallet();
-            }
-        });
+        if (input) {
+            input.addEventListener('input', function() {
+                const value = this.value.trim();
+                if (value.length >= 32 && value.length <= 44) {
+                    validation.textContent = '✓ ' + t('solanaWallet.valid');
+                    validation.className = 'validation-hint valid';
+                    saveBtn.disabled = false;
+                } else {
+                    validation.textContent = t('solanaWallet.invalid');
+                    validation.className = 'validation-hint invalid';
+                    saveBtn.disabled = true;
+                }
+            });
+            
+            input.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !saveBtn.disabled) {
+                    submitSolanaWallet();
+                }
+            });
+        }
     }
     
-    document.getElementById('solanaModalTitle').textContent = t('solanaWallet.title');
-    document.getElementById('solanaModalDesc').textContent = t('solanaWallet.desc');
-    document.getElementById('solanaWalletInput').placeholder = t('solanaWallet.placeholder');
-    document.getElementById('saveSolanaWalletBtn').innerHTML = `<i class="fa-regular fa-save"></i> ${t('solanaWallet.save')}`;
+    // Update translations
+    const titleEl = document.getElementById('solanaModalTitle');
+    const descEl = document.getElementById('solanaModalDesc');
+    const saveBtnEl = document.getElementById('saveSolanaWalletBtn');
+    const inputEl = document.getElementById('solanaWalletInput');
+    const validationEl = document.getElementById('solanaWalletValidation');
+    
+    if (titleEl) titleEl.textContent = t('solanaWallet.title');
+    if (descEl) descEl.textContent = t('solanaWallet.desc');
+    if (saveBtnEl) saveBtnEl.innerHTML = `<i class="fa-regular fa-save"></i> ${t('solanaWallet.save')}`;
+    if (inputEl) inputEl.placeholder = t('solanaWallet.placeholder');
+    if (validationEl) validationEl.textContent = '';
+    if (inputEl) inputEl.value = '';
+    if (saveBtnEl) saveBtnEl.disabled = true;
     
     modal.classList.add('show');
-    document.getElementById('solanaWalletInput').value = '';
-    document.getElementById('solanaWalletInput').focus();
-    document.getElementById('solanaWalletValidation').textContent = '';
-    document.getElementById('saveSolanaWalletBtn').disabled = true;
+    if (inputEl) {
+        inputEl.focus();
+    }
 }
 
 function submitSolanaWallet() {
     const input = document.getElementById('solanaWalletInput');
+    if (!input) return;
+    
     const address = input.value.trim();
     
     if (address.length >= 32 && address.length <= 44) {
@@ -1357,45 +1382,121 @@ function submitSolanaWallet() {
     }
 }
 
-function copyInviteLink() {
-    const link = document.getElementById('inviteLink');
-    if (link) {
-        navigator.clipboard.writeText(link.value);
-        showToast(t('toast.copied'), 'success');
+// ============================================================================
+// SECTION 24: PROFESSIONAL WITHDRAWAL MODAL (DEPOSIT-STYLE)
+// ============================================================================
+
+function showWithdrawModal() {
+    console.log('💰 Opening Withdrawal Modal');
+    
+    let modal = document.getElementById('withdrawModal');
+    
+    // Create modal if it doesn't exist or recreate with new structure
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'withdrawModal';
+        modal.className = 'modal';
+        document.body.appendChild(modal);
     }
-}
-
-function shareInviteLink() {
-    const link = getReferralLink();
-    const text = encodeURIComponent('🧌 Join Troll Army! Get 1000 TROLL bonus!\n\n👉 ' + link);
-    if (tg) tg.openTelegramLink('https://t.me/share/url?url=&text=' + text);
-}
-
-async function claimMilestone(referrals) {
-    const milestone = MILESTONES.find(m => m.referrals === referrals);
-    if (!milestone || milestone.isSpecial) return;
-    if (!currentUser.claimedMilestones) currentUser.claimedMilestones = [];
-    if (currentUser.claimedMilestones.includes(referrals)) return;
-    if (currentUser.inviteCount < referrals) { showToast('Not enough referrals', 'error'); return; }
     
-    currentUser.balances.TROLL += milestone.reward;
-    currentUser.claimedMilestones.push(referrals);
+    // Check if withdrawal is locked
+    const isLocked = !currentUser.withdrawalUnlocked && !currentUser.premium;
+    const isBlocked = currentUser.withdrawBlocked === true;
     
-    await saveUserData();
-    updateUI();
-    renderMilestones();
+    // Calculate remaining missions if locked
+    let remainingMissions = 0;
+    if (!currentUser.withdrawalUnlocked && !currentUser.premium) {
+        const m = currentUser.withdrawalMissions;
+        if (!m.mission1.completed) remainingMissions++;
+        if (!m.mission2.completed) remainingMissions++;
+        if (!m.mission3.completed) remainingMissions++;
+        if (!m.mission4.completed) remainingMissions++;
+    }
     
-    addNotification({
-        type: 'milestone',
-        title: '🏆 Milestone Claimed!',
-        message: `+${milestone.reward.toLocaleString()} TROLL claimed!`
-    });
+    let modalHTML = '';
     
-    showToast('🎉 Claimed ' + milestone.reward.toLocaleString() + ' TROLL!', 'success');
+    if (isLocked || isBlocked) {
+        // LOCKED MODAL - Professional style like deposit modal
+        modalHTML = `
+            <div class="modal-content">
+                <button class="close-btn" onclick="closeModal('withdrawModal')">&times;</button>
+                <div class="modal-icon">🔒</div>
+                <h2>${t('withdrawal.locked.title')}</h2>
+                <p class="modal-desc">${t('withdrawal.locked.message')}</p>
+                
+                <div class="withdraw-info">
+                    <div class="info-row">
+                        <i class="fa-regular fa-flag"></i>
+                        <span>${remainingMissions} ${t('withdrawal.missions.left')}</span>
+                    </div>
+                    <div class="info-row">
+                        <i class="fa-regular fa-clock"></i>
+                        <span>Complete missions in Airdrop section</span>
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button class="modal-action-btn primary" onclick="closeModal('withdrawModal'); showAirdrop();">
+                        <i class="fa-regular fa-gift"></i> ${t('withdrawal.go.to.missions')}
+                    </button>
+                    <button class="modal-action-btn secondary" onclick="closeModal('withdrawModal')">
+                        <i class="fa-regular fa-times"></i> Cancel
+                    </button>
+                </div>
+            </div>
+        `;
+    } else {
+        // UNLOCKED MODAL - Withdrawal form
+        const balance = currentUser.balances.TROLL || 0;
+        modalHTML = `
+            <div class="modal-content">
+                <button class="close-btn" onclick="closeModal('withdrawModal')">&times;</button>
+                <div class="modal-icon">💸</div>
+                <h2>${t('withdrawal.available.title')}</h2>
+                
+                <div class="input-group">
+                    <label>${t('withdrawal.amount')}</label>
+                    <input type="number" id="withdrawAmount" placeholder="10000" min="10000" max="${balance}">
+                    <div class="info-row" style="margin-top: 5px;">
+                        <i class="fa-regular fa-wallet"></i>
+                        <span>${t('withdrawal.available.balance')}: ${balance.toLocaleString()} TROLL</span>
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <label>${t('withdrawal.address')}</label>
+                    <input type="text" id="withdrawAddress" placeholder="GzR...kLp">
+                </div>
+                
+                <div class="withdraw-info">
+                    <div class="info-row">
+                        <i class="fa-regular fa-clock"></i>
+                        <span>Distribution: May 1, 2026</span>
+                    </div>
+                    <div class="info-row">
+                        <i class="fa-regular fa-circle-info"></i>
+                        <span>Make sure it's a valid TROLL Solana address</span>
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button class="modal-action-btn primary" onclick="submitWithdraw()">
+                        <i class="fa-regular fa-paper-plane"></i> ${t('withdrawal.submit')}
+                    </button>
+                    <button class="modal-action-btn secondary" onclick="closeModal('withdrawModal')">
+                        <i class="fa-regular fa-times"></i> Cancel
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+    
+    modal.innerHTML = modalHTML;
+    modal.classList.add('show');
 }
 
 // ============================================================================
-// SECTION 24: NOTIFICATIONS SYSTEM (FULLY FIXED)
+// SECTION 25: NOTIFICATIONS SYSTEM (FULLY FIXED - NO STACKING)
 // ============================================================================
 
 function addNotification(notification) {
@@ -1455,7 +1556,6 @@ function renderNotifications() {
     notifications.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     
     notifications.forEach(n => {
-        // ✅ إصلاح تنسيق التاريخ
         let date;
         if (n.timestamp?.toDate) {
             date = n.timestamp.toDate();
@@ -1493,17 +1593,25 @@ function renderNotifications() {
                     <span class="notification-icon ${iconColor}">
                         <i class="fa-regular ${iconClass}"></i>
                     </span>
-                    <span class="notification-title">${n.title}</span>
+                    <span class="notification-title">${escapeHtml(n.title)}</span>
                     <span class="notification-time">${formattedDate}</span>
                 </div>
-                <div class="notification-message" style="direction: ${currentLanguage === 'ar' ? 'rtl' : 'ltr'}; text-align: ${currentLanguage === 'ar' ? 'right' : 'left'}; word-break: break-word;">
-                    ${n.message}
+                <div class="notification-message" style="direction: ${currentLanguage === 'ar' ? 'rtl' : 'ltr'}; text-align: ${currentLanguage === 'ar' ? 'right' : 'left'}; word-break: break-word; white-space: normal;">
+                    ${escapeHtml(n.message)}
                 </div>
             </div>
         `;
     });
     
     container.innerHTML = controlsHTML + html;
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 function markNotificationRead(notificationId) {
@@ -1572,7 +1680,7 @@ async function loadBroadcasts() {
 }
 
 // ============================================================================
-// SECTION 25: MODAL FUNCTIONS
+// SECTION 26: MODAL FUNCTIONS
 // ============================================================================
 
 function closeModal(id) {
@@ -1592,6 +1700,10 @@ function showDepositModal() {
     let currencySelect = document.getElementById('depositCurrencySelect');
     if (!currencySelect) {
         const container = modal.querySelector('.modal-content');
+        // Remove existing transaction ID field if present
+        const existingTxnField = document.getElementById('depositTxnIdGroup');
+        if (existingTxnField) existingTxnField.remove();
+        
         const selectHtml = `
             <div class="input-group">
                 <label>${t('deposit.selectCurrency')}</label>
@@ -1614,17 +1726,21 @@ function showDepositModal() {
                     <div class="info-row"><i class="fa-regular fa-coins"></i> <span id="depositMinAmount">-</span></div>
                     <div class="info-row"><i class="fa-regular fa-shield"></i> <span>${t('deposit.warning')}</span></div>
                 </div>
-                <div class="input-group">
-                    <label>${t('deposit.txnId')}</label>
-                    <input type="text" id="depositTxnId" placeholder="0x...">
+                <div class="modal-actions">
+                    <button class="modal-action-btn primary" onclick="submitDepositRequest()">
+                        <i class="fa-regular fa-paper-plane"></i> ${t('deposit.submit')}
+                    </button>
+                    <button class="modal-action-btn secondary" onclick="closeModal('depositModal')">
+                        <i class="fa-regular fa-times"></i> Cancel
+                    </button>
                 </div>
-                <button class="modal-action-btn" onclick="submitDepositRequest()">
-                    <i class="fa-regular fa-paper-plane"></i> ${t('deposit.submit')}
-                </button>
             </div>
         `;
         
         const closeBtn = container.querySelector('.close-btn');
+        // Remove old content after close button
+        const oldContent = container.querySelectorAll('.input-group, #depositAddressContainer, .modal-actions');
+        oldContent.forEach(el => el.remove());
         closeBtn.insertAdjacentHTML('beforebegin', selectHtml);
         
         document.getElementById('depositCurrencySelect').addEventListener('change', generateDepositAddress);
@@ -1669,22 +1785,19 @@ function copyDepositAddress() {
 async function submitDepositRequest() {
     const currency = document.getElementById('depositCurrencySelect').value;
     const address = document.getElementById('depositAddress').textContent;
-    const txnId = document.getElementById('depositTxnId')?.value || null;
     
     if (!address || address.includes('Generating') || address.includes('Failed')) {
         showToast('Please wait for address generation', 'error');
         return;
     }
     
-    const amount = 0;
-    
     const result = await apiCall('/deposit/submit-request', 'POST', {
         userId: currentUserId,
         userName: currentUser.userName,
         currency: currency,
-        amount: amount,
+        amount: 0,
         address: address,
-        txnId: txnId
+        txnId: null
     });
     
     if (result.success) {
@@ -1698,31 +1811,6 @@ async function submitDepositRequest() {
         });
     } else {
         showToast(result.error || 'Failed to submit deposit', 'error');
-    }
-}
-
-function showWithdrawModal() {
-    if (!currentUser.withdrawalUnlocked && !currentUser.premium) {
-        showToast('Complete missions to unlock withdrawal!', 'error');
-        return;
-    }
-    
-    if (currentUser.withdrawBlocked) {
-        showToast('Your withdrawal access has been blocked. Contact support.', 'error');
-        return;
-    }
-    
-    showModal('withdrawModal');
-    updateWithdrawInfo();
-}
-
-function updateWithdrawInfo() {
-    const balance = currentUser.balances.TROLL || 0;
-    const amountInput = document.getElementById('withdrawAmount');
-    
-    if (amountInput) {
-        amountInput.placeholder = `Min 10,000 TROLL (${t('withdraw.available')}: ${balance.toLocaleString()})`;
-        amountInput.max = balance;
     }
 }
 
@@ -1861,7 +1949,17 @@ function showNotifications() {
 }
 
 // ============================================================================
-// SECTION 26: ADMIN AUTHENTICATION
+// SECTION 27: SETTINGS - SOLANA WALLET LINK (FIXED)
+// ============================================================================
+
+// This function is called from settings item onclick
+function openSolanaWalletSettings() {
+    console.log('🔐 Opening Solana Wallet from Settings');
+    showSolanaWalletModal();
+}
+
+// ============================================================================
+// SECTION 28: ADMIN AUTHENTICATION
 // ============================================================================
 
 function showAdminAuthModal() {
@@ -1928,7 +2026,7 @@ async function verifyAdminPassword() {
 }
 
 // ============================================================================
-// SECTION 27: ADMIN PANEL
+// SECTION 29: ADMIN PANEL
 // ============================================================================
 
 function showAdminPanel() {
@@ -2055,11 +2153,6 @@ async function loadPendingDeposits() {
                                     </button>
                                 </div>
                             </div>
-                            ${deposit.txnId ? `
-                            <div class="admin-tx-row">
-                                <span class="admin-tx-label">TXID:</span>
-                                <code>${deposit.txnId.slice(0, 16)}...</code>
-                            </div>` : ''}
                             <div class="admin-tx-row">
                                 <span class="admin-tx-label">Time:</span>
                                 <span class="admin-tx-value">${new Date(deposit.createdAt?.seconds * 1000).toLocaleString()}</span>
@@ -2453,7 +2546,7 @@ function copyToClipboard(text) {
 }
 
 // ============================================================================
-// SECTION 28: PREMIUM FUNCTIONS
+// SECTION 30: PREMIUM FUNCTIONS
 // ============================================================================
 
 function showPremiumModal() { 
@@ -2491,7 +2584,7 @@ async function buyPremium() {
 }
 
 // ============================================================================
-// SECTION 29: TON CONNECT
+// SECTION 31: TON CONNECT
 // ============================================================================
 
 async function initTONConnect() {
@@ -2530,15 +2623,16 @@ async function connectTONWallet() {
 }
 
 // ============================================================================
-// SECTION 30: NAVIGATION
+// SECTION 32: NAVIGATION
 // ============================================================================
 
 function showWallet() {
     currentPage = 'wallet';
     document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
     document.getElementById('walletSection')?.classList.remove('hidden');
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    document.querySelector('[data-tab="wallet"]')?.classList.add('active');
+    document.querySelectorAll('.nav-item-pro').forEach(n => n.classList.remove('active'));
+    const walletBtn = document.querySelector('[data-tab="wallet"]');
+    if (walletBtn) walletBtn.classList.add('active');
     renderAssets();
     renderTopCryptos();
     renderMemeCoins();
@@ -2549,8 +2643,9 @@ function showAirdrop() {
     currentPage = 'airdrop';
     document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
     document.getElementById('airdropSection')?.classList.remove('hidden');
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    document.querySelector('[data-tab="airdrop"]')?.classList.add('active');
+    document.querySelectorAll('.nav-item-pro').forEach(n => n.classList.remove('active'));
+    const airdropBtn = document.querySelector('[data-tab="airdrop"]');
+    if (airdropBtn) airdropBtn.classList.add('active');
     renderMissionsUI();
     renderMilestones();
 }
@@ -2559,13 +2654,14 @@ function showSettings() {
     currentPage = 'settings';
     document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
     document.getElementById('settingsSection')?.classList.remove('hidden');
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    document.querySelector('[data-tab="settings"]')?.classList.add('active');
+    document.querySelectorAll('.nav-item-pro').forEach(n => n.classList.remove('active'));
+    const settingsBtn = document.querySelector('[data-tab="settings"]');
+    if (settingsBtn) settingsBtn.classList.add('active');
     updateSettingsUI();
 }
 
 // ============================================================================
-// SECTION 31: HELPERS
+// SECTION 33: HELPERS
 // ============================================================================
 
 function showAssetDetails(symbol) {
@@ -2645,13 +2741,57 @@ function showToast(message, type = 'success') {
 }
 
 // ============================================================================
-// SECTION 32: INITIALIZATION
+// SECTION 34: COPY INVITE LINK & SHARE
+// ============================================================================
+
+function copyInviteLink() {
+    const link = document.getElementById('inviteLink');
+    if (link) {
+        navigator.clipboard.writeText(link.value);
+        showToast(t('toast.copied'), 'success');
+    }
+}
+
+function shareInviteLink() {
+    const link = getReferralLink();
+    const text = encodeURIComponent('🧌 Join Troll Army! Get 1000 TROLL bonus!\n\n👉 ' + link);
+    if (tg) tg.openTelegramLink('https://t.me/share/url?url=&text=' + text);
+}
+
+async function claimMilestone(referrals) {
+    const milestone = MILESTONES.find(m => m.referrals === referrals);
+    if (!milestone || milestone.isSpecial) return;
+    if (!currentUser.claimedMilestones) currentUser.claimedMilestones = [];
+    if (currentUser.claimedMilestones.includes(referrals)) return;
+    if (currentUser.inviteCount < referrals) { showToast('Not enough referrals', 'error'); return; }
+    
+    currentUser.balances.TROLL += milestone.reward;
+    currentUser.claimedMilestones.push(referrals);
+    
+    await saveUserData();
+    updateUI();
+    renderMilestones();
+    
+    addNotification({
+        type: 'milestone',
+        title: '🏆 Milestone Claimed!',
+        message: `+${milestone.reward.toLocaleString()} TROLL claimed!`
+    });
+    
+    showToast('🎉 Claimed ' + milestone.reward.toLocaleString() + ' TROLL!', 'success');
+}
+
+// ============================================================================
+// SECTION 35: INITIALIZATION
 // ============================================================================
 
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Troll Army - Professional Edition v27.0');
-    console.log('✅ Notifications System: Fully Fixed');
+    console.log('🚀 Troll Army - Professional Edition v28.0');
+    console.log('✅ Notifications System: Fully Fixed (No Stacking)');
     console.log('✅ Admin Session: Persistence Enabled');
+    console.log('✅ Solana Wallet: Fixed (Works from Missions & Settings)');
+    console.log('✅ Withdrawal Modal: Professional Deposit-Style');
+    console.log('✅ Transaction ID: Removed from Deposit');
     
     document.documentElement.setAttribute('data-theme', currentTheme);
     if (currentLanguage === 'ar') {
@@ -2678,11 +2818,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     setInterval(fetchLivePrices, 300000);
     setInterval(updateMissionsProgress, 30000);
     
-    console.log('✅ Troll Army Professional Edition - Ready!');
+    console.log('✅ Troll Army Professional Edition v28.0 - Ready!');
 });
 
 // ============================================================================
-// SECTION 33: GLOBAL EXPORTS
+// SECTION 36: GLOBAL EXPORTS
 // ============================================================================
 
 window.showWallet = showWallet;
@@ -2694,6 +2834,7 @@ window.showPremiumModal = showPremiumModal;
 window.showHistory = showHistory;
 window.showNotifications = showNotifications;
 window.showSolanaWalletModal = showSolanaWalletModal;
+window.openSolanaWalletSettings = openSolanaWalletSettings;
 window.submitSolanaWallet = submitSolanaWallet;
 window.closeModal = closeModal;
 window.copyInviteLink = copyInviteLink;
@@ -2737,5 +2878,8 @@ window.selectBroadcastTarget = selectBroadcastTarget;
 window.sendBroadcast = sendBroadcast;
 window.copyToClipboard = copyToClipboard;
 
-console.log('✅✅✅ TROLL ARMY - PROFESSIONAL EDITION v27.0 READY! ✅✅✅');
-console.log('📢 Notifications: Merged (Firebase + Local) | Admin Session: Persisted');
+console.log('✅✅✅ TROLL ARMY - PROFESSIONAL EDITION v28.0 READY! ✅✅✅');
+console.log('📢 Notifications: Fixed (No Stacking)');
+console.log('🔐 Solana Wallet: Fixed (Missions + Settings)');
+console.log('💸 Withdrawal Modal: Professional Deposit-Style');
+console.log('🌐 Language: English Default, Arabic Full Support');
