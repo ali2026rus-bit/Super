@@ -2871,7 +2871,43 @@ input:checked + .toggle-slider:before {
 [dir="rtl"] .notification-title {
     text-align: right;
 }
+/* ============================================================
+   FIX: NOTIFICATIONS SCROLL - إضافة سكرول لقائمة الإشعارات
+   ============================================================ */
 
+#notificationsModal .modal-content {
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+
+#notificationsModal .modal-content h2,
+#notificationsModal .modal-content .modal-icon,
+#notificationsModal .modal-content .modal-desc {
+    flex-shrink: 0;
+}
+
+.notifications-list {
+    max-height: 400px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-right: 4px;
+}
+
+/* تنسيق السكرول الجميل */
+.notifications-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.notifications-list::-webkit-scrollbar-track {
+    background: var(--bg-primary);
+    border-radius: 10px;
+}
+
+.notifications-list::-webkit-scrollbar-thumb {
+    background: var(--troll-green);
+    border-radius: 10px;
+}
 /* ============================================================
    END OF STYLESHEET
    ============================================================ */
