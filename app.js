@@ -1685,10 +1685,7 @@ async function loadBroadcasts() {
 
 function closeModal(id) {
     const modal = document.getElementById(id);
-    if (modal) {
-        modal.classList.remove('show');
-        modal.style.display = 'none';
-    }
+    if (modal) modal.classList.remove('show');
 }
 
 function showModal(id) {
