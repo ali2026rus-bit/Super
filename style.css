@@ -1126,40 +1126,40 @@ button {
 }
 
 /* ============================================================
-   15. AIRDROP SECTION (PROFESSIONAL - BALANCED SPACING)
+   15. AIRDROP SECTION (PROFESSIONAL COMPRESSED - UPPER PART UNCHANGED)
    ============================================================ */
 
 .airdrop-header {
     text-align: center;
-    margin-bottom: var(--spacing-lg);
-}
-
-.airdrop-header .troll-face-large {
     margin-bottom: var(--spacing-md);
 }
 
-.airdrop-header h2 {
+.airdrop-header .troll-face-large {
     margin-bottom: var(--spacing-xs);
+}
+
+.airdrop-header h2 {
+    margin-bottom: 2px;
 }
 
 .airdrop-header p {
     color: var(--text-secondary);
-    font-size: 0.8rem;
+    font-size: 0.75rem;
 }
 
-/* Stats Grid */
+/* Stats Grid - Compressed */
 .stats-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: var(--spacing-md);
-    margin-bottom: var(--spacing-lg);
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
 }
 
 .stat-card {
     background: var(--bg-card);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-lg);
-    padding: var(--spacing-lg);
+    padding: var(--spacing-md);
     text-align: center;
     backdrop-filter: blur(10px);
 }
@@ -1170,57 +1170,57 @@ button {
     justify-content: center;
     gap: var(--spacing-xs);
     color: var(--text-secondary);
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     margin-bottom: var(--spacing-xs);
 }
 
 .stat-card span:last-child {
-    font-size: 1.8rem;
+    font-size: 1.5rem;
     font-weight: 700;
     color: var(--troll-green);
 }
 
-/* Withdrawal Lock Card */
+/* Withdrawal Lock Card - Compressed (UNCHANGED) */
 .withdrawal-lock-card {
     background: linear-gradient(135deg, rgba(231, 76, 60, 0.1), rgba(241, 196, 15, 0.05));
     border: 1px solid rgba(231, 76, 60, 0.3);
     border-radius: var(--radius-lg);
-    padding: var(--spacing-lg);
-    margin-bottom: var(--spacing-lg);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
     backdrop-filter: blur(10px);
 }
 
 .lock-header {
     display: flex;
     align-items: center;
-    gap: var(--spacing-sm);
+    gap: var(--spacing-xs);
     color: var(--troll-red);
-    margin-bottom: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
     font-weight: 600;
 }
 
 .lock-header i {
-    font-size: 1rem;
-}
-
-.lock-header span {
     font-size: 0.9rem;
 }
 
-/* Missions List */
+.lock-header span {
+    font-size: 0.85rem;
+}
+
+/* Missions List - Compressed (UNCHANGED) */
 .missions-list-vertical {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-md);
+    gap: var(--spacing-sm);
 }
 
 .mission-card {
     background: var(--bg-card);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-lg);
-    padding: var(--spacing-md);
+    padding: var(--spacing-sm);
     display: flex;
-    gap: var(--spacing-md);
+    gap: var(--spacing-sm);
     transition: all var(--transition-base);
 }
 
@@ -1234,9 +1234,9 @@ button {
 }
 
 .mission-icon {
-    font-size: 1.5rem;
-    width: 45px;
-    height: 45px;
+    font-size: 1.3rem;
+    width: 40px;
+    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1249,13 +1249,13 @@ button {
 }
 
 .mission-content h4 {
-    font-size: 0.9rem;
-    margin-bottom: var(--spacing-xs);
+    font-size: 0.85rem;
+    margin-bottom: 2px;
 }
 
 .mission-content p {
-    font-size: 0.75rem;
-    margin-bottom: var(--spacing-sm);
+    font-size: 0.7rem;
+    margin-bottom: var(--spacing-xs);
     color: var(--text-secondary);
 }
 
@@ -1263,10 +1263,10 @@ button {
     background: var(--gradient-primary);
     border: none;
     border-radius: var(--radius-md);
-    padding: var(--spacing-sm) var(--spacing-md);
+    padding: 4px var(--spacing-md);
     color: white;
     font-weight: 600;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     cursor: pointer;
     transition: all var(--transition-base);
 }
@@ -1277,16 +1277,16 @@ button {
 }
 
 .mission-hint {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     color: var(--troll-yellow);
-    margin-top: var(--spacing-sm);
+    margin-top: 2px;
 }
 
 .progress-bar.small {
-    height: 5px;
+    height: 4px;
     background: var(--bg-primary);
     border-radius: var(--radius-full);
-    margin: var(--spacing-sm) 0;
+    margin: var(--spacing-xs) 0;
     overflow: hidden;
 }
 
@@ -1298,22 +1298,26 @@ button {
 
 .premium-unlocked-card {
     text-align: center;
-    padding: var(--spacing-xl);
+    padding: var(--spacing-lg);
 }
 
 .premium-icon-large {
-    font-size: 55px;
-    margin-bottom: var(--spacing-md);
+    font-size: 48px;
+    margin-bottom: var(--spacing-sm);
     filter: drop-shadow(0 0 20px gold);
 }
 
-/* Referral Link Card */
+/* ============================================================
+   15.5. REFERRAL & MILESTONES SECTION (ENLARGED 30%)
+   ============================================================ */
+
+/* Referral Link Card - Enlarged */
 .referral-link-card {
     background: var(--bg-card);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-lg);
-    padding: var(--spacing-lg);
-    margin-bottom: var(--spacing-lg);
+    padding: var(--spacing-xl) !important;
+    margin-bottom: var(--spacing-lg) !important;
     backdrop-filter: blur(10px);
 }
 
@@ -1321,16 +1325,16 @@ button {
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
-    margin-bottom: var(--spacing-sm);
+    margin-bottom: var(--spacing-md) !important;
     color: var(--text-secondary);
     font-weight: 500;
-    font-size: 0.8rem;
+    font-size: 1rem !important;
 }
 
 .link-container {
     display: flex;
-    gap: var(--spacing-sm);
-    margin-bottom: var(--spacing-md);
+    gap: var(--spacing-md) !important;
+    margin-bottom: var(--spacing-lg) !important;
 }
 
 .link-container input {
@@ -1338,31 +1342,22 @@ button {
     background: var(--bg-primary);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-md);
-    padding: var(--spacing-sm);
+    padding: var(--spacing-md) !important;
     color: var(--text-primary);
-    font-size: 0.75rem;
+    font-size: 0.9rem !important;
     font-family: var(--font-mono);
     outline: none;
-}
-
-.link-container input:focus {
-    border-color: var(--troll-green);
 }
 
 .copy-btn {
     background: var(--troll-green);
     border: none;
     border-radius: var(--radius-md);
-    padding: 0 var(--spacing-lg);
+    padding: 0 var(--spacing-xl) !important;
     color: white;
     font-weight: 600;
+    font-size: 0.9rem !important;
     cursor: pointer;
-    transition: all var(--transition-base);
-}
-
-.copy-btn:hover {
-    filter: brightness(1.1);
-    transform: scale(1.02);
 }
 
 .share-btn {
@@ -1370,7 +1365,7 @@ button {
     background: #0088cc;
     border: none;
     border-radius: var(--radius-md);
-    padding: var(--spacing-sm);
+    padding: var(--spacing-md) !important;
     color: white;
     font-weight: 600;
     cursor: pointer;
@@ -1378,60 +1373,47 @@ button {
     align-items: center;
     justify-content: center;
     gap: var(--spacing-sm);
-    transition: all var(--transition-base);
-    font-size: 0.8rem;
-}
-
-.share-btn:hover {
-    filter: brightness(1.1);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
+    font-size: 0.95rem !important;
 }
 
 .referral-bonus-text {
     text-align: center;
     color: var(--troll-yellow);
     font-weight: 600;
-    margin-top: var(--spacing-md);
+    margin-top: var(--spacing-lg) !important;
     margin-bottom: 0;
-    font-size: 0.75rem;
+    font-size: 0.9rem !important;
 }
 
-/* Milestones Section */
+/* Milestones Section - Enlarged */
 .milestones-section {
-    margin-top: var(--spacing-lg);
+    margin-top: var(--spacing-xl) !important;
 }
 
 .milestones-section h4 {
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
-    margin-bottom: var(--spacing-md);
+    margin-bottom: var(--spacing-lg) !important;
     color: var(--troll-yellow);
-    font-size: 0.9rem;
+    font-size: 1.1rem !important;
 }
 
 .milestone-item {
     background: var(--bg-card);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-lg);
-    padding: var(--spacing-md);
-    margin-bottom: var(--spacing-md);
+    padding: var(--spacing-lg) !important;
+    margin-bottom: var(--spacing-lg) !important;
     backdrop-filter: blur(10px);
-    transition: all var(--transition-base);
-}
-
-.milestone-item.claimed {
-    opacity: 0.7;
-    border-color: var(--troll-green);
 }
 
 .milestone-header {
     display: flex;
     justify-content: space-between;
-    margin-bottom: var(--spacing-sm);
+    margin-bottom: var(--spacing-md) !important;
     font-weight: 600;
-    font-size: 0.8rem;
+    font-size: 0.95rem !important;
 }
 
 .milestone-header span:last-child {
@@ -1439,37 +1421,17 @@ button {
 }
 
 .progress-bar {
-    height: 5px;
+    height: 8px !important;
     background: var(--bg-primary);
     border-radius: var(--radius-full);
-    margin-bottom: var(--spacing-sm);
+    margin-bottom: var(--spacing-md) !important;
     overflow: hidden;
-}
-
-.progress-fill {
-    height: 100%;
-    background: var(--gradient-premium);
-    border-radius: var(--radius-full);
-    transition: width 0.5s ease;
-    position: relative;
-    overflow: hidden;
-}
-
-.progress-fill::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-    animation: shimmer 2s infinite;
 }
 
 .progress-text {
-    font-size: 0.7rem;
+    font-size: 0.85rem !important;
     color: var(--text-muted);
-    margin-bottom: var(--spacing-md);
+    margin-bottom: var(--spacing-lg) !important;
 }
 
 .claim-btn {
@@ -1477,22 +1439,15 @@ button {
     background: var(--gradient-primary);
     border: none;
     border-radius: var(--radius-md);
-    padding: var(--spacing-sm);
+    padding: var(--spacing-md) !important;
     color: white;
     font-weight: 600;
-    font-size: 0.75rem;
+    font-size: 0.9rem !important;
     cursor: pointer;
-    transition: all var(--transition-base);
-}
-
-.claim-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-    filter: brightness(1.1);
 }
 
 /* ============================================================
-   16. SETTINGS SECTION
+   16. SETTINGS SECTION (WITH ENLARGED AVATAR x3)
    ============================================================ */
 
 .profile-card {
@@ -1505,14 +1460,26 @@ button {
     backdrop-filter: blur(10px);
 }
 
+/* تكبير الأفاتار ×3 (من 80px إلى 240px) */
 .profile-avatar {
-    font-size: 80px;
-    margin-bottom: var(--spacing-md);
-    filter: drop-shadow(0 0 20px var(--troll-green-glow));
+    font-size: 240px !important;
+    width: 240px;
+    height: 240px;
+    margin: 0 auto var(--spacing-lg) auto !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    filter: drop-shadow(0 0 30px var(--troll-green-glow));
+}
+
+.profile-avatar svg {
+    width: 240px;
+    height: 240px;
 }
 
 .profile-card h3 {
     margin-bottom: var(--spacing-xs);
+    font-size: 1.25rem;
 }
 
 .profile-card p {
@@ -2916,6 +2883,18 @@ input:checked + .toggle-slider:before {
     .broadcast-target-selector {
         flex-direction: column;
     }
+    
+    /* تصغير الأفاتار في الشاشات الصغيرة */
+    .profile-avatar {
+        font-size: 160px !important;
+        width: 160px;
+        height: 160px;
+    }
+    
+    .profile-avatar svg {
+        width: 160px;
+        height: 160px;
+    }
 }
 
 @media (max-width: 380px) {
@@ -2945,6 +2924,18 @@ input:checked + .toggle-slider:before {
     .nav-item-pro .nav-icon-pro i,
     .nav-item i {
         font-size: 1.3rem;
+    }
+    
+    /* تصغير الأفاتار أكثر في الشاشات الصغيرة جداً */
+    .profile-avatar {
+        font-size: 120px !important;
+        width: 120px;
+        height: 120px;
+    }
+    
+    .profile-avatar svg {
+        width: 120px;
+        height: 120px;
     }
 }
 
