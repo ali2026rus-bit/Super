@@ -2963,5 +2963,41 @@ input:checked + .toggle-slider:before {
 }
 
 /* ============================================================
+   FIX: Close Button Positioned Above Premium Sticker
+   ============================================================ */
+
+#premiumModal {
+    z-index: 10000;
+}
+
+#premiumModal .modal-content {
+    position: relative;
+    overflow: visible !important;
+}
+
+#premiumModal .close-btn {
+    position: absolute !important;
+    top: -8px !important;
+    right: -8px !important;
+    width: 40px !important;
+    height: 40px !important;
+    background: rgba(0, 0, 0, 0.6) !important;
+    backdrop-filter: blur(4px) !important;
+    border-radius: 50% !important;
+    color: white !important;
+    font-size: 24px !important;
+    z-index: 100001 !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: 2px solid rgba(255,255,255,0.3) !important;
+}
+
+#premiumModal .close-btn:hover {
+    background: var(--troll-red) !important;
+    transform: scale(1.05) !important;
+}
+/* ============================================================
    END OF STYLESHEET
    ============================================================ */
