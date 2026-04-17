@@ -759,6 +759,10 @@ async function processReferral(refCode) {
             
             await saveUserData();
             
+            // ✅ أضف هذين السطرين هنا
+            await updateMissionsProgress();
+            if (currentPage === 'airdrop') renderMissionsUI();
+            
             addNotification({
                 type: 'referral',
                 title: '🎉 New Referral!',
@@ -1187,6 +1191,7 @@ async function saveUserData() {
     if (!isGuest) {
         await apiCall('/users/' + currentUserId, 'PATCH', { updates: currentUser });
     }
+    await updateMissionsProgress();  // ✅
 }
 
 // ============================================================================
