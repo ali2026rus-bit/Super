@@ -6,6 +6,7 @@
 // - Fixed Notifications (No more stacking/cards issues)
 // - Removed Transaction ID from Deposit Modal
 // - Professional i18n (English default, Arabic full support)
+// - FIXED: Mission progress updates instantly after referrals
 // ALL ORIGINAL FEATURES PRESERVED
 // ============================================================================
 
@@ -758,9 +759,9 @@ async function processReferral(refCode) {
             currentUser.totalEarned += CONFIG.REFERRAL_BONUS;
             
             await saveUserData();
-            
-            // ✅ أضف هذين السطرين هنا
             await updateMissionsProgress();
+            
+            // ✅ FIXED: Update mission UI instantly after referral
             if (currentPage === 'airdrop') renderMissionsUI();
             
             addNotification({
@@ -1191,7 +1192,7 @@ async function saveUserData() {
     if (!isGuest) {
         await apiCall('/users/' + currentUserId, 'PATCH', { updates: currentUser });
     }
-    await updateMissionsProgress();  // ✅
+    await updateMissionsProgress();
 }
 
 // ============================================================================
@@ -1258,7 +1259,11 @@ async function updateMissionsProgress() {
         celebrateUnlock();
     }
     
-    if (changed) await saveUserData();
+    if (changed) {
+        await saveUserData();
+        // ✅ FIXED: Update mission UI instantly when progress changes
+        if (currentPage === 'airdrop') renderMissionsUI();
+    }
 }
 
 function celebrateUnlock() {
@@ -2774,9 +2779,9 @@ async function claimMilestone(referrals) {
     currentUser.claimedMilestones.push(referrals);
     
     await saveUserData();
-    
-    // ✅ أضف هذين السطرين هنا
     await updateMissionsProgress();
+    
+    // ✅ FIXED: Update mission UI instantly after claiming milestone
     if (currentPage === 'airdrop') renderMissionsUI();
     
     updateUI();
@@ -2802,6 +2807,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('✅ Solana Wallet: Fixed (Works from Missions & Settings)');
     console.log('✅ Withdrawal Modal: Professional Deposit-Style');
     console.log('✅ Transaction ID: Removed from Deposit');
+    console.log('✅ Mission Progress: Fixed Instant UI Updates');
     
     document.documentElement.setAttribute('data-theme', currentTheme);
     if (currentLanguage === 'ar') {
@@ -2893,3 +2899,4 @@ console.log('📢 Notifications: Fixed (No Stacking)');
 console.log('🔐 Solana Wallet: Fixed (Missions + Settings)');
 console.log('💸 Withdrawal Modal: Professional Deposit-Style');
 console.log('🌐 Language: English Default, Arabic Full Support');
+console.log('⚡ Mission Progress: Instant UI Updates After Referrals');
