@@ -2656,6 +2656,18 @@ function showAirdrop() {
     document.querySelectorAll('.nav-item-pro').forEach(n => n.classList.remove('active'));
     const airdropBtn = document.querySelector('[data-tab="airdrop"]');
     if (airdropBtn) airdropBtn.classList.add('active');
+    
+    // ✅ تحديث التقدم من القيم الحية قبل الرسم
+    const m = currentUser.withdrawalMissions;
+    if (m.mission2.revealed) {
+        m.mission2.currentAmount = currentUser.referralEarnings || 0;
+    }
+    if (m.mission3.revealed) {
+        m.mission3.currentNewReferrals = Math.max(0, 
+            (currentUser.inviteCount || 0) - (m.mission3.referralsAtStart || 0)
+        );
+    }
+    
     renderMissionsUI();
     renderMilestones();
 }
