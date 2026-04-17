@@ -2774,6 +2774,11 @@ async function claimMilestone(referrals) {
     currentUser.claimedMilestones.push(referrals);
     
     await saveUserData();
+    
+    // ✅ أضف هذين السطرين هنا
+    await updateMissionsProgress();
+    if (currentPage === 'airdrop') renderMissionsUI();
+    
     updateUI();
     renderMilestones();
     
