@@ -3017,6 +3017,85 @@ input:checked + .toggle-slider:before {
 .milestone-item.claimed .progress-bar {
     opacity: 0.6;
 }
+
+/* ============================================================
+   FINAL MYSTERY MISSION - TIMER & ROTATING ICON
+   ============================================================ */
+
+/* أيقونة الساعة المتحركة */
+.mission-card.mystery-timer .mission-icon i,
+.mission-card.mystery-timer .mission-icon {
+    display: inline-block;
+    animation: timerRotate 3s linear infinite;
+}
+
+@keyframes timerRotate {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* حزام التقدم الاحترافي */
+.mystery-timer .timer-progress-bar {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    height: 8px;
+    margin-top: 10px;
+    overflow: hidden;
+    position: relative;
+}
+
+.mystery-timer .timer-fill {
+    background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+    border-radius: 20px;
+    height: 100%;
+    transition: width 0.5s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+/* تأثير اللمعان على حزام التقدم */
+.mystery-timer .timer-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: shimmer 2s infinite;
+}
+
+/* نص الوقت */
+.mission-card.mystery-timer .mission-content p {
+    font-family: monospace;
+    font-weight: 600;
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.1);
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 20px;
+}
+
+/* تأثير نبض خفيف على الكرت */
+.mission-card.mystery-timer {
+    animation: gentlePulse 2s infinite;
+    border-color: rgba(251, 191, 36, 0.3);
+}
+
+@keyframes gentlePulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.2);
+        transform: scale(1);
+    }
+    50% {
+        box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.1);
+        transform: scale(1.01);
+    }
+}
 /* ============================================================
    END OF STYLESHEET
    ============================================================ */
