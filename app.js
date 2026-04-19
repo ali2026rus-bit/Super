@@ -34,6 +34,10 @@ let db = null;
 let tonConnectUI = null;
 let tonConnected = false;
 let tonWalletAddress = null;
+let tonConnectionState = 'disconnected'; // 'disconnected' | 'connecting' | 'connected' | 'expired'
+let tonLastVerified = null;
+let tonReconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 3;
 let appConfig = {};
 let cryptoPrices = {};
 let currentLanguage = localStorage.getItem('language') || 'en';
@@ -945,14 +949,19 @@ function updateSettingsUI() {
     document.getElementById('currentSolanaWallet').textContent = wallet ? wallet.slice(0, 8) + '...' + wallet.slice(-4) : t('settings.notSet');
     
     const tonEl = document.getElementById('tonWalletStatus');
-    if (tonEl) {
-        if (tonConnected && tonWalletAddress) {
-            tonEl.textContent = tonWalletAddress.slice(0, 6) + '...' + tonWalletAddress.slice(-6);
-            tonEl.style.color = '#2ecc71';
-        } else {
-            tonEl.textContent = t('settings.notConnected');
-            tonEl.style.color = '';
-        }
+if (tonEl) {
+    if (tonConnectionState === 'connected' && tonWalletAddress) {
+        tonEl.innerHTML = `🟢 ${tonWalletAddress.slice(0, 6)}...${tonWalletAddress.slice(-6)}`;
+        tonEl.style.color = '#2ecc71';
+    } else if (tonConnectionState === 'expired') {
+        tonEl.innerHTML = `🟡 ${t('settings.sessionExpired')}`;
+        tonEl.style.color = '#f1c40f';
+    } else if (tonConnectionState === 'connecting') {
+        tonEl.innerHTML = `⏳ ${t('settings.connecting')}`;
+        tonEl.style.color = '#3498db';
+    } else {
+        tonEl.innerHTML = `🔴 ${t('settings.notConnected')}`;
+        tonEl.style.color = '#e74c3c';
     }
 }
 
@@ -2566,9 +2575,22 @@ function showPremiumModal() {
 }
 
 async function buyPremium() {
-    if (!tonConnected) { 
-        showToast('Connect TON wallet first', 'error'); 
-        return; 
+    // التحقق من صحة الاتصال أولاً
+    const isHealthy = await verifyTONConnection();
+    
+    if (!isHealthy) {
+        showToast('Wallet session expired. Attempting to reconnect...', 'info');
+        const reconnected = await reconnectTONWallet();
+        
+        if (!reconnected) {
+            showToast('Please reconnect your TON wallet', 'error');
+            updateSettingsUI();
+            return;
+        }
+        
+        showToast('Wallet reconnected! Try again.', 'success');
+        updateSettingsUI();
+        return; // نطلب من المستخدم الضغط مرة أخرى
     }
     
     showToast('Processing payment...', 'info');
@@ -2590,48 +2612,336 @@ async function buyPremium() {
             showToast(t('premium.unlocked'), 'success');
             celebrateUnlock();
         }
-    } catch (e) { 
-        showToast('Payment failed', 'error'); 
+    } catch (e) {
+        console.error('Payment error:', e);
+        
+        // إذا فشلت المعاملة، قد تكون الجلسة منتهية
+        if (e.message?.includes('wallet') || e.message?.includes('session')) {
+            tonConnectionState = 'expired';
+            tonConnected = false;
+            updateSettingsUI();
+            showToast('Wallet session expired. Please reconnect.', 'error');
+        } else {
+            showToast('Payment failed. Please try again.', 'error');
+        }
     }
 }
 
 // ============================================================================
-// SECTION 31: TON CONNECT
+// SECTION 31: TON CONNECT - PROFESSIONAL EDITION v29.0
+// WITH HEALTH CHECK, AUTO-RECOVERY & SMART ERROR HANDLING
 // ============================================================================
 
 async function initTONConnect() {
-    if (typeof TON_CONNECT_UI === 'undefined') return;
+    if (typeof TON_CONNECT_UI === 'undefined') {
+        console.warn('⚠️ TON Connect UI not loaded');
+        return;
+    }
+    
     try {
         tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
             manifestUrl: location.origin + '/tonconnect-manifest.json',
             buttonRootId: 'tonConnectButton'
         });
-        const restored = await tonConnectUI.connectionRestored;
-        if (restored && tonConnectUI.wallet) {
-            tonConnected = true;
-            tonWalletAddress = tonConnectUI.wallet.account.address;
-            updateSettingsUI();
-        }
-    } catch (e) { console.error('TON init error:', e); }
-}
-
-async function connectTONWallet() {
-    if (!tonConnectUI) return;
-    try {
-        await tonConnectUI.openModal();
-        const interval = setInterval(() => {
-            if (tonConnectUI.wallet) {
-                clearInterval(interval);
+        
+        console.log('🔌 TON Connect UI initialized');
+        
+        // محاولة استعادة الاتصال السابق
+        try {
+            const restored = await tonConnectUI.connectionRestored;
+            
+            if (restored && tonConnectUI.wallet && tonConnectUI.wallet.account) {
                 tonConnected = true;
                 tonWalletAddress = tonConnectUI.wallet.account.address;
-                currentUser.tonWallet = tonWalletAddress;
-                saveUserData();
-                updateSettingsUI();
-                showToast('TON Connected!', 'success');
+                tonConnectionState = 'connected';
+                tonLastVerified = Date.now();
+                
+                console.log('✅ TON wallet restored:', tonWalletAddress.slice(0, 8) + '...');
+                
+                // مزامنة مع بيانات المستخدم
+                if (currentUser && !currentUser.isGuest) {
+                    currentUser.tonWallet = tonWalletAddress;
+                    await saveUserData();
+                }
+            } else {
+                console.log('ℹ️ No previous TON connection found');
+                tonConnectionState = 'disconnected';
             }
-        }, 500);
-        setTimeout(() => clearInterval(interval), 30000);
-    } catch (e) { showToast('Connection failed', 'error'); }
+        } catch (restoreError) {
+            console.warn('⚠️ Could not restore TON connection:', restoreError.message);
+            tonConnectionState = 'disconnected';
+            tonConnected = false;
+            tonWalletAddress = null;
+        }
+        
+        // إعداد مستمع لأحداث تغيير حالة المحفظة
+        tonConnectUI.onStatusChange(async (wallet) => {
+            console.log('🔄 TON wallet status changed:', wallet);
+            
+            if (wallet && wallet.account) {
+                tonConnected = true;
+                tonWalletAddress = wallet.account.address;
+                tonConnectionState = 'connected';
+                tonLastVerified = Date.now();
+                
+                if (currentUser && !currentUser.isGuest) {
+                    currentUser.tonWallet = tonWalletAddress;
+                    await saveUserData();
+                }
+                
+                showToast('✅ TON Wallet Connected!', 'success');
+            } else {
+                tonConnected = false;
+                tonWalletAddress = null;
+                tonConnectionState = 'disconnected';
+            }
+            
+            updateSettingsUI();
+        });
+        
+        updateSettingsUI();
+        
+    } catch (e) {
+        console.error('❌ TON init error:', e);
+        tonConnectionState = 'disconnected';
+        tonConnected = false;
+    }
+}
+
+// ====== NEW: معالج النقر على زر المحفظة ======
+async function handleTONWalletClick() {
+    console.log('🖱️ TON wallet clicked, current state:', tonConnectionState);
+    
+    // إذا كان متصلاً - نعرض خيارات
+    if (tonConnectionState === 'connected' && tonWalletAddress) {
+        showTONWalletOptions();
+        return;
+    }
+    
+    // إذا كان منتهي الصلاحية - نحاول إعادة الاتصال
+    if (tonConnectionState === 'expired') {
+        showToast('Attempting to reconnect...', 'info');
+        const reconnected = await reconnectTONWallet();
+        if (reconnected) {
+            showToast('Wallet reconnected!', 'success');
+        } else {
+            showToast('Please connect your wallet again', 'info');
+            await connectTONWallet();
+        }
+        return;
+    }
+    
+    // إذا كان غير متصل - نفتح نافذة الاتصال
+    await connectTONWallet();
+}
+
+// ====== NEW: عرض خيارات المحفظة (متصل) ======
+function showTONWalletOptions() {
+    const optionsHTML = `
+        <div class="ton-options-modal" id="tonOptionsModal" onclick="closeTonOptions(event)">
+            <div class="ton-options-content" onclick="event.stopPropagation()">
+                <h4>TON Wallet</h4>
+                <div class="ton-wallet-info">
+                    <i class="fa-regular fa-circle-check" style="color: #2ecc71;"></i>
+                    <span>${tonWalletAddress.slice(0, 8)}...${tonWalletAddress.slice(-8)}</span>
+                </div>
+                <button class="ton-option-btn" onclick="copyTonAddress()">
+                    <i class="fa-regular fa-copy"></i> Copy Address
+                </button>
+                <button class="ton-option-btn disconnect" onclick="disconnectTONWallet()">
+                    <i class="fa-regular fa-unlink"></i> Disconnect Wallet
+                </button>
+                <button class="ton-option-btn cancel" onclick="closeTonOptionsModal()">
+                    <i class="fa-regular fa-times"></i> Cancel
+                </button>
+            </div>
+        </div>
+    `;
+    
+    // إزالة أي modal موجود مسبقاً
+    const existing = document.getElementById('tonOptionsModal');
+    if (existing) existing.remove();
+    
+    // إضافة modal جديد
+    document.body.insertAdjacentHTML('beforeend', optionsHTML);
+}
+
+function closeTonOptions(event) {
+    if (event.target.id === 'tonOptionsModal') {
+        closeTonOptionsModal();
+    }
+}
+
+function closeTonOptionsModal() {
+    const modal = document.getElementById('tonOptionsModal');
+    if (modal) modal.remove();
+}
+
+function copyTonAddress() {
+    if (tonWalletAddress) {
+        navigator.clipboard.writeText(tonWalletAddress);
+        showToast('Address copied!', 'success');
+        closeTonOptionsModal();
+    }
+}
+
+// ====== تحسين: الاتصال بالمحفظة ======
+async function connectTONWallet() {
+    if (!tonConnectUI) {
+        showToast('TON Connect not ready', 'error');
+        return;
+    }
+    
+    tonConnectionState = 'connecting';
+    updateSettingsUI();
+    
+    try {
+        await tonConnectUI.openModal();
+        // المستمع onStatusChange سيتولى تحديث الحالة عند النجاح
+        
+        // احتياط: إذا لم يتم التحديث خلال 30 ثانية
+        setTimeout(() => {
+            if (tonConnectionState === 'connecting') {
+                tonConnectionState = 'disconnected';
+                updateSettingsUI();
+            }
+        }, 30000);
+        
+    } catch (e) {
+        console.error('Connection error:', e);
+        tonConnectionState = 'disconnected';
+        updateSettingsUI();
+        showToast('Connection cancelled', 'info');
+    }
+}
+
+// ====== NEW: التحقق من صحة الاتصال ======
+async function verifyTONConnection() {
+    console.log('🔍 Verifying TON connection...');
+    
+    if (!tonConnected || !tonConnectUI || !tonConnectUI.wallet) {
+        console.log('❌ TON not connected');
+        tonConnectionState = 'disconnected';
+        return false;
+    }
+    
+    try {
+        const wallet = tonConnectUI.wallet;
+        const account = wallet?.account;
+        
+        if (!account || !account.address) {
+            console.log('❌ TON account missing');
+            tonConnectionState = 'expired';
+            tonConnected = false;
+            return false;
+        }
+        
+        // التحقق من تطابق العنوان
+        if (account.address !== tonWalletAddress) {
+            console.log('🔄 TON address changed');
+            tonWalletAddress = account.address;
+            if (currentUser && !currentUser.isGuest) {
+                currentUser.tonWallet = tonWalletAddress;
+                await saveUserData();
+            }
+        }
+        
+        tonConnectionState = 'connected';
+        tonLastVerified = Date.now();
+        console.log('✅ TON connection verified');
+        return true;
+        
+    } catch (error) {
+        console.error('❌ TON verification failed:', error);
+        tonConnectionState = 'expired';
+        tonConnected = false;
+        return false;
+    }
+}
+
+// ====== NEW: إعادة الاتصال الصامت ======
+async function reconnectTONWallet() {
+    console.log('🔄 Attempting silent reconnect...');
+    
+    if (tonReconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+        console.log('❌ Max reconnect attempts reached');
+        tonReconnectAttempts = 0;
+        return false;
+    }
+    
+    tonReconnectAttempts++;
+    tonConnectionState = 'connecting';
+    updateSettingsUI();
+    
+    try {
+        // محاولة استعادة الاتصال
+        if (tonConnectUI) {
+            await tonConnectUI.connectionRestored;
+            
+            if (tonConnectUI.wallet && tonConnectUI.wallet.account) {
+                tonConnected = true;
+                tonWalletAddress = tonConnectUI.wallet.account.address;
+                tonConnectionState = 'connected';
+                tonLastVerified = Date.now();
+                tonReconnectAttempts = 0;
+                
+                console.log('✅ Silent reconnect successful');
+                updateSettingsUI();
+                return true;
+            }
+        }
+    } catch (e) {
+        console.warn('⚠️ Silent reconnect failed:', e.message);
+    }
+    
+    tonConnectionState = 'expired';
+    tonConnected = false;
+    updateSettingsUI();
+    return false;
+}
+
+// ====== NEW: قطع الاتصال ======
+async function disconnectTONWallet() {
+    console.log('🔌 Disconnecting TON wallet...');
+    
+    try {
+        if (tonConnectUI) {
+            await tonConnectUI.disconnect();
+        }
+    } catch (e) {
+        console.warn('Disconnect error:', e);
+    }
+    
+    // تنظيف الحالة
+    tonConnected = false;
+    tonWalletAddress = null;
+    tonConnectionState = 'disconnected';
+    tonLastVerified = null;
+    tonReconnectAttempts = 0;
+    
+    // إزالة من بيانات المستخدم
+    if (currentUser && !currentUser.isGuest) {
+        currentUser.tonWallet = null;
+        await saveUserData();
+    }
+    
+    updateSettingsUI();
+    closeTonOptionsModal();
+    
+    showToast('Wallet disconnected', 'info');
+}
+
+// ====== NEW: فحص دوري لصحة الاتصال ======
+function startTONHealthCheck() {
+    setInterval(async () => {
+        if (tonConnectionState === 'connected') {
+            const isHealthy = await verifyTONConnection();
+            if (!isHealthy) {
+                console.log('🟡 TON connection marked as expired');
+                updateSettingsUI();
+            }
+        }
+    }, 60000); // كل دقيقة
 }
 
 // ============================================================================
@@ -2907,6 +3217,12 @@ window.blockUserWithdrawals = blockUserWithdrawals;
 window.selectBroadcastTarget = selectBroadcastTarget;
 window.sendBroadcast = sendBroadcast;
 window.copyToClipboard = copyToClipboard;
+window.handleTONWalletClick = handleTONWalletClick;
+window.verifyTONConnection = verifyTONConnection;
+window.disconnectTONWallet = disconnectTONWallet;
+window.reconnectTONWallet = reconnectTONWallet;
+window.copyTonAddress = copyTonAddress;
+window.closeTonOptionsModal = closeTonOptionsModal;
 
 console.log('✅✅✅ TROLL ARMY - PROFESSIONAL EDITION v28.0 READY! ✅✅✅');
 console.log('📢 Notifications: Fixed (No Stacking)');
