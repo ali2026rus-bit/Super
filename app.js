@@ -945,13 +945,16 @@ function updateSettingsUI() {
     document.getElementById('currentSolanaWallet').textContent = wallet ? wallet.slice(0, 8) + '...' + wallet.slice(-4) : t('settings.notSet');
     
     const tonEl = document.getElementById('tonWalletStatus');
+    const tonLabel = document.getElementById('tonWalletLabel');
     if (tonEl) {
         if (tonConnected && tonWalletAddress) {
             tonEl.textContent = tonWalletAddress.slice(0, 6) + '...' + tonWalletAddress.slice(-6);
             tonEl.style.color = '#2ecc71';
+            if (tonLabel) tonLabel.textContent = 'TON Wallet (Tap to disconnect)';
         } else {
             tonEl.textContent = t('settings.notConnected');
             tonEl.style.color = '';
+            if (tonLabel) tonLabel.textContent = 'Connect TON Wallet';
         }
     }
 }
