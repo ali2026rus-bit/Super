@@ -1121,35 +1121,37 @@ function renderMissionsUI() {
     }
     
     // Mission 4
-    if (m.mission4.revealed) {
-        const bnb = currentUser.balances.BNB || 0;
-        const sol = currentUser.balances.SOL || 0;
-        html += `<div class="mission-card ${m.mission4.completed ? 'completed' : ''}">
-            <div class="mission-icon">${m.mission4.completed ? '✅' : '4️⃣'}</div>
-            <div class="mission-content">
-                <h4>${MISSIONS.mission4.title}</h4>
-                <p>BNB: ${bnb.toFixed(4)}/0.025 | SOL: ${sol.toFixed(4)}/0.25</p>
-                <p class="mission-hint">💡 ${MISSIONS.mission4.hint}</p>
-            </div>
-        </div>`;
-    } else if (m.mission3.completed) {
-        const revealDate = new Date(m.mission4.revealDate);
-        const now = new Date();
-        const daysLeft = Math.max(0, Math.ceil((revealDate - now) / (1000 * 60 * 60 * 24)));
-        html += `<div class="mission-card mystery-timer">
-            <div class="mission-icon">⏳</div>
-            <div class="mission-content">
-                <h4>Final Mystery Mission</h4>
-                <p>${t('mission.waitDays', {days: daysLeft})}</p>
-                <div class="timer-progress-bar"><div class="timer-fill" style="width:${((20 - daysLeft) / 20) * 100}%"></div></div>
-            </div>
-        </div>`;
-    } else {
-        html += `<div class="mission-card mystery"><div class="mission-icon">❓</div><div class="mission-content"><h4>Mission 4: ???</h4><p>${t('mission.revealLater')}</p></div></div>`;
-    }
-    
-    html += `</div>`;
-    container.innerHTML = html;
+if (m.mission4.revealed) {
+    const bnb = currentUser.balances.BNB || 0;
+    const sol = currentUser.balances.SOL || 0;
+    html += `<div class="mission-card ${m.mission4.completed ? 'completed' : ''}">
+        <div class="mission-icon">${m.mission4.completed ? '✅' : '4️⃣'}</div>
+        <div class="mission-content">
+            <h4>${MISSIONS.mission4.title}</h4>
+            <p>BNB: ${bnb.toFixed(4)}/0.025 | SOL: ${sol.toFixed(4)}/0.25</p>
+            <p class="mission-hint">💡 ${MISSIONS.mission4.hint}</p>
+        </div>
+    </div>`;
+} else if (m.mission3.completed) {
+    const revealDate = new Date(m.mission4.revealDate);
+    const now = new Date();
+    const daysLeft = Math.max(0, Math.ceil((revealDate - now) / (1000 * 60 * 60 * 24)));
+    html += `<div class="mission-card mystery-timer">
+        <div class="mission-icon">
+            <i class="fa-regular fa-clock" style="animation: timerRotate 3s linear infinite;"></i>
+        </div>
+        <div class="mission-content">
+            <h4>Final Mystery Mission</h4>
+            <p>${t('mission.waitDays', {days: daysLeft})}</p>
+            <div class="timer-progress-bar"><div class="timer-fill" style="width:${((20 - daysLeft) / 20) * 100}%"></div></div>
+        </div>
+    </div>`;
+} else {
+    html += `<div class="mission-card mystery"><div class="mission-icon">❓</div><div class="mission-content"><h4>Mission 4: ???</h4><p>${t('mission.revealLater')}</p></div></div>`;
+}
+
+html += `</div>`;
+container.innerHTML = html;
 }
 
 function renderMilestones() {
