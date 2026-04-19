@@ -2616,6 +2616,25 @@ async function initTONConnect() {
 }
 
 async function connectTONWallet() {
+    // إذا كان متصلاً بالفعل، اقطع الاتصال أولاً
+    if (tonConnected && tonConnectUI) {
+        try {
+            await tonConnectUI.disconnect();
+        } catch(e) {
+            console.log('Disconnect error:', e);
+        }
+        tonConnected = false;
+        tonWalletAddress = null;
+        if (currentUser) {
+            currentUser.tonWallet = null;
+            saveUserData();
+        }
+        updateSettingsUI();
+        showToast('Wallet disconnected. Tap again to reconnect.', 'info');
+        return;
+    }
+    
+    // إذا كان غير متصل، افتح نافذة الاتصال
     if (!tonConnectUI) return;
     try {
         await tonConnectUI.openModal();
@@ -2631,9 +2650,10 @@ async function connectTONWallet() {
             }
         }, 500);
         setTimeout(() => clearInterval(interval), 30000);
-    } catch (e) { showToast('Connection failed', 'error'); }
+    } catch (e) { 
+        showToast('Connection failed', 'error'); 
+    }
 }
-
 // ============================================================================
 // SECTION 32: NAVIGATION
 // ============================================================================
