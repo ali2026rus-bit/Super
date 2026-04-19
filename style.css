@@ -3023,10 +3023,18 @@ input:checked + .toggle-slider:before {
    ============================================================ */
 
 /* أيقونة الساعة المتحركة */
-.mission-card.mystery-timer .mission-icon i,
 .mission-card.mystery-timer .mission-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+}
+
+.mission-card.mystery-timer .mission-icon i {
     display: inline-block;
     animation: timerRotate 3s linear infinite;
+    transform-origin: center center;
 }
 
 @keyframes timerRotate {
@@ -3042,14 +3050,14 @@ input:checked + .toggle-slider:before {
 .mystery-timer .timer-progress-bar {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 20px;
-    height: 8px;
-    margin-top: 10px;
+    height: 6px;
+    margin-top: 8px;
     overflow: hidden;
     position: relative;
 }
 
 .mystery-timer .timer-fill {
-    background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+    background: linear-gradient(90deg, #fbbf24, #f59e0b);
     border-radius: 20px;
     height: 100%;
     transition: width 0.5s ease;
@@ -3096,6 +3104,7 @@ input:checked + .toggle-slider:before {
         transform: scale(1.01);
     }
 }
+
 /* ============================================================
    END OF STYLESHEET
    ============================================================ */
