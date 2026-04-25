@@ -3106,5 +3106,131 @@ input:checked + .toggle-slider:before {
 }
 
 /* ============================================================
+   FLOATING PREMIUM BUTTON - Professional Design
+   يظهر فقط في صفحة Airdrop
+   ============================================================ */
+
+#floatingPremiumBtn {
+    position: fixed;
+    bottom: 90px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #f1c40f 0%, #e67e22 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), 0 0 25px rgba(241, 196, 15, 0.6);
+    z-index: 1000;
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(2px);
+}
+
+/* تأثير الاهتزاز الجذاب */
+#floatingPremiumBtn {
+    animation: premiumShake 3s infinite ease-in-out;
+}
+
+#floatingPremiumBtn:hover {
+    transform: scale(1.15) rotate(5deg);
+    background: linear-gradient(135deg, #e67e22 0%, #f39c12 100%);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 35px rgba(241, 196, 15, 0.9);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+#floatingPremiumBtn:active {
+    transform: scale(0.95);
+}
+
+/* حركة الاهتزاز المحترفة */
+@keyframes premiumShake {
+    0%, 100% {
+        transform: translateX(0) translateY(0);
+    }
+    90% {
+        transform: translateX(0) translateY(0);
+    }
+    93% {
+        transform: translateX(-3px) translateY(-2px);
+    }
+    96% {
+        transform: translateX(3px) translateY(1px);
+    }
+    98% {
+        transform: translateX(-2px) translateY(-1px);
+    }
+    99% {
+        transform: translateX(1px) translateY(0);
+    }
+}
+
+/* تأثير نبض خفيف مستمر */
+@keyframes premiumPulse {
+    0% {
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), 0 0 20px rgba(241, 196, 15, 0.5);
+    }
+    50% {
+        box-shadow: 0 6px 25px rgba(0, 0, 0, 0.5), 0 0 35px rgba(241, 196, 15, 0.9);
+    }
+    100% {
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), 0 0 20px rgba(241, 196, 15, 0.5);
+    }
+}
+
+#floatingPremiumBtn {
+    animation: premiumShake 3s infinite ease-in-out, premiumPulse 2s infinite;
+}
+
+/* أيقونة البرق داخل الزر */
+#floatingPremiumBtn::before {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    background: radial-gradient(circle, rgba(241, 196, 15, 0.4) 0%, transparent 70%);
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+#floatingPremiumBtn:hover::before {
+    opacity: 1;
+}
+
+/* للشاشات الصغيرة */
+@media (max-width: 480px) {
+    #floatingPremiumBtn {
+        width: 52px;
+        height: 52px;
+        font-size: 28px;
+        bottom: 80px;
+        right: 15px;
+    }
+}
+
+/* للشاشات الصغيرة جداً */
+@media (max-width: 380px) {
+    #floatingPremiumBtn {
+        width: 48px;
+        height: 48px;
+        font-size: 24px;
+        bottom: 75px;
+        right: 12px;
+    }
+}
+
+/* دعم الوضع الليلي (مضمن بشكل طبيعي) */
+[data-theme="light"] #floatingPremiumBtn {
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2), 0 0 25px rgba(241, 196, 15, 0.4);
+}
+
+/* ============================================================
+   END OF FLOATING BUTTON STYLES
+   ============================================================ */
+/* ============================================================
    END OF STYLESHEET
    ============================================================ */
