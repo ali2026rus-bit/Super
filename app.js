@@ -2806,7 +2806,7 @@ function showToast(message, type = 'success') {
         else icon.className = 'fa-solid fa-circle-check';
     }
     
-    setTimeout(() => toast.classList.add('hidden'), 3000);
+    setTimeout(() => toast.classList.add('hidden'), 5000);
 }
 
 // ============================================================================
