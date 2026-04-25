@@ -2569,9 +2569,11 @@ function showPremiumModal() {
 }
 
 async function buyPremium() {
-    if (!tonConnected) { 
-        showToast('Connect TON wallet first', 'error'); 
-        return; 
+    // ✅ التحقق الذكي: إذا كانت المحفظة غير موجودة فعلياً، نفتح نافذة الاتصال مباشرة
+    if (!tonConnectUI?.wallet) {
+        showToast('Please connect your TON wallet first', 'info');
+        await tonConnectUI.openModal();
+        return;
     }
     
     showToast('Processing payment...', 'info');
@@ -2594,7 +2596,8 @@ async function buyPremium() {
             celebrateUnlock();
         }
     } catch (e) { 
-        showToast('Payment failed', 'error'); 
+        // رسالة أوضح للمستخدم عند فشل المعاملة
+        showToast('Transaction failed. Please disconnect and reconnect your TON wallet, then try again.', 'error');
     }
 }
 
@@ -2672,6 +2675,10 @@ function showWallet() {
     renderTopCryptos();
     renderMemeCoins();
     updateTotalBalance();
+    
+    // ✅ إخفاء الزر العائم عند مغادرة صفحة Airdrop
+    const floatingBtn = document.getElementById('floatingPremiumBtn');
+    if (floatingBtn) floatingBtn.style.display = 'none';
 }
 
 function showAirdrop() {
@@ -2695,6 +2702,17 @@ function showAirdrop() {
     
     renderMissionsUI();
     renderMilestones();
+    
+    // ✅ إنشاء وإظهار الزر العائم لشراء Premium (يظهر فقط في صفحة Airdrop)
+    let floatingBtn = document.getElementById('floatingPremiumBtn');
+    if (!floatingBtn) {
+        floatingBtn = document.createElement('div');
+        floatingBtn.id = 'floatingPremiumBtn';
+        floatingBtn.innerHTML = '⚡';
+        floatingBtn.onclick = showPremiumModal;
+        document.body.appendChild(floatingBtn);
+    }
+    floatingBtn.style.display = 'flex';
 }
 
 function showSettings() {
@@ -2705,6 +2723,10 @@ function showSettings() {
     const settingsBtn = document.querySelector('[data-tab="settings"]');
     if (settingsBtn) settingsBtn.classList.add('active');
     updateSettingsUI();
+    
+    // ✅ إخفاء الزر العائم عند مغادرة صفحة Airdrop
+    const floatingBtn = document.getElementById('floatingPremiumBtn');
+    if (floatingBtn) floatingBtn.style.display = 'none';
 }
 
 // ============================================================================
