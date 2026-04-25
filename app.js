@@ -2572,6 +2572,8 @@ async function buyPremium() {
     // ✅ التحقق الذكي: إذا كانت المحفظة غير موجودة فعلياً، نفتح نافذة الاتصال مباشرة
     if (!tonConnectUI?.wallet) {
         showToast('Please connect your TON wallet first', 'info');
+        // ✅ إغلاق نافذة Premium قبل فتح نافذة الاتصال لتجنب النوافذ المخفية
+        closeModal('premiumModal');
         await tonConnectUI.openModal();
         return;
     }
