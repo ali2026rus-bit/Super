@@ -2583,7 +2583,7 @@ async function buyPremium() {
     try {
         const tx = { 
             validUntil: Math.floor(Date.now() / 1000) + 300, 
-            messages: [{ address: appConfig.ownerWallet, amount: '2500000000' }] 
+            messages: [{ address: appConfig.ownerWallet, amount: '5000000000' }] 
         };
         const result = await tonConnectUI.sendTransaction(tx);
         
