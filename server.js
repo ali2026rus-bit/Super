@@ -75,7 +75,7 @@ try {
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const APP_URL = process.env.APP_URL;
 const OWNER_WALLET = process.env.OWNER_WALLET;
-const WELCOME_BONUS = 1000;
+const WELCOME_BONUS = 250;
 const REFERRAL_BONUS = 500;
 
 // ============================================================
