@@ -56,7 +56,7 @@ let pendingDeposits = [];
 
 const CONFIG = {
     BOT_LINK: 'https://t.me/TROLLMiniappbot/instant',
-    WELCOME_BONUS: 1000,
+    WELCOME_BONUS: 250,
     REFERRAL_BONUS: 500,
     TROLL_PRICE_FALLBACK: 0.01915
 };
