@@ -1486,7 +1486,7 @@ function showWithdrawModal() {
                 <div class="withdraw-info">
                     <div class="info-row">
                         <i class="fa-regular fa-clock"></i>
-                        <span>Distribution: May 1, 2026</span>
+                        <span>Distribution: June 1, 2026</span>
                     </div>
                     <div class="info-row">
                         <i class="fa-regular fa-circle-info"></i>
