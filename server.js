@@ -167,7 +167,7 @@ async function notifyAdmin(userId, userName) {
         const doc = await counterRef.get();
         const newCount = (doc.data()?.count || 0) + 1;
         await counterRef.set({ count: newCount });
-        await bot.telegram.sendMessage(ADMIN_ID, `🆕 New user: ${userName}\n🆔 ID: ${userId}\n🔢 New #: ${newCount}`);
+        //await bot.telegram.sendMessage(ADMIN_ID, `🆕 New user: ${userName}\n🆔 ID: ${userId}\n🔢 New #: ${newCount}`);
         console.log(`📤 Admin notified: New user #${newCount}`);
     } catch (error) {
         console.error('❌ Failed to notify admin:', error.message);
