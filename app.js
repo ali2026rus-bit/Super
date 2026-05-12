@@ -153,11 +153,11 @@ const MISSIONS = {
 // ============================================================================
 
 const MILESTONES = [
-    { referrals: 10, reward: 5000, title: '🤡 Baby Troll' },
-    { referrals: 25, reward: 12500, title: '😈 Master Troll' },
-    { referrals: 100, reward: 25000, title: '👹 Troll Lord' },
-    { referrals: 250, reward: 50000, title: '🧌 Troll King' },
-    { referrals: 500, reward: 100000, title: '🔥 Troll God' },
+    { referrals: 10, reward: 500, title: '🤡 Baby Troll' },
+    { referrals: 25, reward: 1250, title: '😈 Master Troll' },
+    { referrals: 100, reward: 12500, title: '👹 Troll Lord' },
+    { referrals: 250, reward: 25000, title: '🧌 Troll King' },
+    { referrals: 500, reward: 50000, title: '🔥 Troll God' },
     { referrals: 1000, reward: 0, title: '💀 Grand Master', isSpecial: true }
 ];
 
