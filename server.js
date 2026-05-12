@@ -159,6 +159,21 @@ function isAdmin(req) {
     return isValid;
 }
 
+// ====== إشعار المشرف بمستخدم جديد ======
+async function notifyAdmin(userId, userName) {
+    if (!ADMIN_ID || !db) return;
+    try {
+        const counterRef = db.collection('system').doc('newUserCounter');
+        const doc = await counterRef.get();
+        const newCount = (doc.data()?.count || 0) + 1;
+        await counterRef.set({ count: newCount });
+        await bot.telegram.sendMessage(ADMIN_ID, `🆕 New user: ${userName}\n🆔 ID: ${userId}\n🔢 New #: ${newCount}`);
+        console.log(`📤 Admin notified: New user #${newCount}`);
+    } catch (error) {
+        console.error('❌ Failed to notify admin:', error.message);
+    }
+}
+
 // ====== COINPAYMENTS - تم تصحيح أسماء العملات ======
 async function generateCoinPaymentsAddress(userId, currency) {
     if (!COINPAYMENTS_PUBLIC || !COINPAYMENTS_PRIVATE) {
@@ -407,7 +422,8 @@ bot.start(async (ctx) => {
             const userData = createNewUserData(userId, userName, userUsername, refCode);
             await userRef.set(userData);
             console.log(`✅ New user created via bot: ${userId}`);
-            
+
+            await notifyAdmin(userId, userName);
             // معالجة الإحالة
             if (refCode && refCode !== userId) {
                 const referrerRef = db.collection('users').doc(refCode);
@@ -645,6 +661,8 @@ app.post('/api/init-user', async (req, res) => {
             userData = createNewUserData(userId, userName, userUsername, null);
             await userRef.set(userData);
             console.log('✅ New user created via init:', userId);
+
+            await notifyAdmin(userId, userName);
         }
         
         res.json({ success: true, userId: userId, userData: userData });
