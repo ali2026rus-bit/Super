@@ -1,16 +1,4 @@
 // ============================================================================
-// TROLL ARMY - PROFESSIONAL EDITION v28.0
-// COMPLETE REWRITE WITH:
-// - Fixed Add Wallet Button & Settings Solana Wallet Link
-// - Professional Withdrawal Modal (Deposit-style)
-// - Fixed Notifications (No more stacking/cards issues)
-// - Removed Transaction ID from Deposit Modal
-// - Professional i18n (English default, Arabic full support)
-// - FIXED: Mission progress updates instantly after referrals
-// ALL ORIGINAL FEATURES PRESERVED
-// ============================================================================
-
-// ============================================================================
 // SECTION 1: TELEGRAM WEBAPP INITIALIZATION
 // ============================================================================
 
