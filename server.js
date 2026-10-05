@@ -365,7 +365,7 @@ const botAdminSessions = new Map();
 // دالة إرسال رسالة الترحيب (تُستخدم في /start وعند الدخول من رابط الإحالة)
 async function sendWelcomeMessage(ctx, userId, userName, isNewUser = false) {
     // قيمة TROLL بالدولار (نفس القيمة المستخدمة في التطبيق)
-    const TROLL_PRICE = 0.015; // 1000 TROLL = $15
+    const TROLL_PRICE = 0.045; // 1000 TROLL = $15
     
     let welcomeBonusText = '';
     if (isNewUser) {
